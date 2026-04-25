@@ -27,7 +27,7 @@ const AddReference = () => {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    document.title = "Add reference — REEL";
+    document.title = "Add reference — The Ref Room";
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
 
