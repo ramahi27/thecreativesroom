@@ -20,7 +20,7 @@ const ReferenceDetail = () => {
     (async () => {
       const { data } = await supabase.from("references").select("*").eq("id", id).maybeSingle();
       setR(data as Reference | null);
-      if (data) document.title = `${data.title} — REEL`;
+      if (data) document.title = `${data.title} — The Ref Room`;
       setLoading(false);
     })();
   }, [id]);
