@@ -63,6 +63,19 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      fontFamily: {
+        display: ['Fraunces', 'serif'],
+        body: ['Inter', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      backgroundImage: {
+        'gradient-spotlight': 'var(--gradient-spotlight)',
+        'gradient-fade': 'var(--gradient-fade)',
+      },
+      boxShadow: {
+        'cinema': 'var(--shadow-cinema)',
+        'glow': 'var(--shadow-glow)',
+      },
       keyframes: {
         "accordion-down": {
           from: {
