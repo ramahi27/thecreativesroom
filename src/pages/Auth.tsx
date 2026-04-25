@@ -15,7 +15,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    document.title = "Sign in — REEL";
+    document.title = "Sign in — The Ref Room";
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) navigate("/");
     });

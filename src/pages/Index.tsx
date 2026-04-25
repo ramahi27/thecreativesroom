@@ -13,7 +13,7 @@ const Index = () => {
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "REEL — Reference Archive";
+    document.title = "The Ref Room — Reference Archive";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", "A curated archive of ad films, commercials, and visual references for creatives.");
 
@@ -63,10 +63,10 @@ const Index = () => {
           <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black leading-[0.85] tracking-tighter max-w-5xl">
             The reference<br />
             <span className="italic font-light">archive</span> for<br />
-            commercial film.
+            creatives.
           </h1>
           <p className="mt-8 max-w-xl font-body text-base text-muted-foreground leading-relaxed">
-            A personal vault of ad films, photography, and visual references —
+            A personal vault of commercials, promos, photography, and visual references,
             curated for the moments when inspiration runs dry.
           </p>
         </div>
@@ -139,7 +139,7 @@ const Index = () => {
       <footer className="border-t hairline mt-20">
         <div className="container py-8 flex items-center justify-between">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            © Reel Archive — Curated references for creatives
+            © The Ref Room — Curated references for creatives
           </p>
         </div>
       </footer>
