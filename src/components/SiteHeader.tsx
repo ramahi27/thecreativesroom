@@ -10,9 +10,9 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 border-b hairline bg-background/70 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-baseline gap-2 group">
-          <span className="font-display text-2xl font-black tracking-tighter">REEL</span>
+          <span className="font-display text-2xl font-black tracking-tighter uppercase">The Ref Room</span>
           <span className="font-mono text-[10px] uppercase text-muted-foreground tracking-[0.2em]">
-            ref archive
+            <br />
           </span>
         </Link>
 
