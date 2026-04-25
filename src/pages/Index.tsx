@@ -13,7 +13,7 @@ const Index = () => {
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
   useEffect(() => {
-    document.title = "REEL — Reference Archive";
+    document.title = "The Ref Room — Reference Archive";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", "A curated archive of ad films, commercials, and visual references for creatives.");
 
