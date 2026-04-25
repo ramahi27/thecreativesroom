@@ -139,7 +139,7 @@ const Index = () => {
       <footer className="border-t hairline mt-20">
         <div className="container py-8 flex items-center justify-between">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            © Reel Archive — Curated references for creatives
+            © The Ref Room — Curated references for creatives
           </p>
         </div>
       </footer>
