@@ -1,0 +1,88 @@
+import { Link } from "react-router-dom";
+import type { Reference } from "@/lib/references";
+import { detectPlatform } from "@/lib/references";
+import { Play, ImageIcon, Link2 } from "lucide-react";
+
+interface Props {
+  reference: Reference;
+}
+
+export function ReferenceCard({ reference: r }: Props) {
+  const thumb = r.thumbnail_url || (r.type === "image" ? r.media_url : null);
+  const platform = detectPlatform(r.source_url);
+
+  const Icon = r.type === "video" ? Play : r.type === "image" ? ImageIcon : Link2;
+
+  return (
+    <Link
+      to={`/ref/${r.id}`}
+      className="reveal-card group block overflow-hidden bg-card border hairline"
+    >
+      <div className="relative aspect-[4/5] overflow-hidden bg-muted">
+        {thumb ? (
+          <img
+            src={thumb}
+            alt={r.title}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-secondary to-background">
+            <Icon className="h-10 w-10 text-muted-foreground/40" strokeWidth={1} />
+          </div>
+        )}
+
+        {r.type === "video" && thumb && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Play className="h-5 w-5 fill-current" />
+            </div>
+          </div>
+        )}
+
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-background/80 px-2 py-1 backdrop-blur-md">
+          <Icon className="h-3 w-3" strokeWidth={1.5} />
+          <span className="font-mono text-[10px] uppercase tracking-widest">{r.type}</span>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="font-display text-lg font-medium leading-tight line-clamp-2">
+            {r.title}
+          </h3>
+          {r.year && (
+            <span className="font-mono text-xs text-muted-foreground shrink-0">{r.year}</span>
+          )}
+        </div>
+
+        {(r.brand || r.agency) && (
+          <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+            {r.brand}
+            {r.brand && r.agency && <span className="mx-1.5 opacity-50">/</span>}
+            {r.agency}
+          </p>
+        )}
+
+        {r.tags && r.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1 pt-1">
+            {r.tags.slice(0, 3).map((t) => (
+              <span
+                key={t}
+                className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
+              >
+                #{t}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {platform && (
+          <p className="font-mono text-[10px] uppercase tracking-widest text-primary/80 pt-1">
+            ↗ {platform}
+          </p>
+        )}
+      </div>
+    </Link>
+  );
+}
