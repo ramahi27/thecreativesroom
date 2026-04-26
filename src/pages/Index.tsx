@@ -3,14 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import type { Reference } from "@/lib/references";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type MediaFilter = "all" | "videos" | "photos";
 
 const Index = () => {
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
 
   useEffect(() => {
     document.title = "The Ref Room — Reference Archive";
