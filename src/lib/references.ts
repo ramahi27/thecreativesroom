@@ -17,9 +17,26 @@ export interface Reference {
   agency: string | null;
   year: number | null;
   tags: string[];
+  categories: string[];
   notes: string | null;
   created_at: string;
 }
+
+export const VIDEO_CATEGORIES = [
+  "Commercials",
+  "Promos / Trailers",
+  "Case Studies",
+  "Social Content",
+  "Activation Films",
+] as const;
+
+export const PHOTO_CATEGORIES = [
+  "Campaign",
+  "Branding",
+  "Copy Driven",
+] as const;
+
+export const ALL_CATEGORIES = [...VIDEO_CATEGORIES, ...PHOTO_CATEGORIES];
 
 /** Returns true for video file extensions */
 export function isVideoFile(url: string): boolean {

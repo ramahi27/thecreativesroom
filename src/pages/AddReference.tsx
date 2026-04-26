@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { deriveThumbnail, fetchThumbnail, isVideoFile, type RefType, type MediaItem } from "@/lib/references";
+import { deriveThumbnail, fetchThumbnail, isVideoFile, VIDEO_CATEGORIES, PHOTO_CATEGORIES, type RefType, type MediaItem } from "@/lib/references";
 import { X } from "lucide-react";
 
 const AddReference = () => {
@@ -25,6 +25,7 @@ const AddReference = () => {
   const [agency, setAgency] = useState("");
   const [year, setYear] = useState("");
   const [tags, setTags] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [existingMedia, setExistingMedia] = useState<MediaItem[]>([]);
@@ -59,6 +60,7 @@ const AddReference = () => {
       setAgency(r.agency || "");
       setYear(r.year ? String(r.year) : "");
       setTags(Array.isArray(r.tags) ? r.tags.join(", ") : "");
+      setCategories(Array.isArray(r.categories) ? r.categories : []);
       setNotes(r.notes || "");
       const items: MediaItem[] = Array.isArray(r.media_items) && r.media_items.length
         ? r.media_items
@@ -141,6 +143,7 @@ const AddReference = () => {
         agency: agency || null,
         year: year ? parseInt(year) : null,
         tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+        categories,
         notes: notes || null,
       };
 
@@ -190,7 +193,11 @@ const AddReference = () => {
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => {
+                    setType(t);
+                    const allowed = t === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES;
+                    setCategories((prev) => prev.filter((c) => (allowed as readonly string[]).includes(c)));
+                  }}
                   className={`px-4 py-2 font-mono text-xs uppercase tracking-widest border hairline transition-colors ${
                     type === t ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
                   }`}
@@ -198,6 +205,31 @@ const AddReference = () => {
                   {t}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <Label className={labelCls}>Categories (multi-select)</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(type === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES).map((c) => {
+                const active = categories.includes(c);
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() =>
+                      setCategories((prev) =>
+                        active ? prev.filter((x) => x !== c) : [...prev, c]
+                      )
+                    }
+                    className={`px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest border hairline transition-colors ${
+                      active ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
