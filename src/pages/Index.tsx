@@ -28,12 +28,6 @@ const Index = () => {
     })();
   }, []);
 
-  const allTags = useMemo(() => {
-    const s = new Set<string>();
-    refs.forEach((r) => r.tags?.forEach((t) => s.add(t)));
-    return Array.from(s).sort();
-  }, [refs]);
-
   const availableCategories = useMemo(() => {
     if (mediaFilter === "videos") return VIDEO_CATEGORIES;
     if (mediaFilter === "photos") return PHOTO_CATEGORIES;
