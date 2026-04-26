@@ -67,18 +67,40 @@ const Index = () => {
 
       {/* Filter bar */}
       <section className="sticky top-16 z-40 border-b hairline bg-background/80 backdrop-blur-xl">
-        <div className="container py-4 flex items-center gap-4">
+        <div className="container py-4 flex flex-wrap items-center gap-4">
           <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
             Filter
           </span>
-          <Select value={mediaFilter} onValueChange={(v) => setMediaFilter(v as MediaFilter)}>
-            <SelectTrigger className="w-[180px] bg-secondary border-0 font-mono text-xs uppercase tracking-widest">
+          <Select
+            value={mediaFilter}
+            onValueChange={(v) => {
+              setMediaFilter(v as MediaFilter);
+              setCategoryFilter("all");
+            }}
+          >
+            <SelectTrigger className="w-[160px] bg-secondary border-0 font-mono text-xs uppercase tracking-widest">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">All</SelectItem>
               <SelectItem value="videos" className="font-mono text-xs uppercase tracking-widest">Videos</SelectItem>
               <SelectItem value="photos" className="font-mono text-xs uppercase tracking-widest">Photos</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-[220px] bg-secondary border-0 font-mono text-xs uppercase tracking-widest">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">
+                All categories
+              </SelectItem>
+              {availableCategories.map((c) => (
+                <SelectItem key={c} value={c} className="font-mono text-xs uppercase tracking-widest">
+                  {c}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
