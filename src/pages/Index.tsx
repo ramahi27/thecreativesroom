@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ReferenceCard } from "@/components/ReferenceCard";
-import type { Reference } from "@/lib/references";
+import { VIDEO_CATEGORIES, PHOTO_CATEGORIES, type Reference } from "@/lib/references";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type MediaFilter = "all" | "videos" | "photos";
