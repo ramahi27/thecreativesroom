@@ -130,7 +130,7 @@ const AddReference = () => {
           <div>
             <Label className={labelCls}>Type</Label>
             <div className="mt-2 flex gap-2">
-              {(["video", "image", "link"] as RefType[]).map((t) => (
+              {(["video", "image"] as RefType[]).map((t) => (
                 <button
                   key={t}
                   type="button"
