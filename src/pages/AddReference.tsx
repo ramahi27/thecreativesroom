@@ -193,7 +193,11 @@ const AddReference = () => {
                 <button
                   key={t}
                   type="button"
-                  onClick={() => setType(t)}
+                  onClick={() => {
+                    setType(t);
+                    const allowed = t === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES;
+                    setCategories((prev) => prev.filter((c) => (allowed as readonly string[]).includes(c)));
+                  }}
                   className={`px-4 py-2 font-mono text-xs uppercase tracking-widest border hairline transition-colors ${
                     type === t ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
                   }`}
@@ -201,6 +205,31 @@ const AddReference = () => {
                   {t}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <Label className={labelCls}>Categories (multi-select)</Label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {(type === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES).map((c) => {
+                const active = categories.includes(c);
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() =>
+                      setCategories((prev) =>
+                        active ? prev.filter((x) => x !== c) : [...prev, c]
+                      )
+                    }
+                    className={`px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest border hairline transition-colors ${
+                      active ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
