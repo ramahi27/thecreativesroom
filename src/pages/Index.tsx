@@ -35,7 +35,7 @@ const Index = () => {
 
   const filtered = useMemo(() => {
     return refs.filter((r) => {
-      if (mediaFilter === "videos" && r.type !== "video") return false;
+      if (mediaFilter === "videos" && !(r.type === "video" || r.type === "link")) return false;
       if (mediaFilter === "photos" && r.type !== "image") return false;
       return true;
     });
