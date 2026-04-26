@@ -25,6 +25,7 @@ const AddReference = () => {
   const [agency, setAgency] = useState("");
   const [year, setYear] = useState("");
   const [tags, setTags] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [existingMedia, setExistingMedia] = useState<MediaItem[]>([]);
