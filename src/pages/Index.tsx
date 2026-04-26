@@ -22,7 +22,7 @@ const Index = () => {
         .from("references")
         .select("*")
         .order("created_at", { ascending: false });
-      setRefs((data as Reference[]) || []);
+      setRefs(((data as unknown) as Reference[]) || []);
       setLoading(false);
     })();
   }, []);
