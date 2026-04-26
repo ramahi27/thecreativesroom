@@ -3,14 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import type { Reference } from "@/lib/references";
-import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+type MediaFilter = "all" | "videos" | "photos";
 
 const Index = () => {
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
 
   useEffect(() => {
     document.title = "The Ref Room — Reference Archive";
@@ -35,20 +35,11 @@ const Index = () => {
 
   const filtered = useMemo(() => {
     return refs.filter((r) => {
-      if (activeTag && !r.tags?.includes(activeTag)) return false;
-      if (query) {
-        const q = query.toLowerCase();
-        return (
-          r.title.toLowerCase().includes(q) ||
-          r.brand?.toLowerCase().includes(q) ||
-          r.agency?.toLowerCase().includes(q) ||
-          r.notes?.toLowerCase().includes(q) ||
-          r.tags?.some((t) => t.toLowerCase().includes(q))
-        );
-      }
+      if (mediaFilter === "videos" && r.type !== "video") return false;
+      if (mediaFilter === "photos" && r.type !== "image") return false;
       return true;
     });
-  }, [refs, query, activeTag]);
+  }, [refs, mediaFilter]);
 
   return (
     <div className="min-h-screen grain">
@@ -74,39 +65,20 @@ const Index = () => {
 
       {/* Filter bar */}
       <section className="sticky top-16 z-40 border-b hairline bg-background/80 backdrop-blur-xl">
-        <div className="container py-4 space-y-3">
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by title, brand, tag…"
-              className="pl-10 bg-secondary border-0 font-mono text-sm"
-            />
-          </div>
-          {allTags.length > 0 && (
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <button
-                onClick={() => setActiveTag(null)}
-                className={`font-mono text-[11px] uppercase tracking-widest transition-colors ${
-                  !activeTag ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                All
-              </button>
-              {allTags.map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setActiveTag(t === activeTag ? null : t)}
-                  className={`font-mono text-[11px] uppercase tracking-widest transition-colors ${
-                    activeTag === t ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  #{t}
-                </button>
-              ))}
-            </div>
-          )}
+        <div className="container py-4 flex items-center gap-4">
+          <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+            Filter
+          </span>
+          <Select value={mediaFilter} onValueChange={(v) => setMediaFilter(v as MediaFilter)}>
+            <SelectTrigger className="w-[180px] bg-secondary border-0 font-mono text-xs uppercase tracking-widest">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">All</SelectItem>
+              <SelectItem value="videos" className="font-mono text-xs uppercase tracking-widest">Videos</SelectItem>
+              <SelectItem value="photos" className="font-mono text-xs uppercase tracking-widest">Photos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </section>
 
