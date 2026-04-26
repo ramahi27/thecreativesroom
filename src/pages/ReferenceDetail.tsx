@@ -230,6 +230,21 @@ const ReferenceDetail = () => {
               {r.year && <Row label="Year" value={String(r.year)} />}
             </dl>
 
+            {r.categories?.length > 0 && (
+              <div className="border-t hairline pt-6">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                  Categories
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {r.categories.map((c) => (
+                    <span key={c} className="font-mono text-[11px] uppercase tracking-widest px-2 py-1 bg-primary/10 text-primary">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {r.tags?.length > 0 && (
               <div className="border-t hairline pt-6">
                 <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
