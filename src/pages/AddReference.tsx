@@ -60,6 +60,7 @@ const AddReference = () => {
       setAgency(r.agency || "");
       setYear(r.year ? String(r.year) : "");
       setTags(Array.isArray(r.tags) ? r.tags.join(", ") : "");
+      setCategories(Array.isArray(r.categories) ? r.categories : []);
       setNotes(r.notes || "");
       const items: MediaItem[] = Array.isArray(r.media_items) && r.media_items.length
         ? r.media_items
