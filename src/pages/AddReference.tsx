@@ -143,6 +143,7 @@ const AddReference = () => {
         agency: agency || null,
         year: year ? parseInt(year) : null,
         tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+        categories,
         notes: notes || null,
       };
 
