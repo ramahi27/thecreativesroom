@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { deriveThumbnail, fetchThumbnail, isVideoFile, type RefType, type MediaItem } from "@/lib/references";
+import { deriveThumbnail, fetchThumbnail, isVideoFile, VIDEO_CATEGORIES, PHOTO_CATEGORIES, type RefType, type MediaItem } from "@/lib/references";
 import { X } from "lucide-react";
 
 const AddReference = () => {
