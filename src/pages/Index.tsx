@@ -34,13 +34,20 @@ const Index = () => {
     return Array.from(s).sort();
   }, [refs]);
 
+  const availableCategories = useMemo(() => {
+    if (mediaFilter === "videos") return VIDEO_CATEGORIES;
+    if (mediaFilter === "photos") return PHOTO_CATEGORIES;
+    return [...VIDEO_CATEGORIES, ...PHOTO_CATEGORIES];
+  }, [mediaFilter]);
+
   const filtered = useMemo(() => {
     return refs.filter((r) => {
       if (mediaFilter === "videos" && !(r.type === "video" || r.type === "link")) return false;
       if (mediaFilter === "photos" && r.type !== "image") return false;
+      if (categoryFilter !== "all" && !(r.categories || []).includes(categoryFilter)) return false;
       return true;
     });
-  }, [refs, mediaFilter]);
+  }, [refs, mediaFilter, categoryFilter]);
 
   return (
     <div className="min-h-screen grain">
