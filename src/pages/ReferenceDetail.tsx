@@ -257,7 +257,13 @@ const ReferenceDetail = () => {
             )}
 
             {isAdmin && (
-              <div className="border-t hairline pt-6">
+              <div className="border-t hairline pt-6 flex gap-3">
+                <Button
+                  onClick={() => navigate(`/edit/${r.id}`)}
+                  className="font-mono text-xs uppercase tracking-widest"
+                >
+                  Edit
+                </Button>
                 <Button
                   variant="destructive"
                   onClick={handleDelete}
