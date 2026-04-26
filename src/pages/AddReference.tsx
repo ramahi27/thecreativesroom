@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { deriveThumbnail, isVideoFile, type RefType, type MediaItem } from "@/lib/references";
+import { deriveThumbnail, fetchThumbnail, isVideoFile, type RefType, type MediaItem } from "@/lib/references";
 import { X } from "lucide-react";
 
 const AddReference = () => {
@@ -124,7 +124,7 @@ const AddReference = () => {
 
       const items: MediaItem[] = [...existingMedia, ...newItems];
       const firstMediaUrl = items[0]?.url ?? null;
-      const auto = sourceUrl ? deriveThumbnail(sourceUrl) : null;
+      const auto = sourceUrl ? (deriveThumbnail(sourceUrl) || (await fetchThumbnail(sourceUrl))) : null;
       const firstImage = items.find((i) => i.kind === "image")?.url ?? null;
       const finalThumb = thumbnailUrl || auto || firstImage;
 

@@ -62,11 +62,30 @@ export function deriveThumbnail(url: string): string | null {
       const id = u.pathname.slice(1);
       if (id) return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
     }
-    // Vimeo - needs API; skip for now
     return null;
   } catch {
     return null;
   }
+}
+
+/** Async thumbnail fetch — supports Vimeo via oEmbed */
+export async function fetchThumbnail(url: string): Promise<string | null> {
+  const sync = deriveThumbnail(url);
+  if (sync) return sync;
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("vimeo.com")) {
+      const res = await fetch(
+        `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`
+      );
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.thumbnail_url || null;
+    }
+  } catch {
+    // ignore
+  }
+  return null;
 }
 
 export function detectPlatform(url: string | null): string | null {
