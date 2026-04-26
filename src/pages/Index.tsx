@@ -35,20 +35,11 @@ const Index = () => {
 
   const filtered = useMemo(() => {
     return refs.filter((r) => {
-      if (activeTag && !r.tags?.includes(activeTag)) return false;
-      if (query) {
-        const q = query.toLowerCase();
-        return (
-          r.title.toLowerCase().includes(q) ||
-          r.brand?.toLowerCase().includes(q) ||
-          r.agency?.toLowerCase().includes(q) ||
-          r.notes?.toLowerCase().includes(q) ||
-          r.tags?.some((t) => t.toLowerCase().includes(q))
-        );
-      }
+      if (mediaFilter === "videos" && r.type !== "video") return false;
+      if (mediaFilter === "photos" && r.type !== "image") return false;
       return true;
     });
-  }, [refs, query, activeTag]);
+  }, [refs, mediaFilter]);
 
   return (
     <div className="min-h-screen grain">
