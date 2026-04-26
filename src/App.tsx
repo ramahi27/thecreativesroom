@@ -21,6 +21,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/add" element={<AddReference />} />
+          <Route path="/edit/:id" element={<AddReference />} />
           <Route path="/ref/:id" element={<ReferenceDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

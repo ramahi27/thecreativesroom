@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -8,11 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { deriveThumbnail, type RefType, type MediaItem } from "@/lib/references";
+import { deriveThumbnail, isVideoFile, type RefType, type MediaItem } from "@/lib/references";
 import { X } from "lucide-react";
 
 const AddReference = () => {
   const navigate = useNavigate();
+  const { id: editId } = useParams();
+  const isEdit = !!editId;
   const { user, isAdmin, loading: authLoading } = useAuth();
 
   const [type, setType] = useState<RefType>("video");
@@ -25,15 +27,50 @@ const AddReference = () => {
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+  const [existingMedia, setExistingMedia] = useState<MediaItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState<string>("");
+  const [loadingRecord, setLoadingRecord] = useState(isEdit);
 
   useEffect(() => {
-    document.title = "Add reference — The Ref Room";
+    document.title = isEdit ? "Edit reference — The Ref Room" : "Add reference — The Ref Room";
     if (!authLoading && !user) navigate("/auth");
-  }, [user, authLoading, navigate]);
+  }, [user, authLoading, navigate, isEdit]);
 
-  if (authLoading) return null;
+  useEffect(() => {
+    if (!isEdit || !editId) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from("references")
+        .select("*")
+        .eq("id", editId)
+        .maybeSingle();
+      if (error || !data) {
+        toast.error("Could not load reference");
+        navigate("/");
+        return;
+      }
+      const r: any = data;
+      setType((r.type as RefType) || "video");
+      setTitle(r.title || "");
+      setSourceUrl(r.source_url || "");
+      setThumbnailUrl(r.thumbnail_url || "");
+      setBrand(r.brand || "");
+      setAgency(r.agency || "");
+      setYear(r.year ? String(r.year) : "");
+      setTags(Array.isArray(r.tags) ? r.tags.join(", ") : "");
+      setNotes(r.notes || "");
+      const items: MediaItem[] = Array.isArray(r.media_items) && r.media_items.length
+        ? r.media_items
+        : r.media_url
+          ? [{ url: r.media_url, kind: isVideoFile(r.media_url) ? "video" : "image" }]
+          : [];
+      setExistingMedia(items);
+      setLoadingRecord(false);
+    })();
+  }, [isEdit, editId, navigate]);
+
+  if (authLoading || loadingRecord) return null;
   if (!isAdmin) {
     return (
       <div className="min-h-screen grain">
@@ -59,11 +96,15 @@ const AddReference = () => {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  function removeExisting(idx: number) {
+    setExistingMedia((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const items: MediaItem[] = [];
+      const newItems: MediaItem[] = [];
 
       for (let i = 0; i < files.length; i++) {
         const f = files[i];
@@ -75,20 +116,21 @@ const AddReference = () => {
           .upload(path, f);
         if (upErr) throw upErr;
         const { data } = supabase.storage.from("references").getPublicUrl(path);
-        items.push({
+        newItems.push({
           url: data.publicUrl,
           kind: f.type.startsWith("video") ? "video" : "image",
         });
       }
 
+      const items: MediaItem[] = [...existingMedia, ...newItems];
       const firstMediaUrl = items[0]?.url ?? null;
       const auto = sourceUrl ? deriveThumbnail(sourceUrl) : null;
       const firstImage = items.find((i) => i.kind === "image")?.url ?? null;
-      const finalThumb =
-        thumbnailUrl || auto || (type === "image" ? firstImage : firstImage);
+      const finalThumb = thumbnailUrl || auto || firstImage;
 
       setProgress("Saving…");
-      const { error } = await supabase.from("references").insert({
+
+      const payload = {
         title,
         type,
         media_url: firstMediaUrl,
@@ -100,14 +142,26 @@ const AddReference = () => {
         year: year ? parseInt(year) : null,
         tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
         notes: notes || null,
-        created_by: user!.id,
-      });
-      if (error) throw error;
+      };
 
-      toast.success("Added to archive");
-      navigate("/");
+      if (isEdit) {
+        const { error } = await supabase
+          .from("references")
+          .update(payload)
+          .eq("id", editId!);
+        if (error) throw error;
+        toast.success("Updated");
+        navigate(`/ref/${editId}`);
+      } else {
+        const { error } = await supabase
+          .from("references")
+          .insert({ ...payload, created_by: user!.id });
+        if (error) throw error;
+        toast.success("Added to archive");
+        navigate("/");
+      }
     } catch (err: any) {
-      toast.error(err.message || "Failed to add");
+      toast.error(err.message || "Failed to save");
     } finally {
       setSubmitting(false);
       setProgress("");
@@ -121,9 +175,11 @@ const AddReference = () => {
     <div className="min-h-screen grain">
       <SiteHeader />
       <main className="container max-w-2xl py-12">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">⏵ New entry</p>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">
+          ⏵ {isEdit ? "Edit entry" : "New entry"}
+        </p>
         <h1 className="font-display text-5xl font-black tracking-tighter mb-10">
-          Add reference.
+          {isEdit ? "Edit reference." : "Add reference."}
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -161,8 +217,36 @@ const AddReference = () => {
             />
           </div>
 
+          {existingMedia.length > 0 && (
+            <div className="space-y-2">
+              <Label className={labelCls}>Current media</Label>
+              <ul className="space-y-1">
+                {existingMedia.map((m, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between gap-3 bg-secondary px-3 py-2"
+                  >
+                    <span className="font-mono text-[11px] truncate">
+                      {m.kind === "video" ? "🎬" : "🖼"} {m.url.split("/").pop()}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeExisting(i)}
+                      className="text-muted-foreground hover:text-foreground"
+                      aria-label="Remove"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <Label className={labelCls}>Upload files (multiple photos & videos allowed)</Label>
+            <Label className={labelCls}>
+              {isEdit ? "Add more files" : "Upload files (multiple photos & videos allowed)"}
+            </Label>
             <Input
               type="file"
               accept="image/*,video/*"
@@ -246,9 +330,14 @@ const AddReference = () => {
 
           <div className="flex items-center gap-3 pt-4">
             <Button type="submit" disabled={submitting} className="font-mono text-xs uppercase tracking-widest h-12 px-8">
-              {submitting ? progress || "Saving…" : "Add to archive"}
+              {submitting ? progress || "Saving…" : isEdit ? "Save changes" : "Add to archive"}
             </Button>
-            <Button type="button" variant="ghost" onClick={() => navigate("/")} className="font-mono text-xs uppercase tracking-widest h-12">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => navigate(isEdit ? `/ref/${editId}` : "/")}
+              className="font-mono text-xs uppercase tracking-widest h-12"
+            >
               Cancel
             </Button>
           </div>
