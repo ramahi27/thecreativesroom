@@ -18,7 +18,7 @@ export function ReferenceCard({ reference: r }: Props) {
       to={`/ref/${r.id}`}
       className="reveal-card group block overflow-hidden bg-card border hairline"
     >
-      <div className="relative aspect-[4/5] overflow-hidden bg-muted">
+      <div className="relative aspect-video overflow-hidden bg-muted">
         {thumb ? (
           <img
             src={thumb}

@@ -1,0 +1,1 @@
+ALTER TABLE public.references ADD COLUMN IF NOT EXISTS media_items JSONB NOT NULL DEFAULT '[]'::jsonb;

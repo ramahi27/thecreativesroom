@@ -1,10 +1,16 @@
 export type RefType = "image" | "video" | "link";
 
+export interface MediaItem {
+  url: string;
+  kind: "image" | "video";
+}
+
 export interface Reference {
   id: string;
   title: string;
   type: RefType;
   media_url: string | null;
+  media_items: MediaItem[];
   source_url: string | null;
   thumbnail_url: string | null;
   brand: string | null;
@@ -13,6 +19,34 @@ export interface Reference {
   tags: string[];
   notes: string | null;
   created_at: string;
+}
+
+/** Returns true for video file extensions */
+export function isVideoFile(url: string): boolean {
+  return /\.(mp4|webm|mov|m4v|ogg)(\?|$)/i.test(url);
+}
+
+/** Build embed URL for YouTube/Vimeo links so we can play in-page */
+export function getEmbedUrl(url: string | null): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtube.com")) {
+      const id = u.searchParams.get("v");
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+    if (u.hostname === "youtu.be") {
+      const id = u.pathname.slice(1);
+      if (id) return `https://www.youtube.com/embed/${id}`;
+    }
+    if (u.hostname.includes("vimeo.com")) {
+      const id = u.pathname.split("/").filter(Boolean).pop();
+      if (id && /^\d+$/.test(id)) return `https://player.vimeo.com/video/${id}`;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 /** Extract a thumbnail URL from common video platform links */

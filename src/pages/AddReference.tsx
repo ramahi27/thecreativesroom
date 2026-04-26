@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { deriveThumbnail, type RefType } from "@/lib/references";
+import { deriveThumbnail, type RefType, type MediaItem } from "@/lib/references";
+import { X } from "lucide-react";
 
 const AddReference = () => {
   const navigate = useNavigate();
@@ -23,8 +24,9 @@ const AddReference = () => {
   const [year, setYear] = useState("");
   const [tags, setTags] = useState("");
   const [notes, setNotes] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState<string>("");
 
   useEffect(() => {
     document.title = "Add reference — The Ref Room";
@@ -48,30 +50,49 @@ const AddReference = () => {
     );
   }
 
+  function addFiles(list: FileList | null) {
+    if (!list) return;
+    setFiles((prev) => [...prev, ...Array.from(list)]);
+  }
+
+  function removeFile(idx: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== idx));
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      let mediaUrl: string | null = null;
+      const items: MediaItem[] = [];
 
-      if (file) {
-        const ext = file.name.split(".").pop();
-        const path = `${user!.id}/${Date.now()}.${ext}`;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        setProgress(`Uploading ${i + 1}/${files.length}…`);
+        const ext = f.name.split(".").pop();
+        const path = `${user!.id}/${Date.now()}-${i}.${ext}`;
         const { error: upErr } = await supabase.storage
           .from("references")
-          .upload(path, file);
+          .upload(path, f);
         if (upErr) throw upErr;
         const { data } = supabase.storage.from("references").getPublicUrl(path);
-        mediaUrl = data.publicUrl;
+        items.push({
+          url: data.publicUrl,
+          kind: f.type.startsWith("video") ? "video" : "image",
+        });
       }
 
+      const firstMediaUrl = items[0]?.url ?? null;
       const auto = sourceUrl ? deriveThumbnail(sourceUrl) : null;
-      const finalThumb = thumbnailUrl || auto || (type === "image" ? mediaUrl : null);
+      const firstImage = items.find((i) => i.kind === "image")?.url ?? null;
+      const finalThumb =
+        thumbnailUrl || auto || (type === "image" ? firstImage : firstImage);
 
+      setProgress("Saving…");
       const { error } = await supabase.from("references").insert({
         title,
         type,
-        media_url: mediaUrl,
+        media_url: firstMediaUrl,
+        media_items: items as any,
         source_url: sourceUrl || null,
         thumbnail_url: finalThumb,
         brand: brand || null,
@@ -89,6 +110,7 @@ const AddReference = () => {
       toast.error(err.message || "Failed to add");
     } finally {
       setSubmitting(false);
+      setProgress("");
     }
   }
 
@@ -140,13 +162,35 @@ const AddReference = () => {
           </div>
 
           <div className="space-y-2">
-            <Label className={labelCls}>Or upload file (image/video)</Label>
+            <Label className={labelCls}>Upload files (multiple photos & videos allowed)</Label>
             <Input
               type="file"
               accept="image/*,video/*"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              multiple
+              onChange={(e) => addFiles(e.target.files)}
               className={inputCls + " file:text-foreground file:bg-transparent file:border-0"}
             />
+            {files.length > 0 && (
+              <ul className="mt-2 space-y-1">
+                {files.map((f, i) => (
+                  <li
+                    key={i}
+                    className="flex items-center justify-between gap-3 bg-secondary px-3 py-2"
+                  >
+                    <span className="font-mono text-[11px] truncate">
+                      {f.type.startsWith("video") ? "🎬" : "🖼"} {f.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeFile(i)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -200,9 +244,9 @@ const AddReference = () => {
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex items-center gap-3 pt-4">
             <Button type="submit" disabled={submitting} className="font-mono text-xs uppercase tracking-widest h-12 px-8">
-              {submitting ? "Saving…" : "Add to archive"}
+              {submitting ? progress || "Saving…" : "Add to archive"}
             </Button>
             <Button type="button" variant="ghost" onClick={() => navigate("/")} className="font-mono text-xs uppercase tracking-widest h-12">
               Cancel

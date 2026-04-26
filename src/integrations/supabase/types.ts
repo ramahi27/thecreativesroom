@@ -21,6 +21,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           id: string
+          media_items: Json
           media_url: string | null
           notes: string | null
           source_url: string | null
@@ -37,6 +38,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          media_items?: Json
           media_url?: string | null
           notes?: string | null
           source_url?: string | null
@@ -53,6 +55,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           id?: string
+          media_items?: Json
           media_url?: string | null
           notes?: string | null
           source_url?: string | null
