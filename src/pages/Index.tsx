@@ -17,7 +17,7 @@ const Index = () => {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    document.title = "THE CREATIVES ROOM — Reference Archive";
+    document.title = "The Creatives Room — Reference Archive";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", "A curated archive of ad films, commercials, and visual references for creatives.");
 
@@ -171,7 +171,7 @@ const Index = () => {
       <footer className="border-t hairline mt-20">
         <div className="container py-8 flex items-center justify-between">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            © THE CREATIVES ROOM — CURATED REFERENCES FOR CREATIVES
+            © The Creatives Room — Curated references for creatives
           </p>
         </div>
       </footer>
