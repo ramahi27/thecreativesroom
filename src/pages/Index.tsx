@@ -25,6 +25,7 @@ const Index = () => {
       const { data } = await supabase
         .from("references")
         .select("*")
+        .eq("published", true)
         .order("created_at", { ascending: false });
       const list = ((data as unknown) as Reference[]) || [];
       // Shuffle so the homepage feels fresh on every visit
