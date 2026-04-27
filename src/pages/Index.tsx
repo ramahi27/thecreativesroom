@@ -79,9 +79,9 @@ const Index = () => {
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-6">
             ⏵ ARCHIVE
           </p>
-          <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black leading-[0.85] tracking-tighter max-w-5xl">
-            The reference<br />
-            archive for<br />
+          <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black leading-[0.85] tracking-tighter max-w-5xl whitespace-pre-line">
+            The reference{"\n"}
+            archive for{"\n"}
             creatives.
           </h1>
           <p className="mt-8 max-w-xl font-body text-base text-muted-foreground leading-relaxed">
