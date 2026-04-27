@@ -25,6 +25,7 @@ export type Database = {
           media_items: Json
           media_url: string | null
           notes: string | null
+          published: boolean
           source_url: string | null
           tags: string[] | null
           thumbnail_url: string | null
@@ -43,6 +44,7 @@ export type Database = {
           media_items?: Json
           media_url?: string | null
           notes?: string | null
+          published?: boolean
           source_url?: string | null
           tags?: string[] | null
           thumbnail_url?: string | null
@@ -61,6 +63,7 @@ export type Database = {
           media_items?: Json
           media_url?: string | null
           notes?: string | null
+          published?: boolean
           source_url?: string | null
           tags?: string[] | null
           thumbnail_url?: string | null
