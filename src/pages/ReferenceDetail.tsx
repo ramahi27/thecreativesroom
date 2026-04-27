@@ -132,8 +132,8 @@ const ReferenceDetail = () => {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-5 gap-10 mt-8">
-          <div className="lg:col-span-3">
+        <div className="grid lg:grid-cols-3 gap-10 mt-8">
+          <div className="lg:col-span-2">
             <div className="bg-card border hairline overflow-hidden">
               {currentIsEmbed && embedUrl ? (
                 <div className="aspect-video bg-black">
