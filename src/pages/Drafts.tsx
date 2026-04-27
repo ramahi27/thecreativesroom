@@ -195,12 +195,12 @@ const Drafts = () => {
 
           {drafts.length > 0 && (
             <Button
-              onClick={publishAllOnPage}
-              variant="outline"
+              onClick={deleteAllOnPage}
+              variant="destructive"
               size="sm"
               className="mt-6 font-mono text-xs uppercase tracking-widest"
             >
-              <CheckCheck className="h-3.5 w-3.5 mr-2" /> Publish all on this page
+              <Trash className="h-3.5 w-3.5 mr-2" /> Delete all on this page
             </Button>
           )}
         </div>
