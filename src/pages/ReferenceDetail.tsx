@@ -6,8 +6,8 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Reference, MediaItem } from "@/lib/references";
-import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
-import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { detectPlatform, getEmbedUrl, isVideoFile, ALL_CATEGORIES } from "@/lib/references";
+import { ChevronLeft, ChevronRight, ExternalLink, Check } from "lucide-react";
 
 const ReferenceDetail = () => {
   const { id } = useParams();
@@ -61,6 +61,27 @@ const ReferenceDetail = () => {
     if (error) return toast.error(error.message);
     toast.success("Deleted");
     navigate("/");
+  }
+
+  async function handleApprove() {
+    if (!r) return;
+    const { error } = await supabase.from("references").update({ published: true }).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    setR({ ...r, published: true } as Reference);
+    toast.success("Published — now live on the main page");
+  }
+
+  async function toggleCategory(cat: string) {
+    if (!r) return;
+    const current = r.categories || [];
+    const next = current.includes(cat) ? current.filter((c) => c !== cat) : [...current, cat];
+    // optimistic
+    setR({ ...r, categories: next } as Reference);
+    const { error } = await supabase.from("references").update({ categories: next }).eq("id", r.id);
+    if (error) {
+      setR({ ...r, categories: current } as Reference);
+      toast.error(error.message);
+    }
   }
 
   if (loading)
