@@ -134,14 +134,14 @@ const Drafts = () => {
     toast.success("Deleted");
   }
 
-  async function publishAllOnPage() {
-    if (!confirm(`Publish all ${drafts.length} drafts on this page?`)) return;
+  async function deleteAllOnPage() {
+    if (!confirm(`Delete all ${drafts.length} drafts on this page permanently? This cannot be undone.`)) return;
     const ids = drafts.map((d) => d.id);
-    const { error } = await supabase.from("references").update({ published: true }).in("id", ids);
+    const { error } = await supabase.from("references").delete().in("id", ids);
     if (error) return toast.error(error.message);
     setDrafts([]);
     setTotal((t) => Math.max(0, t - ids.length));
-    toast.success(`Published ${ids.length}`);
+    toast.success(`Deleted ${ids.length}`);
   }
 
   return (
