@@ -214,7 +214,7 @@ const ReferenceDetail = () => {
             )}
           </div>
 
-          <aside className="lg:col-span-2 space-y-6">
+          <aside className="lg:col-span-1 space-y-6">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-3">
                 ⏵ {r.type}
