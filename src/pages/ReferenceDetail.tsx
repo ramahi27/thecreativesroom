@@ -119,7 +119,7 @@ const ReferenceDetail = () => {
         </button>
       )}
 
-      <main className="container py-12 max-w-6xl">
+      <main className="container py-12 max-w-[1600px]">
         <div className="flex items-center justify-between">
           <Link
             to="/"
@@ -132,8 +132,8 @@ const ReferenceDetail = () => {
           </p>
         </div>
 
-        <div className="grid lg:grid-cols-5 gap-10 mt-8">
-          <div className="lg:col-span-3">
+        <div className="grid lg:grid-cols-3 gap-10 mt-8">
+          <div className="lg:col-span-2">
             <div className="bg-card border hairline overflow-hidden">
               {currentIsEmbed && embedUrl ? (
                 <div className="aspect-video bg-black">
@@ -214,7 +214,7 @@ const ReferenceDetail = () => {
             )}
           </div>
 
-          <aside className="lg:col-span-2 space-y-6">
+          <aside className="lg:col-span-1 space-y-6">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-3">
                 ⏵ {r.type}
