@@ -8,7 +8,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { deriveThumbnail, fetchThumbnail, isVideoFile, VIDEO_CATEGORIES, PHOTO_CATEGORIES, type RefType, type MediaItem } from "@/lib/references";
+import {
+  deriveThumbnail,
+  fetchThumbnail,
+  isVideoFile,
+  VIDEO_CATEGORIES,
+  PHOTO_CATEGORIES,
+  type RefType,
+  type MediaItem,
+} from "@/lib/references";
 import { X } from "lucide-react";
 
 const AddReference = () => {
@@ -34,18 +42,14 @@ const AddReference = () => {
   const [loadingRecord, setLoadingRecord] = useState(isEdit);
 
   useEffect(() => {
-    document.title = isEdit ? "Edit reference — The Ref Room" : "Add reference — The Ref Room";
+    document.title = isEdit ? "Edit reference — The Creatives Room" : "Add reference — The Creatives Room";
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate, isEdit]);
 
   useEffect(() => {
     if (!isEdit || !editId) return;
     (async () => {
-      const { data, error } = await supabase
-        .from("references")
-        .select("*")
-        .eq("id", editId)
-        .maybeSingle();
+      const { data, error } = await supabase.from("references").select("*").eq("id", editId).maybeSingle();
       if (error || !data) {
         toast.error("Could not load reference");
         navigate("/");
@@ -62,11 +66,12 @@ const AddReference = () => {
       setTags(Array.isArray(r.tags) ? r.tags.join(", ") : "");
       setCategories(Array.isArray(r.categories) ? r.categories : []);
       setNotes(r.notes || "");
-      const items: MediaItem[] = Array.isArray(r.media_items) && r.media_items.length
-        ? r.media_items
-        : r.media_url
-          ? [{ url: r.media_url, kind: isVideoFile(r.media_url) ? "video" : "image" }]
-          : [];
+      const items: MediaItem[] =
+        Array.isArray(r.media_items) && r.media_items.length
+          ? r.media_items
+          : r.media_url
+            ? [{ url: r.media_url, kind: isVideoFile(r.media_url) ? "video" : "image" }]
+            : [];
       setExistingMedia(items);
       setLoadingRecord(false);
     })();
@@ -78,9 +83,7 @@ const AddReference = () => {
       <div className="min-h-screen grain">
         <SiteHeader />
         <main className="container max-w-md py-20">
-          <h1 className="font-display text-4xl font-black tracking-tighter mb-4">
-            Admin only.
-          </h1>
+          <h1 className="font-display text-4xl font-black tracking-tighter mb-4">Admin only.</h1>
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
             Your account doesn't have admin privileges.
           </p>
@@ -113,9 +116,7 @@ const AddReference = () => {
         setProgress(`Uploading ${i + 1}/${files.length}…`);
         const ext = f.name.split(".").pop();
         const path = `${user!.id}/${Date.now()}-${i}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from("references")
-          .upload(path, f);
+        const { error: upErr } = await supabase.storage.from("references").upload(path, f);
         if (upErr) throw upErr;
         const { data } = supabase.storage.from("references").getPublicUrl(path);
         newItems.push({
@@ -126,7 +127,7 @@ const AddReference = () => {
 
       const items: MediaItem[] = [...existingMedia, ...newItems];
       const firstMediaUrl = items[0]?.url ?? null;
-      const auto = sourceUrl ? (deriveThumbnail(sourceUrl) || (await fetchThumbnail(sourceUrl))) : null;
+      const auto = sourceUrl ? deriveThumbnail(sourceUrl) || (await fetchThumbnail(sourceUrl)) : null;
       const firstImage = items.find((i) => i.kind === "image")?.url ?? null;
       const finalThumb = thumbnailUrl || auto || firstImage;
 
@@ -142,23 +143,23 @@ const AddReference = () => {
         brand: brand || null,
         agency: agency || null,
         year: year ? parseInt(year) : null,
-        tags: tags ? tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
+        tags: tags
+          ? tags
+              .split(",")
+              .map((t) => t.trim())
+              .filter(Boolean)
+          : [],
         categories,
         notes: notes || null,
       };
 
       if (isEdit) {
-        const { error } = await supabase
-          .from("references")
-          .update(payload)
-          .eq("id", editId!);
+        const { error } = await supabase.from("references").update(payload).eq("id", editId!);
         if (error) throw error;
         toast.success("Updated");
         navigate(`/ref/${editId}`);
       } else {
-        const { error } = await supabase
-          .from("references")
-          .insert({ ...payload, created_by: user!.id });
+        const { error } = await supabase.from("references").insert({ ...payload, created_by: user!.id });
         if (error) throw error;
         toast.success("Added to archive");
         navigate("/");
@@ -217,11 +218,7 @@ const AddReference = () => {
                   <button
                     key={c}
                     type="button"
-                    onClick={() =>
-                      setCategories((prev) =>
-                        active ? prev.filter((x) => x !== c) : [...prev, c]
-                      )
-                    }
+                    onClick={() => setCategories((prev) => (active ? prev.filter((x) => x !== c) : [...prev, c]))}
                     className={`px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest border hairline transition-colors ${
                       active ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
                     }`}
@@ -254,10 +251,7 @@ const AddReference = () => {
               <Label className={labelCls}>Current media</Label>
               <ul className="space-y-1">
                 {existingMedia.map((m, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center justify-between gap-3 bg-secondary px-3 py-2"
-                  >
+                  <li key={i} className="flex items-center justify-between gap-3 bg-secondary px-3 py-2">
                     <span className="font-mono text-[11px] truncate">
                       {m.kind === "video" ? "🎬" : "🖼"} {m.url.split("/").pop()}
                     </span>
@@ -289,10 +283,7 @@ const AddReference = () => {
             {files.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {files.map((f, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center justify-between gap-3 bg-secondary px-3 py-2"
-                  >
+                  <li key={i} className="flex items-center justify-between gap-3 bg-secondary px-3 py-2">
                     <span className="font-mono text-[11px] truncate">
                       {f.type.startsWith("video") ? "🎬" : "🖼"} {f.name}
                     </span>
@@ -331,12 +322,7 @@ const AddReference = () => {
             </div>
             <div className="space-y-2">
               <Label className={labelCls}>Year</Label>
-              <Input
-                type="number"
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className={inputCls}
-              />
+              <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} className={inputCls} />
             </div>
           </div>
 
@@ -352,16 +338,15 @@ const AddReference = () => {
 
           <div className="space-y-2">
             <Label className={labelCls}>Notes</Label>
-            <Textarea
-              rows={4}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className={inputCls}
-            />
+            <Textarea rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls} />
           </div>
 
           <div className="flex items-center gap-3 pt-4">
-            <Button type="submit" disabled={submitting} className="font-mono text-xs uppercase tracking-widest h-12 px-8">
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="font-mono text-xs uppercase tracking-widest h-12 px-8"
+            >
               {submitting ? progress || "Saving…" : isEdit ? "Save changes" : "Add to archive"}
             </Button>
             <Button

@@ -15,7 +15,7 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    document.title = "Sign in — The Ref Room";
+    document.title = "Sign in — The Creatives Room";
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) navigate("/");
     });
@@ -59,9 +59,7 @@ const Auth = () => {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Email
-            </Label>
+            <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Email</Label>
             <Input
               type="email"
               required
@@ -71,9 +69,7 @@ const Auth = () => {
             />
           </div>
           <div className="space-y-2">
-            <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Password
-            </Label>
+            <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Password</Label>
             <Input
               type="password"
               required
@@ -84,11 +80,7 @@ const Auth = () => {
             />
           </div>
 
-          <Button
-            type="submit"
-            disabled={loading}
-            className="w-full font-mono text-xs uppercase tracking-widest h-12"
-          >
+          <Button type="submit" disabled={loading} className="w-full font-mono text-xs uppercase tracking-widest h-12">
             {loading ? "..." : mode === "signin" ? "Enter Archive" : "Create Account"}
           </Button>
 

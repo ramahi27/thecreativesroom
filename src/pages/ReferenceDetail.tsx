@@ -27,9 +27,9 @@ const ReferenceDetail = () => {
         supabase.from("references").select("*").eq("id", id).maybeSingle(),
         supabase.from("references").select("*").order("created_at", { ascending: false }),
       ]);
-      setR(one ? ((one as unknown) as Reference) : null);
-      setAllRefs(((list as unknown) as Reference[]) || []);
-      if (one) document.title = `${(one as any).title} — The Ref Room`;
+      setR(one ? (one as unknown as Reference) : null);
+      setAllRefs((list as unknown as Reference[]) || []);
+      if (one) document.title = `${(one as any).title} — The Creatives Room`;
       setLoading(false);
     })();
   }, [id]);
@@ -106,9 +106,7 @@ const ReferenceDetail = () => {
   // Build the media list: uploaded items first, then external embed if any
   const items: MediaItem[] = Array.isArray(r.media_items) ? r.media_items : [];
   const fallback: MediaItem[] =
-    items.length === 0 && r.media_url
-      ? [{ url: r.media_url, kind: isVideoFile(r.media_url) ? "video" : "image" }]
-      : [];
+    items.length === 0 && r.media_url ? [{ url: r.media_url, kind: isVideoFile(r.media_url) ? "video" : "image" }] : [];
   const uploaded = items.length ? items : fallback;
   const hasEmbed = !!embedUrl;
   const totalSlides = uploaded.length + (hasEmbed ? 1 : 0);
@@ -148,9 +146,7 @@ const ReferenceDetail = () => {
           >
             ← Back to archive
           </Link>
-          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-            ← / → to navigate
-          </p>
+          <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">← / → to navigate</p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-10 mt-8">
@@ -174,9 +170,7 @@ const ReferenceDetail = () => {
                 )
               ) : (
                 <div className="aspect-video flex items-center justify-center bg-secondary">
-                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                    No preview
-                  </span>
+                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">No preview</span>
                 </div>
               )}
             </div>
@@ -237,9 +231,7 @@ const ReferenceDetail = () => {
 
           <aside className="lg:col-span-1 space-y-6">
             <div>
-              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-3">
-                ⏵ {r.type}
-              </p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-3">⏵ {r.type}</p>
               <h1 className="font-display text-4xl md:text-5xl font-black tracking-tighter leading-[0.95]">
                 {r.title}
               </h1>
@@ -269,7 +261,8 @@ const ReferenceDetail = () => {
                             : "bg-transparent text-muted-foreground hover:bg-secondary"
                         }`}
                       >
-                        {active ? "✓ " : "+ "}{c}
+                        {active ? "✓ " : "+ "}
+                        {c}
                       </button>
                     );
                   })}
@@ -283,7 +276,10 @@ const ReferenceDetail = () => {
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {r.categories.map((c) => (
-                      <span key={c} className="font-mono text-[11px] uppercase tracking-widest px-2 py-1 bg-primary/10 text-primary">
+                      <span
+                        key={c}
+                        className="font-mono text-[11px] uppercase tracking-widest px-2 py-1 bg-primary/10 text-primary"
+                      >
                         {c}
                       </span>
                     ))}
@@ -294,9 +290,7 @@ const ReferenceDetail = () => {
 
             {r.tags?.length > 0 && (
               <div className="border-t hairline pt-6">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-                  Tags
-                </p>
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Tags</p>
                 <div className="flex flex-wrap gap-2">
                   {r.tags.map((t) => (
                     <span key={t} className="font-mono text-xs px-2 py-1 bg-secondary">
@@ -309,22 +303,15 @@ const ReferenceDetail = () => {
 
             {r.notes && (
               <div className="border-t hairline pt-6">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-                  Notes
-                </p>
-                <p className="font-body text-sm leading-relaxed whitespace-pre-wrap">
-                  {r.notes}
-                </p>
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Notes</p>
+                <p className="font-body text-sm leading-relaxed whitespace-pre-wrap">{r.notes}</p>
               </div>
             )}
 
             {isAdmin && (
               <div className="border-t hairline pt-6 flex flex-wrap gap-3">
                 {r.published === false && (
-                  <Button
-                    onClick={handleApprove}
-                    className="font-mono text-xs uppercase tracking-widest bg-primary"
-                  >
+                  <Button onClick={handleApprove} className="font-mono text-xs uppercase tracking-widest bg-primary">
                     <Check className="h-3.5 w-3.5 mr-1.5" />
                     Approve & publish
                   </Button>
@@ -360,9 +347,7 @@ const ReferenceDetail = () => {
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <dt className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-        {label}
-      </dt>
+      <dt className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{label}</dt>
       <dd className="font-display text-lg">{value}</dd>
     </div>
   );

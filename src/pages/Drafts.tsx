@@ -29,17 +29,14 @@ const Drafts = () => {
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
 
   useEffect(() => {
-    document.title = "Drafts — The Ref Room";
+    document.title = "Drafts — The Creatives Room";
   }, []);
 
   // Load source list with counts (only drafts)
   useEffect(() => {
     if (!isAdmin) return;
     (async () => {
-      const { data } = await supabase
-        .from("references")
-        .select("source")
-        .eq("published", false);
+      const { data } = await supabase.from("references").select("source").eq("published", false);
       const counts: Record<string, number> = {};
       ((data as { source: string | null }[]) || []).forEach((r) => {
         const k = r.source || "manual";
@@ -71,7 +68,7 @@ const Drafts = () => {
         .range(from, to);
       if (sourceFilter !== "all") q = q.eq("source", sourceFilter);
       const { data, count } = await q;
-      setDrafts(((data as unknown) as Reference[]) || []);
+      setDrafts((data as unknown as Reference[]) || []);
       setTotal(count || 0);
       setLoading(false);
     })();
@@ -105,9 +102,7 @@ const Drafts = () => {
       <div className="min-h-screen grain">
         <SiteHeader />
         <main className="container py-12">
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Checking permissions…
-          </p>
+          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Checking permissions…</p>
         </main>
       </div>
     );
@@ -150,9 +145,7 @@ const Drafts = () => {
 
       <section className="border-b hairline">
         <div className="container py-12">
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">
-            ⏵ DRAFTS · {total} pending
-          </p>
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">⏵ DRAFTS · {total} pending</p>
           <h1 className="font-display text-5xl md:text-7xl font-black leading-[0.85] tracking-tighter">
             Review &<br />
             <span className="italic font-light">approve.</span>
@@ -170,9 +163,7 @@ const Drafts = () => {
               <button
                 onClick={() => setSourceFilter("all")}
                 className={`font-mono text-xs uppercase tracking-widest px-3 py-1.5 border hairline transition-colors ${
-                  sourceFilter === "all"
-                    ? "bg-foreground text-background"
-                    : "hover:bg-muted"
+                  sourceFilter === "all" ? "bg-foreground text-background" : "hover:bg-muted"
                 }`}
               >
                 All ({sources.reduce((s, x) => s + x.count, 0)})
@@ -182,9 +173,7 @@ const Drafts = () => {
                   key={s.value}
                   onClick={() => setSourceFilter(s.value)}
                   className={`font-mono text-xs uppercase tracking-widest px-3 py-1.5 border hairline transition-colors ${
-                    sourceFilter === s.value
-                      ? "bg-foreground text-background"
-                      : "hover:bg-muted"
+                    sourceFilter === s.value ? "bg-foreground text-background" : "hover:bg-muted"
                   }`}
                 >
                   {SOURCE_LABELS[s.value] || s.value} ({s.count})
@@ -208,13 +197,9 @@ const Drafts = () => {
 
       <main className="container py-12">
         {loading ? (
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Loading drafts…
-          </p>
+          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading drafts…</p>
         ) : drafts.length === 0 ? (
-          <p className="font-display text-3xl text-muted-foreground italic py-20 text-center">
-            No drafts pending.
-          </p>
+          <p className="font-display text-3xl text-muted-foreground italic py-20 text-center">No drafts pending.</p>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
@@ -226,7 +211,10 @@ const Drafts = () => {
                       size="icon"
                       variant="default"
                       disabled={busyId === r.id}
-                      onClick={(e) => { e.preventDefault(); publish(r.id); }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        publish(r.id);
+                      }}
                       className="h-9 w-9"
                       title="Publish"
                     >
@@ -236,7 +224,10 @@ const Drafts = () => {
                       size="icon"
                       variant="destructive"
                       disabled={busyId === r.id}
-                      onClick={(e) => { e.preventDefault(); remove(r.id); }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        remove(r.id);
+                      }}
                       className="h-9 w-9"
                       title="Delete"
                     >
@@ -260,10 +251,7 @@ const Drafts = () => {
                 </Button>
                 {pageNumbers.map((n, i) =>
                   n === "…" ? (
-                    <span
-                      key={`e-${i}`}
-                      className="font-mono text-xs text-muted-foreground px-2"
-                    >
+                    <span key={`e-${i}`} className="font-mono text-xs text-muted-foreground px-2">
                       …
                     </span>
                   ) : (
@@ -271,14 +259,12 @@ const Drafts = () => {
                       key={n}
                       onClick={() => setPage(n)}
                       className={`font-mono text-xs uppercase tracking-widest min-w-[36px] h-9 px-2 border hairline transition-colors ${
-                        page === n
-                          ? "bg-foreground text-background"
-                          : "hover:bg-muted"
+                        page === n ? "bg-foreground text-background" : "hover:bg-muted"
                       }`}
                     >
                       {n + 1}
                     </button>
-                  )
+                  ),
                 )}
                 <Button
                   variant="outline"
