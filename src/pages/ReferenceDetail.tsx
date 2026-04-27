@@ -6,8 +6,8 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Reference, MediaItem } from "@/lib/references";
-import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
-import { ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { detectPlatform, getEmbedUrl, isVideoFile, ALL_CATEGORIES } from "@/lib/references";
+import { ChevronLeft, ChevronRight, ExternalLink, Check } from "lucide-react";
 
 const ReferenceDetail = () => {
   const { id } = useParams();
@@ -61,6 +61,27 @@ const ReferenceDetail = () => {
     if (error) return toast.error(error.message);
     toast.success("Deleted");
     navigate("/");
+  }
+
+  async function handleApprove() {
+    if (!r) return;
+    const { error } = await supabase.from("references").update({ published: true }).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    setR({ ...r, published: true } as Reference);
+    toast.success("Published — now live on the main page");
+  }
+
+  async function toggleCategory(cat: string) {
+    if (!r) return;
+    const current = r.categories || [];
+    const next = current.includes(cat) ? current.filter((c) => c !== cat) : [...current, cat];
+    // optimistic
+    setR({ ...r, categories: next } as Reference);
+    const { error } = await supabase.from("references").update({ categories: next }).eq("id", r.id);
+    if (error) {
+      setR({ ...r, categories: current } as Reference);
+      toast.error(error.message);
+    }
   }
 
   if (loading)
@@ -230,19 +251,45 @@ const ReferenceDetail = () => {
               {r.year && <Row label="Year" value={String(r.year)} />}
             </dl>
 
-            {r.categories?.length > 0 && (
+            {isAdmin ? (
               <div className="border-t hairline pt-6">
-                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-                  Categories
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">
+                  Categories <span className="opacity-60">· click to toggle</span>
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {r.categories.map((c) => (
-                    <span key={c} className="font-mono text-[11px] uppercase tracking-widest px-2 py-1 bg-primary/10 text-primary">
-                      {c}
-                    </span>
-                  ))}
+                  {ALL_CATEGORIES.map((c) => {
+                    const active = (r.categories || []).includes(c);
+                    return (
+                      <button
+                        key={c}
+                        onClick={() => toggleCategory(c)}
+                        className={`font-mono text-[11px] uppercase tracking-widest px-2 py-1 border hairline transition-colors ${
+                          active
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-transparent text-muted-foreground hover:bg-secondary"
+                        }`}
+                      >
+                        {active ? "✓ " : "+ "}{c}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
+            ) : (
+              r.categories?.length > 0 && (
+                <div className="border-t hairline pt-6">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
+                    Categories
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {r.categories.map((c) => (
+                      <span key={c} className="font-mono text-[11px] uppercase tracking-widest px-2 py-1 bg-primary/10 text-primary">
+                        {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )
             )}
 
             {r.tags?.length > 0 && (
@@ -272,8 +319,23 @@ const ReferenceDetail = () => {
             )}
 
             {isAdmin && (
-              <div className="border-t hairline pt-6 flex gap-3">
+              <div className="border-t hairline pt-6 flex flex-wrap gap-3">
+                {r.published === false && (
+                  <Button
+                    onClick={handleApprove}
+                    className="font-mono text-xs uppercase tracking-widest bg-primary"
+                  >
+                    <Check className="h-3.5 w-3.5 mr-1.5" />
+                    Approve & publish
+                  </Button>
+                )}
+                {r.published !== false && (
+                  <span className="inline-flex items-center px-3 py-1 font-mono text-[10px] uppercase tracking-widest bg-primary/10 text-primary">
+                    ✓ Live
+                  </span>
+                )}
                 <Button
+                  variant="outline"
                   onClick={() => navigate(`/edit/${r.id}`)}
                   className="font-mono text-xs uppercase tracking-widest"
                 >
