@@ -80,10 +80,10 @@ const Index = () => {
             ⏵ ARCHIVE
           </p>
           <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black leading-[0.85] tracking-tighter max-w-5xl uppercase">
-            The<br />
-            <span className="italic font-light">reference</span><br />
-            archive for<br />
-            creatives.
+            THE REFERENCE<br />
+            <span className="italic font-light">ARCHIVE</span><br />
+            FOR<br />
+            CREATIVES.
           </h1>
           <p className="mt-8 max-w-xl font-body text-base text-muted-foreground leading-relaxed">
             A personal vault of commercials, promos, photography, and visual references,
