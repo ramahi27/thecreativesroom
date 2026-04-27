@@ -171,7 +171,7 @@ const Index = () => {
       <footer className="border-t hairline mt-20">
         <div className="container py-8 flex items-center justify-between">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            © THE CREATIVES ROOM — CURATED REFERENCES FOR CREATIVES
+            © The Creatives Room — Curated references for creatives
           </p>
         </div>
       </footer>
