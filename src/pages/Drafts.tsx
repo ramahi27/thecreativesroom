@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +11,13 @@ import { Check, Trash2, CheckCheck } from "lucide-react";
 
 const PAGE_SIZE = 24;
 
+const SOURCE_LABELS: Record<string, string> = {
+  all: "All sources",
+  deckofbrilliance: "Deck of Brilliance",
+  adsoftheworld: "Ads of the World",
+  manual: "Manually added",
+};
+
 const Drafts = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const [drafts, setDrafts] = useState<Reference[]>([]);
@@ -18,10 +25,37 @@ const Drafts = () => {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
 
   useEffect(() => {
     document.title = "Drafts — The Ref Room";
   }, []);
+
+  // Load source list with counts (only drafts)
+  useEffect(() => {
+    if (!isAdmin) return;
+    (async () => {
+      const { data } = await supabase
+        .from("references")
+        .select("source")
+        .eq("published", false);
+      const counts: Record<string, number> = {};
+      ((data as { source: string | null }[]) || []).forEach((r) => {
+        const k = r.source || "manual";
+        counts[k] = (counts[k] || 0) + 1;
+      });
+      const list = Object.entries(counts)
+        .map(([value, count]) => ({ value, count }))
+        .sort((a, b) => b.count - a.count);
+      setSources(list);
+    })();
+  }, [isAdmin, drafts.length]);
+
+  // Reset to page 0 when filter changes
+  useEffect(() => {
+    setPage(0);
+  }, [sourceFilter]);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -29,21 +63,43 @@ const Drafts = () => {
       setLoading(true);
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
-      const { data, count } = await supabase
+      let q = supabase
         .from("references")
         .select("*", { count: "exact" })
         .eq("published", false)
         .order("created_at", { ascending: false })
         .range(from, to);
+      if (sourceFilter !== "all") q = q.eq("source", sourceFilter);
+      const { data, count } = await q;
       setDrafts(((data as unknown) as Reference[]) || []);
       setTotal(count || 0);
       setLoading(false);
     })();
-  }, [isAdmin, page]);
+  }, [isAdmin, page, sourceFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  const pageNumbers = useMemo(() => {
+    // Show all page numbers with ellipsis when too many
+    const pages: (number | "…")[] = [];
+    const window = 2; // pages around current
+    const add = (n: number) => {
+      if (!pages.includes(n)) pages.push(n);
+    };
+    if (totalPages <= 12) {
+      for (let i = 0; i < totalPages; i++) add(i);
+    } else {
+      add(0);
+      if (page - window > 1) pages.push("…");
+      for (let i = Math.max(1, page - window); i <= Math.min(totalPages - 2, page + window); i++) add(i);
+      if (page + window < totalPages - 2) pages.push("…");
+      add(totalPages - 1);
+    }
+    return pages;
+  }, [totalPages, page]);
 
   if (authLoading) return null;
   if (!user) return <Navigate to="/auth" replace />;
-  // Wait for admin check to complete before redirecting (avoids race after login)
   if (!isAdmin) {
     return (
       <div className="min-h-screen grain">
@@ -88,8 +144,6 @@ const Drafts = () => {
     toast.success(`Published ${ids.length}`);
   }
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-
   return (
     <div className="min-h-screen grain">
       <SiteHeader />
@@ -106,6 +160,39 @@ const Drafts = () => {
           <p className="mt-6 max-w-xl font-mono text-xs uppercase tracking-widest text-muted-foreground">
             Imported references waiting to go live. Publish to add to the main archive, or delete.
           </p>
+
+          {/* Source filter */}
+          {sources.length > 0 && (
+            <div className="mt-8 flex flex-wrap gap-2 items-center">
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mr-2">
+                Source:
+              </span>
+              <button
+                onClick={() => setSourceFilter("all")}
+                className={`font-mono text-xs uppercase tracking-widest px-3 py-1.5 border hairline transition-colors ${
+                  sourceFilter === "all"
+                    ? "bg-foreground text-background"
+                    : "hover:bg-muted"
+                }`}
+              >
+                All ({sources.reduce((s, x) => s + x.count, 0)})
+              </button>
+              {sources.map((s) => (
+                <button
+                  key={s.value}
+                  onClick={() => setSourceFilter(s.value)}
+                  className={`font-mono text-xs uppercase tracking-widest px-3 py-1.5 border hairline transition-colors ${
+                    sourceFilter === s.value
+                      ? "bg-foreground text-background"
+                      : "hover:bg-muted"
+                  }`}
+                >
+                  {SOURCE_LABELS[s.value] || s.value} ({s.count})
+                </button>
+              ))}
+            </div>
+          )}
+
           {drafts.length > 0 && (
             <Button
               onClick={publishAllOnPage}
@@ -161,7 +248,7 @@ const Drafts = () => {
             </div>
 
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-3 mt-12">
+              <div className="flex items-center justify-center gap-2 mt-12 flex-wrap">
                 <Button
                   variant="outline"
                   size="sm"
@@ -169,11 +256,30 @@ const Drafts = () => {
                   onClick={() => setPage((p) => Math.max(0, p - 1))}
                   className="font-mono text-xs uppercase tracking-widest"
                 >
-                  ← Prev
+                  ←
                 </Button>
-                <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                  {page + 1} / {totalPages}
-                </span>
+                {pageNumbers.map((n, i) =>
+                  n === "…" ? (
+                    <span
+                      key={`e-${i}`}
+                      className="font-mono text-xs text-muted-foreground px-2"
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={n}
+                      onClick={() => setPage(n)}
+                      className={`font-mono text-xs uppercase tracking-widest min-w-[36px] h-9 px-2 border hairline transition-colors ${
+                        page === n
+                          ? "bg-foreground text-background"
+                          : "hover:bg-muted"
+                      }`}
+                    >
+                      {n + 1}
+                    </button>
+                  )
+                )}
                 <Button
                   variant="outline"
                   size="sm"
@@ -181,7 +287,7 @@ const Drafts = () => {
                   onClick={() => setPage((p) => p + 1)}
                   className="font-mono text-xs uppercase tracking-widest"
                 >
-                  Next →
+                  →
                 </Button>
               </div>
             )}

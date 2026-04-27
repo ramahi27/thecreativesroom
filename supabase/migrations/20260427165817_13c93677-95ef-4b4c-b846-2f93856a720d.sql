@@ -1,0 +1,1 @@
+UPDATE public.references SET source = 'deckofbrilliance' WHERE published = false AND (source IS NULL OR source = 'manual') AND source != 'adsoftheworld';
