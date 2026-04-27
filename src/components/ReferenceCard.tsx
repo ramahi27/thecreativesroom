@@ -40,9 +40,19 @@ export function ReferenceCard({ reference: r }: Props) {
           </div>
         )}
 
-        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-background/80 px-2 py-1 backdrop-blur-md">
-          <Icon className="h-3 w-3" strokeWidth={1.5} />
-          <span className="font-mono text-[10px] uppercase tracking-widest">{r.type}</span>
+        <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center gap-1.5 bg-background/80 px-2 py-1 backdrop-blur-md">
+            <Icon className="h-3 w-3" strokeWidth={1.5} />
+            <span className="font-mono text-[10px] uppercase tracking-widest">{r.type}</span>
+          </div>
+          {r.categories?.map((c) => (
+            <span
+              key={c}
+              className="bg-background/80 px-2 py-1 backdrop-blur-md font-mono text-[10px] uppercase tracking-widest"
+            >
+              {c}
+            </span>
+          ))}
         </div>
       </div>
 

@@ -27,7 +27,6 @@ export const VIDEO_CATEGORIES = [
   "Promos / Trailers",
   "Case Studies",
   "Social Content",
-  "Activation Films",
 ] as const;
 
 export const PHOTO_CATEGORIES = [
