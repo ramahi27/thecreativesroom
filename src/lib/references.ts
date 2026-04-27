@@ -19,6 +19,7 @@ export interface Reference {
   tags: string[];
   categories: string[];
   notes: string | null;
+  published?: boolean;
   created_at: string;
 }
 
