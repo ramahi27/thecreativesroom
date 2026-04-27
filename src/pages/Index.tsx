@@ -4,6 +4,8 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { VIDEO_CATEGORIES, PHOTO_CATEGORIES, type Reference } from "@/lib/references";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
 type MediaFilter = "all" | "videos" | "photos";
 
@@ -12,6 +14,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     document.title = "The Ref Room — Reference Archive";
@@ -23,7 +26,13 @@ const Index = () => {
         .from("references")
         .select("*")
         .order("created_at", { ascending: false });
-      setRefs(((data as unknown) as Reference[]) || []);
+      const list = ((data as unknown) as Reference[]) || [];
+      // Shuffle so the homepage feels fresh on every visit
+      for (let i = list.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [list[i], list[j]] = [list[j], list[i]];
+      }
+      setRefs(list);
       setLoading(false);
     })();
   }, []);
@@ -35,13 +44,29 @@ const Index = () => {
   }, [mediaFilter]);
 
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return refs.filter((r) => {
       if (mediaFilter === "videos" && !(r.type === "video" || r.type === "link")) return false;
       if (mediaFilter === "photos" && r.type !== "image") return false;
       if (categoryFilter !== "all" && !(r.categories || []).includes(categoryFilter)) return false;
+      if (q) {
+        const hay = [
+          r.title,
+          r.brand,
+          r.agency,
+          r.notes,
+          r.year ? String(r.year) : "",
+          ...(r.tags || []),
+          ...(r.categories || []),
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
     });
-  }, [refs, mediaFilter, categoryFilter]);
+  }, [refs, mediaFilter, categoryFilter, search]);
 
   return (
     <div className="min-h-screen grain">
