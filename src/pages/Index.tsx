@@ -17,7 +17,7 @@ const Index = () => {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
-    document.title = "The Ref Room — Reference Archive";
+    document.title = "THE CREATIVES ROOM — Reference Archive";
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute("content", "A curated archive of ad films, commercials, and visual references for creatives.");
 
@@ -80,9 +80,9 @@ const Index = () => {
             ⏵ ARCHIVE
           </p>
           <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black leading-[0.85] tracking-tighter max-w-5xl">
-            The reference<br />
-            <span className="italic font-light">archive</span> for<br />
-            creatives.
+            THE<br />
+            <span className="italic font-light">CREATIVES</span><br />
+            ROOM.
           </h1>
           <p className="mt-8 max-w-xl font-body text-base text-muted-foreground leading-relaxed">
             A personal vault of commercials, promos, photography, and visual references,
@@ -171,7 +171,7 @@ const Index = () => {
       <footer className="border-t hairline mt-20">
         <div className="container py-8 flex items-center justify-between">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            © The Ref Room — Curated references for creatives
+            © THE CREATIVES ROOM — CURATED REFERENCES FOR CREATIVES
           </p>
         </div>
       </footer>
