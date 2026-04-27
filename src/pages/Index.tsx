@@ -128,6 +128,16 @@ const Index = () => {
               ))}
             </SelectContent>
           </Select>
+
+          <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search client, brand, tag…"
+              className="pl-9 bg-secondary border-0 font-mono text-xs uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
+            />
+          </div>
         </div>
       </section>
 
