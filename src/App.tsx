@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
 import AddReference from "./pages/AddReference.tsx";
 import ReferenceDetail from "./pages/ReferenceDetail.tsx";
+import Drafts from "./pages/Drafts.tsx";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/add" element={<AddReference />} />
           <Route path="/edit/:id" element={<AddReference />} />
           <Route path="/ref/:id" element={<ReferenceDetail />} />
+          <Route path="/drafts" element={<Drafts />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

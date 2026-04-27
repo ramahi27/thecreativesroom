@@ -18,9 +18,14 @@ export function SiteHeader() {
 
         <nav className="flex items-center gap-2">
           {isAdmin && (
-            <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
-              <Link to="/add">+ New</Link>
-            </Button>
+            <>
+              <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
+                <Link to="/drafts">Drafts</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
+                <Link to="/add">+ New</Link>
+              </Button>
+            </>
           )}
           {user ? (
             <Button
