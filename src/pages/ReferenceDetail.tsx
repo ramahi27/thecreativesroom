@@ -119,7 +119,7 @@ const ReferenceDetail = () => {
         </button>
       )}
 
-      <main className="container py-12 max-w-6xl">
+      <main className="container py-12 max-w-[1600px]">
         <div className="flex items-center justify-between">
           <Link
             to="/"
