@@ -76,7 +76,7 @@ const Index = () => {
       <section className="relative overflow-hidden border-b hairline">
         <div className="container py-20 md:py-32 relative">
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-6">
-            ⏵ Archive · {refs.length} entries
+            ⏵ ARCHIVE
           </p>
           <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black leading-[0.85] tracking-tighter max-w-5xl">
             The reference<br />
