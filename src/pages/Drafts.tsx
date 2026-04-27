@@ -7,7 +7,7 @@ import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
-import { Check, Trash2, CheckCheck } from "lucide-react";
+import { Check, Trash2, Trash } from "lucide-react";
 
 const PAGE_SIZE = 24;
 
@@ -134,14 +134,14 @@ const Drafts = () => {
     toast.success("Deleted");
   }
 
-  async function publishAllOnPage() {
-    if (!confirm(`Publish all ${drafts.length} drafts on this page?`)) return;
+  async function deleteAllOnPage() {
+    if (!confirm(`Delete all ${drafts.length} drafts on this page permanently? This cannot be undone.`)) return;
     const ids = drafts.map((d) => d.id);
-    const { error } = await supabase.from("references").update({ published: true }).in("id", ids);
+    const { error } = await supabase.from("references").delete().in("id", ids);
     if (error) return toast.error(error.message);
     setDrafts([]);
     setTotal((t) => Math.max(0, t - ids.length));
-    toast.success(`Published ${ids.length}`);
+    toast.success(`Deleted ${ids.length}`);
   }
 
   return (
@@ -195,12 +195,12 @@ const Drafts = () => {
 
           {drafts.length > 0 && (
             <Button
-              onClick={publishAllOnPage}
-              variant="outline"
+              onClick={deleteAllOnPage}
+              variant="destructive"
               size="sm"
               className="mt-6 font-mono text-xs uppercase tracking-widest"
             >
-              <CheckCheck className="h-3.5 w-3.5 mr-2" /> Publish all on this page
+              <Trash className="h-3.5 w-3.5 mr-2" /> Delete all on this page
             </Button>
           )}
         </div>
