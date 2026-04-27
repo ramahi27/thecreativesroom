@@ -43,7 +43,19 @@ const Drafts = () => {
 
   if (authLoading) return null;
   if (!user) return <Navigate to="/auth" replace />;
-  if (!isAdmin) return <Navigate to="/" replace />;
+  // Wait for admin check to complete before redirecting (avoids race after login)
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen grain">
+        <SiteHeader />
+        <main className="container py-12">
+          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+            Checking permissions…
+          </p>
+        </main>
+      </div>
+    );
+  }
 
   async function publish(id: string) {
     setBusyId(id);
