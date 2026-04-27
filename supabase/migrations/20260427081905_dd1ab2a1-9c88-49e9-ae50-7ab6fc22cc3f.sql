@@ -1,0 +1,1 @@
+UPDATE "references" SET categories = array_remove(categories, 'Activation Films') WHERE 'Activation Films' = ANY(categories);
