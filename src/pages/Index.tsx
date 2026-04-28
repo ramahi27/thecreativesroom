@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ReferenceCard } from "@/components/ReferenceCard";
-import { VIDEO_CATEGORIES, PHOTO_CATEGORIES, type Reference } from "@/lib/references";
+import { type Reference } from "@/lib/references";
+import { useCategories } from "@/hooks/useCategories";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
@@ -38,11 +39,13 @@ const Index = () => {
     })();
   }, []);
 
+  const { video: VIDEO_CATEGORIES, photo: PHOTO_CATEGORIES } = useCategories();
+
   const availableCategories = useMemo(() => {
     if (mediaFilter === "videos") return VIDEO_CATEGORIES;
     if (mediaFilter === "photos") return PHOTO_CATEGORIES;
     return [...VIDEO_CATEGORIES, ...PHOTO_CATEGORIES];
-  }, [mediaFilter]);
+  }, [mediaFilter, VIDEO_CATEGORIES, PHOTO_CATEGORIES]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
