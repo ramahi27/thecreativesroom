@@ -10,12 +10,29 @@ import { Search } from "lucide-react";
 
 type MediaFilter = "all" | "videos" | "photos";
 
+const FILTERS_KEY = "archive:filters";
+
 const Index = () => {
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [search, setSearch] = useState("");
+
+  const initial = (() => {
+    try {
+      const raw = sessionStorage.getItem(FILTERS_KEY);
+      if (raw) return JSON.parse(raw) as { mediaFilter: MediaFilter; categoryFilter: string; search: string };
+    } catch {}
+    return { mediaFilter: "all" as MediaFilter, categoryFilter: "all", search: "" };
+  })();
+
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>(initial.mediaFilter);
+  const [categoryFilter, setCategoryFilter] = useState<string>(initial.categoryFilter);
+  const [search, setSearch] = useState(initial.search);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(FILTERS_KEY, JSON.stringify({ mediaFilter, categoryFilter, search }));
+    } catch {}
+  }, [mediaFilter, categoryFilter, search]);
 
   useEffect(() => {
     document.title = "The Creatives Room — Reference Archive";
