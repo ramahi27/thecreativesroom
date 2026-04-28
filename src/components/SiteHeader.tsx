@@ -16,7 +16,12 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-2">
+        <nav className="flex items-center gap-1 sm:gap-2">
+          {user && (
+            <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
+              <Link to="/bookmarks">Bookmarks</Link>
+            </Button>
+          )}
           {isAdmin && (
             <>
               <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
@@ -24,6 +29,9 @@ export function SiteHeader() {
               </Button>
               <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
                 <Link to="/add">+ New</Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
+                <Link to="/settings">Settings</Link>
               </Button>
             </>
           )}

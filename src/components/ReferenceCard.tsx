@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { Reference } from "@/lib/references";
 import { detectPlatform } from "@/lib/references";
 import { Play, ImageIcon, Link2 } from "lucide-react";
+import { BookmarkButton } from "@/components/BookmarkButton";
 
 interface Props {
   reference: Reference;
@@ -19,6 +20,7 @@ export function ReferenceCard({ reference: r }: Props) {
       className="reveal-card group block overflow-hidden bg-card border hairline"
     >
       <div className="relative aspect-video overflow-hidden bg-muted">
+        <BookmarkButton referenceId={r.id} />
         {thumb ? (
           <img
             src={thumb}
