@@ -6,13 +6,16 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import type { Reference, MediaItem } from "@/lib/references";
-import { detectPlatform, getEmbedUrl, isVideoFile, ALL_CATEGORIES } from "@/lib/references";
+import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
+import { useCategories } from "@/hooks/useCategories";
+import { BookmarkButton } from "@/components/BookmarkButton";
 import { ChevronLeft, ChevronRight, ExternalLink, Check } from "lucide-react";
 
 const ReferenceDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
+  const { all: ALL_CATEGORIES } = useCategories();
   const [r, setR] = useState<Reference | null>(null);
   const [allRefs, setAllRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);

@@ -12,11 +12,10 @@ import {
   deriveThumbnail,
   fetchThumbnail,
   isVideoFile,
-  VIDEO_CATEGORIES,
-  PHOTO_CATEGORIES,
   type RefType,
   type MediaItem,
 } from "@/lib/references";
+import { useCategories } from "@/hooks/useCategories";
 import { X } from "lucide-react";
 
 const AddReference = () => {
@@ -24,6 +23,7 @@ const AddReference = () => {
   const { id: editId } = useParams();
   const isEdit = !!editId;
   const { user, isAdmin, loading: authLoading } = useAuth();
+  const { video: VIDEO_CATEGORIES, photo: PHOTO_CATEGORIES } = useCategories();
 
   const [type, setType] = useState<RefType>("video");
   const [title, setTitle] = useState("");
