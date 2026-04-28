@@ -167,9 +167,18 @@ const ReferenceDetail = () => {
                 </div>
               ) : current ? (
                 current.kind === "video" ? (
-                  <video src={current.url} controls className="w-full aspect-video bg-black object-contain" />
+                  <video
+                    src={current.url}
+                    controls
+                    className="w-full bg-black object-contain max-h-[calc(100vh-12rem)]"
+                  />
                 ) : (
-                  <img src={current.url} alt={r.title} className="w-full" />
+                  <img
+                    src={current.url}
+                    alt={r.title}
+                    className="w-full bg-black object-contain max-h-[calc(100vh-12rem)] mx-auto"
+                    style={{ objectFit: "contain" }}
+                  />
                 )
               ) : (
                 <div className="aspect-video flex items-center justify-center bg-secondary">
