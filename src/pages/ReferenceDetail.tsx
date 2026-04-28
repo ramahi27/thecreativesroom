@@ -209,16 +209,16 @@ const ReferenceDetail = () => {
               </div>
             )}
 
-            {r.source_url && (
-              <div className="mt-4 flex flex-wrap gap-3">
-                {embedUrl && !currentIsEmbed && (
-                  <button
-                    onClick={() => setActiveMedia(uploaded.length)}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-[11px] uppercase tracking-widest hover:opacity-90"
-                  >
-                    ▶ Watch here
-                  </button>
-                )}
+            <div className="mt-4 flex flex-wrap gap-3">
+              {embedUrl && !currentIsEmbed && (
+                <button
+                  onClick={() => setActiveMedia(uploaded.length)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-[11px] uppercase tracking-widest hover:opacity-90"
+                >
+                  ▶ Watch here
+                </button>
+              )}
+              {r.source_url && (
                 <a
                   href={r.source_url}
                   target="_blank"
@@ -228,8 +228,9 @@ const ReferenceDetail = () => {
                   <ExternalLink className="h-3 w-3" />
                   Open on {platform || "source"}
                 </a>
-              </div>
-            )}
+              )}
+              <BookmarkButton referenceId={r.id} variant="detail" />
+            </div>
           </div>
 
           <aside className="lg:col-span-1 space-y-6">
