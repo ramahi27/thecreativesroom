@@ -282,6 +282,90 @@ const Settings = () => {
           </div>
         </section>
 
+        {/* AI Scrape */}
+        <section>
+          <header className="flex items-center gap-3 mb-2">
+            <Sparkles className="h-5 w-5 text-primary" strokeWidth={1.5} />
+            <h2 className="font-display text-3xl font-black tracking-tighter">Import via link</h2>
+          </header>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
+            Paste a YouTube, Vimeo, or web page URL. AI will fetch the title, thumbnail and suggest brand, categories & tags. Saved to drafts for review.
+          </p>
+
+          <form onSubmit={handleScrape} className="flex flex-col sm:flex-row gap-3 mb-4">
+            <div className="flex-1 space-y-2">
+              <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                URL
+              </Label>
+              <div className="relative">
+                <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  type="url"
+                  required
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  value={scrapeUrl}
+                  onChange={(e) => setScrapeUrl(e.target.value)}
+                  className="bg-secondary border-0 font-mono pl-9"
+                  disabled={scraping}
+                />
+              </div>
+            </div>
+            <Button
+              type="submit"
+              disabled={scraping}
+              className="font-mono text-xs uppercase tracking-widest h-10 sm:self-end"
+            >
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              {scraping ? "Scraping…" : "Scrape & draft"}
+            </Button>
+          </form>
+
+          {recentScrapes.length > 0 && (
+            <div className="mt-6">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">
+                Recently added this session
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                {recentScrapes.map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => navigate("/drafts")}
+                    className="text-left group"
+                  >
+                    <div className="aspect-video bg-secondary overflow-hidden hairline border">
+                      {r.thumbnail_url ? (
+                        <img
+                          src={r.thumbnail_url}
+                          alt={r.title}
+                          className="w-full h-full object-cover group-hover:opacity-80 transition-opacity"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                          <ExternalLink className="h-5 w-5" />
+                        </div>
+                      )}
+                    </div>
+                    <p className="mt-2 font-mono text-[11px] line-clamp-2">{r.title}</p>
+                    {r.brand && (
+                      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                        {r.brand}
+                      </p>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/drafts")}
+                className="mt-4 font-mono text-xs uppercase tracking-widest"
+              >
+                Review all drafts
+              </Button>
+            </div>
+          )}
+        </section>
+
         {/* Categories */}
         <section>
           <h2 className="font-display text-3xl font-black tracking-tighter mb-6">Categories</h2>
