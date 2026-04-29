@@ -1,5 +1,6 @@
 // Scrape a YouTube / Vimeo / generic web page link, infer metadata via Lovable AI,
 // and insert as a draft reference. Admin-only (verified server-side).
+// YouTube playlists expand into one draft per video.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -32,8 +33,32 @@ function ytId(u: URL): string | null {
   return null;
 }
 
+function ytPlaylistId(u: URL): string | null {
+  if (!u.hostname.includes("youtube.com")) return null;
+  const list = u.searchParams.get("list");
+  return list && /^[A-Za-z0-9_-]+$/.test(list) ? list : null;
+}
+
+/** Fetch all video IDs from a YouTube playlist by scraping the playlist page HTML. */
+async function fetchPlaylistVideoIds(playlistId: string): Promise<string[]> {
+  const url = `https://www.youtube.com/playlist?list=${playlistId}`;
+  const r = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+  const html = await r.text();
+  const ids = new Set<string>();
+  // Match all "videoId":"XXXXXXXXXXX" occurrences
+  const re = /"videoId":"([A-Za-z0-9_-]{11})"/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) ids.add(m[1]);
+  return [...ids];
+}
+
 async function scrapeYouTube(url: string, id: string): Promise<Scraped> {
-  // oEmbed gives title + author
   let title = "YouTube video";
   let author = "";
   try {
@@ -114,29 +139,38 @@ async function scrapeGeneric(url: string): Promise<Scraped> {
   };
 }
 
-async function scrapeUrl(rawUrl: string): Promise<Scraped> {
-  const url = new URL(rawUrl);
-  const yid = ytId(url);
-  if (yid) return scrapeYouTube(rawUrl, yid);
-  if (url.hostname.includes("vimeo.com")) return scrapeVimeo(rawUrl);
-  return scrapeGeneric(rawUrl);
-}
-
 async function inferMetadata(
   scraped: Scraped,
   categories: { video: string[]; photo: string[] },
-): Promise<{ brand: string | null; categories: string[]; tags: string[]; year: number | null }> {
+): Promise<{
+  brand: string | null;
+  categories: string[];
+  tags: string[];
+  year: number | null;
+  clean_title: string;
+}> {
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
-  if (!apiKey) return { brand: scraped.brand_guess || null, categories: [], tags: [], year: null };
+  const fallback = {
+    brand: scraped.brand_guess || null,
+    categories: [] as string[],
+    tags: [] as string[],
+    year: null,
+    clean_title: scraped.title,
+  };
+  if (!apiKey) return fallback;
   const allowed = scraped.type === "video" ? categories.video : categories.photo;
   const sys =
-    `You are a metadata extractor for an advertising/creative reference archive. ` +
-    `Given a title, source URL, and possible author/site name, infer:\n` +
-    `- brand: the advertised brand name (NOT the agency or platform). Null if unknown.\n` +
+    `You are a metadata extractor for an advertising/creative reference archive.\n` +
+    `Given a raw title, source URL and possible author/site name, return:\n` +
+    `- brand: the advertised brand name (NOT the agency, director or platform). Null if unknown.\n` +
     `- categories: pick 0-2 from this allowed list ONLY: ${JSON.stringify(allowed)}.\n` +
     `- tags: 2-5 short lowercase keywords (style, medium, mood, theme).\n` +
-    `- year: 4-digit release year if discernible from title, else null.`;
-  const user = `Title: ${scraped.title}\nURL: ${scraped.source_url}\nSite/Author: ${scraped.brand_guess || ""}\nType: ${scraped.type}`;
+    `- year: 4-digit release year if discernible, else null.\n` +
+    `- clean_title: the title with the brand name AND any category-like words removed ` +
+    `(e.g. "Case Study", "Commercial", "Promo", "Trailer", "Campaign", "| Brand", " - Brand", " by Director"). ` +
+    `Keep only the actual creative/spot name. Trim separators. ` +
+    `If nothing meaningful remains, return the original title.`;
+  const user = `Raw title: ${scraped.title}\nURL: ${scraped.source_url}\nSite/Author: ${scraped.brand_guess || ""}\nType: ${scraped.type}`;
   try {
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -159,8 +193,9 @@ async function inferMetadata(
                   categories: { type: "array", items: { type: "string" } },
                   tags: { type: "array", items: { type: "string" } },
                   year: { type: ["integer", "null"] },
+                  clean_title: { type: "string" },
                 },
-                required: ["brand", "categories", "tags", "year"],
+                required: ["brand", "categories", "tags", "year", "clean_title"],
                 additionalProperties: false,
               },
             },
@@ -171,22 +206,72 @@ async function inferMetadata(
     });
     if (!r.ok) {
       console.error("AI gateway error", r.status, await r.text());
-      return { brand: scraped.brand_guess || null, categories: [], tags: [], year: null };
+      return fallback;
     }
     const data = await r.json();
     const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    if (!args) return { brand: scraped.brand_guess || null, categories: [], tags: [], year: null };
+    if (!args) return fallback;
     const parsed = JSON.parse(args);
+    const cleaned = (parsed.clean_title || "").trim();
     return {
       brand: parsed.brand || scraped.brand_guess || null,
       categories: (parsed.categories || []).filter((c: string) => allowed.includes(c)),
       tags: (parsed.tags || []).map((t: string) => String(t).toLowerCase()).slice(0, 6),
       year: parsed.year || null,
+      clean_title: cleaned.length > 1 ? cleaned : scraped.title,
     };
   } catch (e) {
     console.error("inferMetadata failed", e);
-    return { brand: scraped.brand_guess || null, categories: [], tags: [], year: null };
+    return fallback;
   }
+}
+
+async function scrapeAndInsert(
+  rawUrl: string,
+  supabase: any,
+  userId: string,
+  categories: { video: string[]; photo: string[] },
+) {
+  let scraped: Scraped;
+  try {
+    const u = new URL(rawUrl);
+    const yid = ytId(u);
+    if (yid) scraped = await scrapeYouTube(rawUrl, yid);
+    else if (u.hostname.includes("vimeo.com")) scraped = await scrapeVimeo(rawUrl);
+    else scraped = await scrapeGeneric(rawUrl);
+  } catch (e) {
+    return { ok: false, url: rawUrl, error: e instanceof Error ? e.message : "scrape failed" };
+  }
+
+  const meta = await inferMetadata(scraped, categories);
+  const mediaItems =
+    scraped.type === "image" && scraped.thumbnail_url
+      ? [{ url: scraped.thumbnail_url, kind: "image" }]
+      : [];
+
+  const insertRow = {
+    title: meta.clean_title || scraped.title,
+    type: scraped.type,
+    source_url: scraped.source_url,
+    thumbnail_url: scraped.thumbnail_url,
+    media_url: scraped.type === "image" ? scraped.thumbnail_url : null,
+    media_items: mediaItems,
+    brand: meta.brand,
+    year: meta.year,
+    categories: meta.categories,
+    tags: meta.tags,
+    created_by: userId,
+    published: false,
+    source: "ai_scrape",
+  };
+
+  const { data: inserted, error: insErr } = await supabase
+    .from("references")
+    .insert(insertRow)
+    .select("id, title, thumbnail_url, brand, categories, tags, type")
+    .single();
+  if (insErr) return { ok: false, url: rawUrl, error: insErr.message };
+  return { ok: true, draft: inserted };
 }
 
 Deno.serve(async (req) => {
@@ -240,38 +325,37 @@ Deno.serve(async (req) => {
       photo: (map.get("photo_categories") as string[]) || ["Campaign", "Branding", "Copy Driven"],
     };
 
-    const scraped = await scrapeUrl(rawUrl);
-    const meta = await inferMetadata(scraped, categories);
+    // ===== YouTube playlist: expand into one draft per video =====
+    const playlistId = ytPlaylistId(url);
+    if (playlistId) {
+      const ids = await fetchPlaylistVideoIds(playlistId);
+      if (ids.length === 0) {
+        return json({ error: "Could not read playlist (empty or private)" }, 400);
+      }
+      const drafts: any[] = [];
+      const failed: any[] = [];
+      // Sequential to be polite to YouTube/AI gateway
+      for (const id of ids) {
+        const videoUrl = `https://www.youtube.com/watch?v=${id}`;
+        const result = await scrapeAndInsert(videoUrl, supabase, userId, categories);
+        if (result.ok) drafts.push(result.draft);
+        else failed.push({ url: videoUrl, error: result.error });
+      }
+      return json({
+        success: true,
+        playlist: true,
+        playlist_id: playlistId,
+        count: drafts.length,
+        failed_count: failed.length,
+        drafts,
+        failed,
+      });
+    }
 
-    const mediaItems =
-      scraped.type === "image" && scraped.thumbnail_url
-        ? [{ url: scraped.thumbnail_url, kind: "image" }]
-        : [];
-
-    const insertRow = {
-      title: scraped.title,
-      type: scraped.type,
-      source_url: scraped.source_url,
-      thumbnail_url: scraped.thumbnail_url,
-      media_url: scraped.type === "image" ? scraped.thumbnail_url : null,
-      media_items: mediaItems,
-      brand: meta.brand,
-      year: meta.year,
-      categories: meta.categories,
-      tags: meta.tags,
-      created_by: userId,
-      published: false,
-      source: "ai_scrape",
-    };
-
-    const { data: inserted, error: insErr } = await supabase
-      .from("references")
-      .insert(insertRow)
-      .select("id, title, thumbnail_url, brand, categories, tags, type")
-      .single();
-    if (insErr) return json({ error: insErr.message }, 500);
-
-    return json({ success: true, draft: inserted });
+    // ===== Single URL =====
+    const result = await scrapeAndInsert(rawUrl, supabase, userId, categories);
+    if (!result.ok) return json({ error: result.error }, 500);
+    return json({ success: true, draft: result.draft });
   } catch (e) {
     console.error("scrape-link error", e);
     return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
