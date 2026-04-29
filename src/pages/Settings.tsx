@@ -122,11 +122,21 @@ const Settings = () => {
       const { data, error } = await supabase.functions.invoke("scrape-link", { body: { url } });
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Failed to scrape");
-      toast.success("Added to drafts", {
-        description: data.draft.title,
-        action: { label: "Review", onClick: () => navigate("/drafts") },
-      });
-      setRecentScrapes((prev) => [data.draft, ...prev].slice(0, 8));
+      if (data.playlist) {
+        toast.success(`Playlist imported — ${data.count} drafts created`, {
+          description: data.failed_count
+            ? `${data.failed_count} video(s) failed`
+            : "All videos saved as drafts",
+          action: { label: "Review", onClick: () => navigate("/drafts") },
+        });
+        setRecentScrapes((prev) => [...(data.drafts || []), ...prev].slice(0, 24));
+      } else {
+        toast.success("Added to drafts", {
+          description: data.draft.title,
+          action: { label: "Review", onClick: () => navigate("/drafts") },
+        });
+        setRecentScrapes((prev) => [data.draft, ...prev].slice(0, 8));
+      }
       setScrapeUrl("");
     } catch (err: any) {
       toast.error(err.message || "Failed to scrape link");
@@ -289,7 +299,7 @@ const Settings = () => {
             <h2 className="font-display text-3xl font-black tracking-tighter">Import via link</h2>
           </header>
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
-            Paste a YouTube, Vimeo, or web page URL. AI will fetch the title, thumbnail and suggest brand, categories & tags. Saved to drafts for review.
+            Paste a YouTube video / playlist, Vimeo, or web page URL. Playlists become one draft per video. AI cleans titles (strips brand & "case study"), infers brand, categories & tags. Saved to drafts for review.
           </p>
 
           <form onSubmit={handleScrape} className="flex flex-col sm:flex-row gap-3 mb-4">
