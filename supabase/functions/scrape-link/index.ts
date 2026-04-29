@@ -341,6 +341,7 @@ Deno.serve(async (req) => {
       return json({ error: "Invalid URL" }, 400);
     }
     if (!["http:", "https:"].includes(url.protocol)) return json({ error: "Invalid URL" }, 400);
+    if (isBlockedHost(url.hostname)) return json({ error: "Host not allowed" }, 400);
 
     // Load category lists
     const { data: settings } = await supabase
