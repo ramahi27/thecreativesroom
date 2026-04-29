@@ -114,13 +114,46 @@ function pickMeta(html: string, names: string[]): string | null {
   return null;
 }
 
+// SSRF guard: block private/loopback/link-local/metadata destinations.
+function isBlockedHost(host: string): boolean {
+  const h = host.toLowerCase();
+  if (!h) return true;
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".internal")) return true;
+  // IPv6 loopback / link-local / unique-local
+  if (h === "::1" || h === "[::1]") return true;
+  if (h.startsWith("[fc") || h.startsWith("[fd") || h.startsWith("[fe80")) return true;
+  // IPv4 dotted
+  const m = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (m) {
+    const [a, b] = [parseInt(m[1]), parseInt(m[2])];
+    if (a === 10) return true;
+    if (a === 127) return true;
+    if (a === 0) return true;
+    if (a === 169 && b === 254) return true; // link-local + AWS metadata
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+    if (a >= 224) return true; // multicast/reserved
+  }
+  return false;
+}
+
+async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
+  const u = new URL(url);
+  if (!["http:", "https:"].includes(u.protocol)) throw new Error("Invalid protocol");
+  if (isBlockedHost(u.hostname)) throw new Error("Blocked host");
+  return await fetch(url, { ...init, redirect: "manual" });
+}
+
 async function scrapeGeneric(url: string): Promise<Scraped> {
-  const r = await fetch(url, {
+  const r = await safeFetch(url, {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (compatible; CreativesRoomBot/1.0; +https://thecreativesroom.com)",
     },
   });
+  // Reject redirects to avoid SSRF via 3xx to internal hosts
+  if (r.status >= 300 && r.status < 400) throw new Error("Redirects not allowed");
   const html = await r.text();
   const title =
     pickMeta(html, ["og:title", "twitter:title"]) ||
@@ -308,6 +341,7 @@ Deno.serve(async (req) => {
       return json({ error: "Invalid URL" }, 400);
     }
     if (!["http:", "https:"].includes(url.protocol)) return json({ error: "Invalid URL" }, 400);
+    if (isBlockedHost(url.hostname)) return json({ error: "Host not allowed" }, 400);
 
     // Load category lists
     const { data: settings } = await supabase
