@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { X, Plus, Shield, Trash2 } from "lucide-react";
+import { X, Plus, Shield, Trash2, Sparkles, Link2, ExternalLink } from "lucide-react";
 
 interface AdminRow {
   user_id: string;
@@ -23,6 +23,12 @@ const Settings = () => {
   const [adminsLoading, setAdminsLoading] = useState(true);
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [adding, setAdding] = useState(false);
+
+  const [scrapeUrl, setScrapeUrl] = useState("");
+  const [scraping, setScraping] = useState(false);
+  const [recentScrapes, setRecentScrapes] = useState<
+    { id: string; title: string; thumbnail_url: string | null; brand: string | null }[]
+  >([]);
 
   const [videoCats, setVideoCats] = useState<string[]>([]);
   const [photoCats, setPhotoCats] = useState<string[]>([]);
