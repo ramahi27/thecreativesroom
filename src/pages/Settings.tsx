@@ -299,7 +299,7 @@ const Settings = () => {
             <h2 className="font-display text-3xl font-black tracking-tighter">Import via link</h2>
           </header>
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
-            Paste a YouTube, Vimeo, or web page URL. AI will fetch the title, thumbnail and suggest brand, categories & tags. Saved to drafts for review.
+            Paste a YouTube video / playlist, Vimeo, or web page URL. Playlists become one draft per video. AI cleans titles (strips brand & "case study"), infers brand, categories & tags. Saved to drafts for review.
           </p>
 
           <form onSubmit={handleScrape} className="flex flex-col sm:flex-row gap-3 mb-4">
