@@ -110,6 +110,7 @@ const Settings = () => {
     else {
       toast.success("Admin removed");
       loadAdmins();
+    }
   }
 
   async function handleScrape(e: React.FormEvent) {
@@ -132,7 +133,6 @@ const Settings = () => {
     } finally {
       setScraping(false);
     }
-  }
   }
 
   async function saveCategories(key: "video_categories" | "photo_categories", values: string[]) {
