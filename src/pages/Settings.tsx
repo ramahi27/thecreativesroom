@@ -110,7 +110,29 @@ const Settings = () => {
     else {
       toast.success("Admin removed");
       loadAdmins();
+  }
+
+  async function handleScrape(e: React.FormEvent) {
+    e.preventDefault();
+    const url = scrapeUrl.trim();
+    if (!url) return;
+    setScraping(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("scrape-link", { body: { url } });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Failed to scrape");
+      toast.success("Added to drafts", {
+        description: data.draft.title,
+        action: { label: "Review", onClick: () => navigate("/drafts") },
+      });
+      setRecentScrapes((prev) => [data.draft, ...prev].slice(0, 8));
+      setScrapeUrl("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to scrape link");
+    } finally {
+      setScraping(false);
     }
+  }
   }
 
   async function saveCategories(key: "video_categories" | "photo_categories", values: string[]) {
