@@ -285,7 +285,7 @@ const Settings = () => {
 
               <div className="grid md:grid-cols-2 gap-8">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3">Most visited projects</p>
+                  <p className="uppercase tracking-[0.25em] text-muted-foreground mb-3 font-serif text-lg">Most visited projects</p>
                   <div className="border hairline divide-y">
                     {stats.top_visited.length === 0 ? (
                       <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">No data yet</p>
