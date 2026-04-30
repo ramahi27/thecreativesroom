@@ -357,10 +357,6 @@ const AddReference = () => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className={labelCls}>Notes</Label>
-            <Textarea rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls} />
-          </div>
 
           <div className="flex items-center gap-3 pt-4">
             <Button
