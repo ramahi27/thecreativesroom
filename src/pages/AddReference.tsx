@@ -162,10 +162,27 @@ const AddReference = () => {
         toast.success("Updated");
         navigate(`/ref/${editId}`);
       } else {
-        const { error } = await supabase.from("references").insert({ ...payload, created_by: user!.id });
+        // Admins publish directly; everyone else submits a draft for review.
+        const insertPayload = {
+          ...payload,
+          created_by: user!.id,
+          published: isAdmin,
+        };
+        const { data: inserted, error } = await supabase
+          .from("references")
+          .insert(insertPayload)
+          .select("id")
+          .single();
         if (error) throw error;
-        toast.success("Added to archive");
-        navigate("/");
+        if (!isAdmin && inserted?.id) {
+          // Auto-save user's own submission to their collection
+          await supabase.from("bookmarks").insert({ user_id: user!.id, reference_id: inserted.id });
+          toast.success("Submitted! It's saved to your collection and waiting for admin review.");
+          navigate("/bookmarks");
+        } else {
+          toast.success("Added to archive");
+          navigate("/");
+        }
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
