@@ -1,10 +1,19 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { User as UserIcon } from "lucide-react";
 
 export function SiteHeader() {
   const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-50 border-b hairline bg-background/70 backdrop-blur-xl">
@@ -28,24 +37,38 @@ export function SiteHeader() {
             </Button>
           )}
           {isAdmin && (
-            <>
-              <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
-                <Link to="/drafts">Drafts</Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
-                <Link to="/settings">Settings</Link>
-              </Button>
-            </>
+            <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
+              <Link to="/drafts">Drafts</Link>
+            </Button>
           )}
           {user ? (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="font-mono text-xs uppercase tracking-widest"
-              onClick={() => supabase.auth.signOut()}
-            >
-              Sign out
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest gap-1.5">
+                  <UserIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  Account
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="font-mono text-xs uppercase tracking-widest">
+                <DropdownMenuItem onClick={() => navigate("/account")}>
+                  Account & password
+                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate("/settings")}>
+                    Admin settings
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    navigate("/");
+                  }}
+                >
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
               <Link to="/auth">Sign in</Link>
