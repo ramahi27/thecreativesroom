@@ -45,7 +45,9 @@ const Index = () => {
     (async () => {
       const { data } = await supabase
         .from("references")
-        .select("*")
+        .select(
+          "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,notes,created_at,updated_at,media_items,categories,published,source"
+        )
         .eq("published", true)
         .order("created_at", { ascending: false });
       const list = (data as unknown as Reference[]) || [];
