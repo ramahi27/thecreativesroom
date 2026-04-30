@@ -260,12 +260,12 @@ const Settings = () => {
         </div>
       </section>
 
-      <main className="container py-12 max-w-5xl space-y-16">
+      <main className="container py-12 max-w-5xl space-y-16 font-serif">
         {/* Analytics */}
         <section>
           <header className="flex items-center gap-3 mb-6">
             <BarChart3 className="h-5 w-5 text-primary" strokeWidth={1.5} />
-            <h2 className="font-display text-3xl font-black tracking-tighter">Analytics</h2>
+            <h2 className="text-3xl font-black tracking-tighter font-serif">Analytics</h2>
           </header>
 
           {statsLoading || !stats ? (
