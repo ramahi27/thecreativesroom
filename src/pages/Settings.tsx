@@ -260,7 +260,7 @@ const Settings = () => {
         </div>
       </section>
 
-      <main className="container py-12 max-w-3xl space-y-16">
+      <main className="container py-12 max-w-5xl space-y-16">
         {/* Analytics */}
         <section>
           <header className="flex items-center gap-3 mb-6">
