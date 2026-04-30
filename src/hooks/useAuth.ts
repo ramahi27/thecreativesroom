@@ -2,39 +2,63 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
+// Module-level singleton state — shared across ALL useAuth() consumers.
+// This prevents every page/component from re-running getSession() and the
+// admin check on mount, which was causing slow navigation between pages.
+
+type AuthState = { user: User | null; isAdmin: boolean; loading: boolean };
+
+let cached: AuthState = { user: null, isAdmin: false, loading: true };
+const listeners = new Set<(s: AuthState) => void>();
+let initialized = false;
+
+function setState(next: Partial<AuthState>) {
+  cached = { ...cached, ...next };
+  listeners.forEach((l) => l(cached));
+}
+
+async function checkAdmin(userId: string) {
+  const { data } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  setState({ isAdmin: !!data });
+}
+
+function init() {
+  if (initialized) return;
+  initialized = true;
+
+  supabase.auth.onAuthStateChange((_event, session) => {
+    const user = session?.user ?? null;
+    setState({ user, isAdmin: user ? cached.isAdmin : false });
+    if (user) {
+      // Defer to avoid deadlock inside the auth callback
+      setTimeout(() => checkAdmin(user.id), 0);
+    }
+  });
+
+  supabase.auth.getSession().then(async ({ data: { session } }) => {
+    const user = session?.user ?? null;
+    setState({ user, loading: false });
+    if (user) await checkAdmin(user.id);
+  });
+}
+
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [loading, setLoading] = useState(true);
+  init();
+  const [state, setLocal] = useState<AuthState>(cached);
 
   useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        setTimeout(() => checkAdmin(session.user.id), 0);
-      } else {
-        setIsAdmin(false);
-      }
-    });
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) await checkAdmin(session.user.id);
-      setLoading(false);
-    });
-
-    return () => sub.subscription.unsubscribe();
+    // Sync in case state changed between render and effect
+    setLocal(cached);
+    listeners.add(setLocal);
+    return () => {
+      listeners.delete(setLocal);
+    };
   }, []);
 
-  async function checkAdmin(userId: string) {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    setIsAdmin(!!data);
-  }
-
-  return { user, isAdmin, loading };
+  return state;
 }
