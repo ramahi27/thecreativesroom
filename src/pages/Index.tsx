@@ -112,7 +112,7 @@ const Index = () => {
             CREATIVES.
           </h1>
           <p className="mt-8 max-w-xl font-body text-base text-muted-foreground leading-relaxed">
-            A collaborative library where creatives save, organize, and discover inspiring work.
+            A collaborative library where creatives add, save, and discover inspiring work.
           </p>
         </div>
       </section>
