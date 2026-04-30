@@ -293,13 +293,25 @@ const AddReference = () => {
             <Label className={labelCls}>
               {isEdit ? "Add more files" : "Upload files (multiple photos & videos allowed)"}
             </Label>
-            <Input
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              onChange={(e) => addFiles(e.target.files)}
-              className={inputCls + " file:text-foreground file:bg-transparent file:border-0"}
-            />
+            <label
+              htmlFor="reference-files"
+              className="relative flex flex-col items-center justify-center gap-2 cursor-pointer bg-secondary hairline border border-dashed border-muted-foreground/40 hover:border-muted-foreground/70 hover:bg-secondary/70 transition-colors px-6 py-12 text-center"
+            >
+              <span className="font-mono text-xs uppercase tracking-widest text-foreground">
+                Click here or drag and drop to add a photo or video.
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Multiple files allowed
+              </span>
+              <input
+                id="reference-files"
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                onChange={(e) => addFiles(e.target.files)}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+            </label>
             {files.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {files.map((f, i) => (
@@ -318,17 +330,6 @@ const AddReference = () => {
                 ))}
               </ul>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className={labelCls}>Thumbnail URL (optional, auto-detected for YouTube)</Label>
-            <Input
-              type="url"
-              placeholder="https://"
-              value={thumbnailUrl}
-              onChange={(e) => setThumbnailUrl(e.target.value)}
-              className={inputCls}
-            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
