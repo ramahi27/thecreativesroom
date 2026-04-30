@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { ReferenceCard } from "@/components/ReferenceCard";
+import { ReferenceDetailModal } from "@/components/ReferenceDetailModal";
 import { type Reference } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +17,8 @@ const FILTERS_KEY = "archive:filters";
 
 const Index = () => {
   const { isAdmin } = useAuth();
+  const { id: openId } = useParams();
+  const navigate = useNavigate();
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -195,6 +199,8 @@ const Index = () => {
           </div>
         )}
       </main>
+
+      {openId && <ReferenceDetailModal id={openId} onClose={() => navigate("/")} />}
 
       <footer className="border-t hairline mt-20">
         <div className="container py-8 flex items-center justify-between">
