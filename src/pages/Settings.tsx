@@ -340,7 +340,7 @@ const Settings = () => {
         <section>
           <header className="flex items-center gap-3 mb-6">
             <Shield className="h-5 w-5 text-primary" strokeWidth={1.5} />
-            <h2 className="font-display text-3xl font-black tracking-tighter">Admin team</h2>
+            <h2 className="text-3xl font-black tracking-tighter font-serif">Admin team</h2>
           </header>
 
           <form onSubmit={handleAddAdmin} className="flex flex-col sm:flex-row gap-3 mb-6">
