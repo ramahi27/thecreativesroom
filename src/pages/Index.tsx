@@ -111,8 +111,8 @@ const Index = () => {
             <span className="italic font-light">ARCHIVE</span>&nbsp;&nbsp;FOR{"\n"}
             CREATIVES.
           </h1>
-          <p className="mt-8 max-w-xl font-body text-base text-muted-foreground leading-relaxed">
-            A collaborative library where creatives add, save, and discover inspiring work.
+          <p className="mt-8 max-w-xl font-body text-base text-muted-foreground leading-relaxed text-left px-0 py-0 my-0">
+            A collaborative library where creatives add, save, and discover{"\n"}inspiring work.
           </p>
         </div>
       </section>
