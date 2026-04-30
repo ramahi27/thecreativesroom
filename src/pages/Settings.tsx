@@ -260,12 +260,12 @@ const Settings = () => {
         </div>
       </section>
 
-      <main className="container py-12 max-w-5xl space-y-16">
+      <main className="container py-12 max-w-5xl space-y-16 font-serif">
         {/* Analytics */}
         <section>
           <header className="flex items-center gap-3 mb-6">
             <BarChart3 className="h-5 w-5 text-primary" strokeWidth={1.5} />
-            <h2 className="font-display text-3xl font-black tracking-tighter">Analytics</h2>
+            <h2 className="text-3xl font-black tracking-tighter font-serif">Analytics</h2>
           </header>
 
           {statsLoading || !stats ? (
@@ -285,7 +285,7 @@ const Settings = () => {
 
               <div className="grid md:grid-cols-2 gap-8">
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3">Most visited projects</p>
+                  <p className="uppercase tracking-[0.25em] text-muted-foreground mb-3 font-serif text-lg">Most visited projects</p>
                   <div className="border hairline divide-y">
                     {stats.top_visited.length === 0 ? (
                       <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">No data yet</p>
@@ -309,7 +309,7 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3">Most bookmarked projects</p>
+                  <p className="uppercase tracking-[0.25em] text-muted-foreground mb-3 font-serif text-lg">Most bookmarked projects</p>
                   <div className="border hairline divide-y">
                     {stats.top_bookmarked.length === 0 ? (
                       <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">No bookmarks yet</p>
@@ -340,7 +340,7 @@ const Settings = () => {
         <section>
           <header className="flex items-center gap-3 mb-6">
             <Shield className="h-5 w-5 text-primary" strokeWidth={1.5} />
-            <h2 className="font-display text-3xl font-black tracking-tighter">Admin team</h2>
+            <h2 className="text-3xl font-black tracking-tighter font-serif">Admin team</h2>
           </header>
 
           <form onSubmit={handleAddAdmin} className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -407,7 +407,7 @@ const Settings = () => {
         <section>
           <header className="flex items-center gap-3 mb-2">
             <Sparkles className="h-5 w-5 text-primary" strokeWidth={1.5} />
-            <h2 className="font-display text-3xl font-black tracking-tighter">Import via link</h2>
+            <h2 className="text-3xl font-black tracking-tighter font-serif">Import via link</h2>
           </header>
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
             Paste a YouTube video / playlist, Vimeo, or web page URL. Playlists become one draft per video. AI cleans titles (strips brand & "case study"), infers brand, categories & tags. Saved to drafts for review.
@@ -489,7 +489,7 @@ const Settings = () => {
 
         {/* Categories */}
         <section>
-          <h2 className="font-display text-3xl font-black tracking-tighter mb-6">Categories</h2>
+          <h2 className="text-3xl font-black tracking-tighter mb-6 font-serif">Categories</h2>
 
           {catsLoading ? (
             <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
@@ -542,7 +542,7 @@ function CategoryEditor({
 }) {
   return (
     <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3">
+      <p className="uppercase tracking-[0.25em] text-muted-foreground mb-3 font-serif text-lg">
         {title}
       </p>
       <div className="space-y-2 mb-4">
@@ -599,7 +599,7 @@ function StatCell({ icon, label, value, sub }: { icon: React.ReactNode; label: s
     <div className="bg-background p-4">
       <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
         {icon}
-        <p className="font-mono text-[10px] uppercase tracking-[0.2em]">{label}</p>
+        <p className="uppercase tracking-[0.2em] font-serif text-lg">{label}</p>
       </div>
       <p className="font-display text-2xl font-black tracking-tighter">{value}</p>
       {sub && <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mt-1">{sub}</p>}
