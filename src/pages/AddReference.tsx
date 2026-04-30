@@ -79,6 +79,39 @@ const AddReference = () => {
   }, [isEdit, editId, navigate]);
 
   if (authLoading || loadingRecord) return null;
+  if (submittedToCollection) {
+    return (
+      <div className="min-h-screen grain">
+        <SiteHeader />
+        <main className="container flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center text-center py-20">
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-6">
+            ⏵ Saved
+          </p>
+          <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter mb-8 max-w-3xl">
+            Added to My Collection.
+          </h1>
+          <p className="font-body text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed mb-10">
+            Your project is now saved in your collection. You can find it anytime under My Collection.
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Button
+              onClick={() => navigate("/mycollection")}
+              className="font-mono text-xs uppercase tracking-widest h-12 px-8"
+            >
+              View My Collection
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => window.location.reload()}
+              className="font-mono text-xs uppercase tracking-widest h-12 px-8"
+            >
+              Add another
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
   // Editing remains admin-only; new submissions are open to any signed-in user (saved as drafts).
   if (isEdit && !isAdmin) {
     return (
