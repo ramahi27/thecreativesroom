@@ -179,7 +179,7 @@ const Index = () => {
             <p className="font-display text-3xl text-muted-foreground italic">
               {refs.length === 0 ? "The archive is empty." : "Nothing matches."}
             </p>
-            {refs.length === 0 && (
+            {refs.length === 0 && isAdmin && (
               <p className="mt-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
                 Sign in as admin to add the first reference.
               </p>
