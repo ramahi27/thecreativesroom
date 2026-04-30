@@ -156,6 +156,7 @@ const Auth = () => {
           )}
         </form>
       </main>
+      )}
     </div>
   );
 };
