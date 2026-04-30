@@ -115,7 +115,7 @@ const Index = () => {
       </section>
 
       {/* Filter bar */}
-      <section className="sticky top-16 z-40 border-b hairline bg-background/80 backdrop-blur-xl">
+      <section className="border-b hairline bg-background/80 backdrop-blur-xl">
         <div className="container py-4 flex flex-wrap items-center gap-4">
           <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Filter</span>
           <Select
