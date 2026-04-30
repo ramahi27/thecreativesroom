@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Auth from "./pages/Auth.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 import AddReference from "./pages/AddReference.tsx";
 import ReferenceDetail from "./pages/ReferenceDetail.tsx";
 import Drafts from "./pages/Drafts.tsx";
@@ -23,6 +24,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/add" element={<AddReference />} />
           <Route path="/edit/:id" element={<AddReference />} />
           <Route path="/ref/:id" element={<ReferenceDetail />} />

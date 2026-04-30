@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
+type Mode = "signin" | "signup" | "forgot";
+
 const Auth = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<Mode>("signin");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -34,6 +36,13 @@ const Auth = () => {
         if (error) throw error;
         toast.success("Account created. You can sign in now.");
         setMode("signin");
+      } else if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        toast.success("Password reset link sent. Check your email.");
+        setMode("signin");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -46,15 +55,22 @@ const Auth = () => {
     }
   }
 
+  const heading =
+    mode === "signin" ? "Sign in." : mode === "signup" ? "Create account." : "Reset password.";
+  const eyebrow =
+    mode === "signin" ? "Access" : mode === "signup" ? "Register" : "Recover";
+  const submitLabel =
+    mode === "signin" ? "Enter Archive" : mode === "signup" ? "Create Account" : "Send reset link";
+
   return (
     <div className="min-h-screen grain">
       <SiteHeader />
       <main className="container max-w-md py-20">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">
-          ⏵ {mode === "signin" ? "Access" : "Register"}
+          ⏵ {eyebrow}
         </p>
         <h1 className="font-display text-5xl font-black tracking-tighter mb-8">
-          {mode === "signin" ? "Sign in." : "Create account."}
+          {heading}
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -68,34 +84,53 @@ const Auth = () => {
               className="bg-secondary border-0 font-mono"
             />
           </div>
-          <div className="space-y-2">
-            <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Password</Label>
-            <Input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="bg-secondary border-0 font-mono"
-            />
-          </div>
+          {mode !== "forgot" && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Password</Label>
+                {mode === "signin" && (
+                  <button
+                    type="button"
+                    onClick={() => setMode("forgot")}
+                    className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Forgot?
+                  </button>
+                )}
+              </div>
+              <Input
+                type="password"
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="bg-secondary border-0 font-mono"
+              />
+            </div>
+          )}
 
           <Button type="submit" disabled={loading} className="w-full font-mono text-xs uppercase tracking-widest h-12">
-            {loading ? "..." : mode === "signin" ? "Enter Archive" : "Create Account"}
+            {loading ? "..." : submitLabel}
           </Button>
 
-          <button
-            type="button"
-            onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
-            className="w-full text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-          >
-            {mode === "signin" ? "Need an account? Register →" : "← Back to sign in"}
-          </button>
+          {mode === "forgot" ? (
+            <button
+              type="button"
+              onClick={() => setMode("signin")}
+              className="w-full text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ← Back to sign in
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
+              className="w-full text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {mode === "signin" ? "Need an account? Register →" : "← Back to sign in"}
+            </button>
+          )}
         </form>
-
-        <p className="mt-12 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60 leading-relaxed">
-          Note: Only the archive admin can add references. New accounts are read-only by default.
-        </p>
       </main>
     </div>
   );
