@@ -61,7 +61,7 @@ const AddReference = () => {
       setType((r.type as RefType) || "video");
       setTitle(r.title || "");
       setSourceUrl(r.source_url || "");
-      setThumbnailUrl(r.thumbnail_url || "");
+      // thumbnail is auto-derived; no manual input
       setBrand(r.brand || "");
       setAgency(r.agency || "");
       setYear(r.year ? String(r.year) : "");
