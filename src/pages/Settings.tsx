@@ -7,7 +7,31 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { X, Plus, Shield, Trash2, Sparkles, Link2, ExternalLink } from "lucide-react";
+import { X, Plus, Shield, Trash2, Sparkles, Link2, ExternalLink, BarChart3, Users, Eye, Bookmark, Clock } from "lucide-react";
+
+interface AdminStats {
+  total_visitors: number;
+  visitors_7d: number;
+  visitors_30d: number;
+  total_views: number;
+  views_7d: number;
+  registered_accounts: number;
+  accounts_7d: number;
+  total_references: number;
+  total_bookmarks: number;
+  avg_session_seconds: number;
+  avg_view_seconds: number;
+  top_visited: Array<{ id: string; title: string; thumbnail_url: string | null; brand: string | null; views: number; unique_visitors: number; avg_seconds: number }>;
+  top_bookmarked: Array<{ id: string; title: string; thumbnail_url: string | null; brand: string | null; bookmark_count: number }>;
+}
+
+function formatDuration(s: number) {
+  if (!s) return "—";
+  if (s < 60) return `${Math.round(s)}s`;
+  const m = Math.floor(s / 60);
+  const sec = Math.round(s % 60);
+  return sec ? `${m}m ${sec}s` : `${m}m`;
+}
 
 interface AdminRow {
   user_id: string;
@@ -36,6 +60,9 @@ const Settings = () => {
   const [newPhoto, setNewPhoto] = useState("");
   const [catsLoading, setCatsLoading] = useState(true);
 
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
   useEffect(() => {
     document.title = "Settings — The Creatives Room";
     if (!authLoading && (!user || !isAdmin)) navigate("/");
@@ -45,7 +72,16 @@ const Settings = () => {
     if (!isAdmin) return;
     loadAdmins();
     loadCategories();
+    loadStats();
   }, [isAdmin]);
+
+  async function loadStats() {
+    setStatsLoading(true);
+    const { data, error } = await supabase.rpc("get_admin_stats");
+    if (error) toast.error(error.message);
+    else setStats(data as unknown as AdminStats);
+    setStatsLoading(false);
+  }
 
   async function loadAdmins() {
     setAdminsLoading(true);
