@@ -115,9 +115,8 @@ const Index = () => {
             <span className="italic font-light">ARCHIVE</span>&nbsp;&nbsp;FOR{"\n"}
             CREATIVES.
           </h1>
-          <p className="mt-8 max-w-xl font-body text-base text-muted-foreground leading-relaxed text-left">
-            A collaborative library where creatives can add, save, and discover inspiring work from across the creative world.
-          </p>
+          {/* Description removed as requested */}
+
 
           {/* Visual triad — what you can do here */}
           <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-4">
