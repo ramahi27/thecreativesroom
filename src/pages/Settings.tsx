@@ -309,7 +309,7 @@ const Settings = () => {
                 </div>
 
                 <div>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3">Most bookmarked projects</p>
+                  <p className="uppercase tracking-[0.25em] text-muted-foreground mb-3 font-serif text-lg">Most bookmarked projects</p>
                   <div className="border hairline divide-y">
                     {stats.top_bookmarked.length === 0 ? (
                       <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">No bookmarks yet</p>
