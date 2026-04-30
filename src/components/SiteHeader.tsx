@@ -22,13 +22,15 @@ export function SiteHeader() {
               <Link to="/bookmarks">My Collection</Link>
             </Button>
           )}
+          {user && (
+            <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
+              <Link to="/add">+ New</Link>
+            </Button>
+          )}
           {isAdmin && (
             <>
               <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
                 <Link to="/drafts">Drafts</Link>
-              </Button>
-              <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
-                <Link to="/add">+ New</Link>
               </Button>
               <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
                 <Link to="/settings">Settings</Link>
