@@ -14,6 +14,7 @@ type MediaFilter = "all" | "videos" | "photos";
 const FILTERS_KEY = "archive:filters";
 
 const Index = () => {
+  const { isAdmin } = useAuth();
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
 
