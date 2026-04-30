@@ -11,6 +11,7 @@ import AddReference from "./pages/AddReference.tsx";
 import Drafts from "./pages/Drafts.tsx";
 import Bookmarks from "./pages/Bookmarks.tsx";
 import Settings from "./pages/Settings.tsx";
+import Account from "./pages/Account.tsx";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +32,7 @@ const App = () => (
           <Route path="/bookmarks" element={<Bookmarks />} />
           <Route path="/mycollection" element={<Bookmarks />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/account" element={<Account />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
