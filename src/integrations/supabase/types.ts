@@ -61,6 +61,36 @@ export type Database = {
           },
         ]
       }
+      page_views: {
+        Row: {
+          created_at: string
+          duration_seconds: number
+          id: string
+          path: string
+          reference_id: string | null
+          user_id: string | null
+          visitor_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number
+          id?: string
+          path: string
+          reference_id?: string | null
+          user_id?: string | null
+          visitor_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number
+          id?: string
+          path?: string
+          reference_id?: string | null
+          user_id?: string | null
+          visitor_id?: string
+        }
+        Relationships: []
+      }
       references: {
         Row: {
           agency: string | null
@@ -150,6 +180,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_admin_stats: { Args: never; Returns: Json }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
       has_role: {
         Args: {
