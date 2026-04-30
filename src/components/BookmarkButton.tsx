@@ -21,8 +21,8 @@ export function BookmarkButton({ referenceId, variant = "card", className }: Pro
     e.preventDefault();
     e.stopPropagation();
     if (!user) {
-      toast.message("Sign in to bookmark", {
-        description: "Save your favorite references for later.",
+      toast.message("Sign in to save", {
+        description: "Save your favorite references to your collection.",
         action: { label: "Sign in", onClick: () => navigate("/auth") },
       });
       return;
@@ -30,7 +30,7 @@ export function BookmarkButton({ referenceId, variant = "card", className }: Pro
     const wasActive = active;
     const { error } = await toggle(referenceId);
     if (error) toast.error(error);
-    else toast.success(wasActive ? "Removed from bookmarks" : "Bookmarked");
+    else toast.success(wasActive ? "Removed from your collection" : "Saved to your collection");
   }
 
   if (variant === "detail") {
@@ -45,10 +45,10 @@ export function BookmarkButton({ referenceId, variant = "card", className }: Pro
           className,
         )}
         aria-pressed={active}
-        aria-label={active ? "Remove bookmark" : "Add bookmark"}
+        aria-label={active ? "Remove from collection" : "Add to collection"}
       >
         <Bookmark className={cn("h-3.5 w-3.5", active && "fill-current")} strokeWidth={1.75} />
-        {active ? "Bookmarked" : "Bookmark"}
+        {active ? "Saved" : "Save"}
       </button>
     );
   }
@@ -57,7 +57,7 @@ export function BookmarkButton({ referenceId, variant = "card", className }: Pro
     <button
       onClick={handleClick}
       aria-pressed={active}
-      aria-label={active ? "Remove bookmark" : "Add bookmark"}
+      aria-label={active ? "Remove from collection" : "Add to collection"}
       className={cn(
         "absolute top-3 right-3 z-10 h-8 w-8 flex items-center justify-center rounded-full backdrop-blur-md transition-all",
         "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
