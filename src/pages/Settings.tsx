@@ -594,4 +594,17 @@ function CategoryEditor({
   );
 }
 
+function StatCell({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: string; sub?: string }) {
+  return (
+    <div className="bg-background p-4">
+      <div className="flex items-center gap-1.5 text-muted-foreground mb-2">
+        {icon}
+        <p className="font-mono text-[10px] uppercase tracking-[0.2em]">{label}</p>
+      </div>
+      <p className="font-display text-2xl font-black tracking-tighter">{value}</p>
+      {sub && <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mt-1">{sub}</p>}
+    </div>
+  );
+}
+
 export default Settings;
