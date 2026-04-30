@@ -261,6 +261,81 @@ const Settings = () => {
       </section>
 
       <main className="container py-12 max-w-3xl space-y-16">
+        {/* Analytics */}
+        <section>
+          <header className="flex items-center gap-3 mb-6">
+            <BarChart3 className="h-5 w-5 text-primary" strokeWidth={1.5} />
+            <h2 className="font-display text-3xl font-black tracking-tighter">Analytics</h2>
+          </header>
+
+          {statsLoading || !stats ? (
+            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-border border hairline mb-8">
+                <StatCell icon={<Users className="h-3.5 w-3.5" />} label="Visitors" value={stats.total_visitors.toLocaleString()} sub={`${stats.visitors_7d} last 7d`} />
+                <StatCell icon={<Eye className="h-3.5 w-3.5" />} label="Page views" value={stats.total_views.toLocaleString()} sub={`${stats.views_7d} last 7d`} />
+                <StatCell icon={<Shield className="h-3.5 w-3.5" />} label="Accounts" value={stats.registered_accounts.toLocaleString()} sub={`+${stats.accounts_7d} last 7d`} />
+                <StatCell icon={<Bookmark className="h-3.5 w-3.5" />} label="Bookmarks" value={stats.total_bookmarks.toLocaleString()} sub={`${stats.total_references} projects`} />
+                <StatCell icon={<Clock className="h-3.5 w-3.5" />} label="Avg. session" value={formatDuration(stats.avg_session_seconds)} sub="per visitor / hour" />
+                <StatCell icon={<Clock className="h-3.5 w-3.5" />} label="Avg. on page" value={formatDuration(stats.avg_view_seconds)} sub="per view" />
+                <StatCell icon={<Users className="h-3.5 w-3.5" />} label="Visitors 30d" value={stats.visitors_30d.toLocaleString()} sub="unique" />
+                <StatCell icon={<Eye className="h-3.5 w-3.5" />} label="Views / visitor" value={stats.total_visitors ? (stats.total_views / stats.total_visitors).toFixed(1) : "—"} sub="lifetime" />
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-8">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3">Most visited projects</p>
+                  <div className="border hairline divide-y">
+                    {stats.top_visited.length === 0 ? (
+                      <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">No data yet</p>
+                    ) : stats.top_visited.map((p, i) => (
+                      <button key={p.id} onClick={() => navigate(`/ref/${p.id}`)} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
+                        <span className="font-mono text-[10px] text-muted-foreground w-5">{(i + 1).toString().padStart(2, "0")}</span>
+                        <div className="w-12 h-8 bg-secondary shrink-0 overflow-hidden">
+                          {p.thumbnail_url && <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-body text-xs truncate">{p.title}</p>
+                          {p.brand && <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground truncate">{p.brand}</p>}
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-mono text-xs">{p.views}</p>
+                          <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">{p.unique_visitors} uniq · {formatDuration(Number(p.avg_seconds))}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3">Most bookmarked projects</p>
+                  <div className="border hairline divide-y">
+                    {stats.top_bookmarked.length === 0 ? (
+                      <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">No bookmarks yet</p>
+                    ) : stats.top_bookmarked.map((p, i) => (
+                      <button key={p.id} onClick={() => navigate(`/ref/${p.id}`)} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
+                        <span className="font-mono text-[10px] text-muted-foreground w-5">{(i + 1).toString().padStart(2, "0")}</span>
+                        <div className="w-12 h-8 bg-secondary shrink-0 overflow-hidden">
+                          {p.thumbnail_url && <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-body text-xs truncate">{p.title}</p>
+                          {p.brand && <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground truncate">{p.brand}</p>}
+                        </div>
+                        <div className="text-right shrink-0 flex items-center gap-1">
+                          <Bookmark className="h-3 w-3" />
+                          <p className="font-mono text-xs">{p.bookmark_count}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+
         {/* Admins */}
         <section>
           <header className="flex items-center gap-3 mb-6">
