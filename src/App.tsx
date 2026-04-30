@@ -29,6 +29,7 @@ const App = () => (
           <Route path="/ref/:id" element={<Index />} />
           <Route path="/drafts" element={<Drafts />} />
           <Route path="/bookmarks" element={<Bookmarks />} />
+          <Route path="/mycollection" element={<Bookmarks />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

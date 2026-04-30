@@ -19,7 +19,7 @@ export function SiteHeader() {
         <nav className="flex items-center gap-1 sm:gap-2">
           {user && (
             <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
-              <Link to="/bookmarks">My Collection</Link>
+              <Link to="/mycollection">My Collection</Link>
             </Button>
           )}
           {user && (

@@ -15,6 +15,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<Mode>("signin");
   const [loading, setLoading] = useState(false);
+  const [signedUpEmail, setSignedUpEmail] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Sign in — The Creatives Room";
@@ -34,8 +35,7 @@ const Auth = () => {
           options: { emailRedirectTo: `${window.location.origin}/` },
         });
         if (error) throw error;
-        toast.success("Account created. You can sign in now.");
-        setMode("signin");
+        setSignedUpEmail(email);
       } else if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
@@ -65,6 +65,30 @@ const Auth = () => {
   return (
     <div className="min-h-screen grain">
       <SiteHeader />
+      {signedUpEmail ? (
+        <main className="container flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center text-center py-20">
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-6">
+            ⏵ Check your inbox
+          </p>
+          <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter mb-8 max-w-3xl">
+            Confirm your email to finish signing up.
+          </h1>
+          <p className="font-body text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed mb-10">
+            We just sent a confirmation link to{" "}
+            <span className="text-foreground font-medium">{signedUpEmail}</span>. Click it to activate your account, then come back and sign in.
+          </p>
+          <Button
+            onClick={() => {
+              setSignedUpEmail(null);
+              setMode("signin");
+              setPassword("");
+            }}
+            className="font-mono text-xs uppercase tracking-widest h-12 px-8"
+          >
+            Back to sign in
+          </Button>
+        </main>
+      ) : (
       <main className="container max-w-md py-20">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">
           ⏵ {eyebrow}
@@ -132,6 +156,7 @@ const Auth = () => {
           )}
         </form>
       </main>
+      )}
     </div>
   );
 };
