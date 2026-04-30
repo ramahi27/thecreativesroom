@@ -23,12 +23,14 @@ const AddReference = () => {
   const { id: editId } = useParams();
   const isEdit = !!editId;
   const { user, isAdmin, loading: authLoading } = useAuth();
+  // Non-admin users can submit, but only as drafts (and only when creating, not editing)
+  const canSubmitAsDraft = !!user && !isAdmin && !isEdit;
   const { video: VIDEO_CATEGORIES, photo: PHOTO_CATEGORIES } = useCategories();
 
   const [type, setType] = useState<RefType>("video");
   const [title, setTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
-  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [thumbnailUrl] = useState("");
   const [brand, setBrand] = useState("");
   const [agency, setAgency] = useState("");
   const [year, setYear] = useState("");
@@ -78,14 +80,15 @@ const AddReference = () => {
   }, [isEdit, editId, navigate]);
 
   if (authLoading || loadingRecord) return null;
-  if (!isAdmin) {
+  // Editing remains admin-only; new submissions are open to any signed-in user (saved as drafts).
+  if (isEdit && !isAdmin) {
     return (
       <div className="min-h-screen grain">
         <SiteHeader />
         <main className="container max-w-md py-20">
           <h1 className="font-display text-4xl font-black tracking-tighter mb-4">Admin only.</h1>
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Your account doesn't have admin privileges.
+            Only admins can edit existing references.
           </p>
         </main>
       </div>
