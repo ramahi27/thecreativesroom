@@ -40,6 +40,7 @@ const AddReference = () => {
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState<string>("");
   const [loadingRecord, setLoadingRecord] = useState(isEdit);
+  const [submittedToCollection, setSubmittedToCollection] = useState(false);
 
   useEffect(() => {
     document.title = isEdit ? "Edit reference — The Creatives Room" : "Add reference — The Creatives Room";
@@ -175,8 +176,7 @@ const AddReference = () => {
         if (!isAdmin && inserted?.id) {
           // Auto-save user's own submission to their collection
           await supabase.from("bookmarks").insert({ user_id: user!.id, reference_id: inserted.id });
-          toast.success("Submitted! It's saved to your collection and waiting for admin review.");
-          navigate("/bookmarks");
+          setSubmittedToCollection(true);
         } else {
           toast.success("Added to archive");
           navigate("/");
