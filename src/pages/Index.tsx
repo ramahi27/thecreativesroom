@@ -171,7 +171,7 @@ const Index = () => {
                   Explore the<br />creative world.
                 </h3>
                 <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
-                  Browse references shared by other creatives — ad films, photography, design.
+                  Browse references shared by other creatives, ad films, photography, design.
                 </p>
               </div>
               <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
