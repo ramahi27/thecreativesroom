@@ -26,9 +26,15 @@ const ReferenceDetail = () => {
     setLoading(true);
     setActiveMedia(0);
     (async () => {
+      const cols =
+        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,notes,created_at,updated_at,media_items,categories,published,source";
       const [{ data: one }, { data: list }] = await Promise.all([
-        supabase.from("references").select("*").eq("id", id).maybeSingle(),
-        supabase.from("references").select("*").order("created_at", { ascending: false }),
+        supabase.from("references").select(cols).eq("id", id).maybeSingle(),
+        supabase
+          .from("references")
+          .select(cols)
+          .eq("published", true)
+          .order("created_at", { ascending: false }),
       ]);
       setR(one ? (one as unknown as Reference) : null);
       setAllRefs((list as unknown as Reference[]) || []);
