@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -23,8 +23,6 @@ const AddReference = () => {
   const { id: editId } = useParams();
   const isEdit = !!editId;
   const { user, isAdmin, loading: authLoading } = useAuth();
-  // Non-admin users can submit, but only as drafts (and only when creating, not editing)
-  const canSubmitAsDraft = !!user && !isAdmin && !isEdit;
   const { video: VIDEO_CATEGORIES, photo: PHOTO_CATEGORIES } = useCategories();
 
   const [type, setType] = useState<RefType>("video");
