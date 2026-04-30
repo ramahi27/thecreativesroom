@@ -10,7 +10,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/usePageView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, Plus, Bookmark, Compass, ArrowUpRight } from "lucide-react";
+import { Link } from "react-router-dom";
 
 type MediaFilter = "all" | "videos" | "photos";
 
@@ -114,9 +115,69 @@ const Index = () => {
             <span className="italic font-light">ARCHIVE</span>&nbsp;&nbsp;FOR{"\n"}
             CREATIVES.
           </h1>
-          <p className="mt-8 max-w-xl font-body text-base text-muted-foreground leading-relaxed text-left px-0 py-0 my-0">
+          <p className="mt-8 max-w-xl font-body text-base text-muted-foreground leading-relaxed text-left">
             A collaborative library where creatives can add, save, and discover inspiring work from across the creative world.
           </p>
+
+          {/* Visual triad — what you can do here */}
+          <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link
+              to="/add"
+              className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
+            >
+              <div className="flex items-start justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 01 / Add</span>
+                <Plus className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+              </div>
+              <div>
+                <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
+                  Add your<br />own work.
+                </h3>
+                <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
+                  Drop a link or upload a film, photo, or campaign you love.
+                </p>
+              </div>
+              <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+            </Link>
+
+            <Link
+              to="/mycollection"
+              className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
+            >
+              <div className="flex items-start justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 02 / Save</span>
+                <Bookmark className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+              </div>
+              <div>
+                <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
+                  Build your<br />collection.
+                </h3>
+                <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
+                  Bookmark anything that sparks an idea and find it later in <span className="italic">My collection</span>.
+                </p>
+              </div>
+              <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+            </Link>
+
+            <a
+              href="#archive"
+              className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
+            >
+              <div className="flex items-start justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 03 / Discover</span>
+                <Compass className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+              </div>
+              <div>
+                <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
+                  Explore the<br />creative world.
+                </h3>
+                <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
+                  Browse references shared by other creatives — ad films, photography, design.
+                </p>
+              </div>
+              <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+            </a>
+          </div>
         </div>
       </section>
 
@@ -179,7 +240,7 @@ const Index = () => {
       </section>
 
       {/* Grid */}
-      <main className="container py-12">
+      <main id="archive" className="container py-12 scroll-mt-20">
         {loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading archive…</p>
         ) : filtered.length === 0 ? (
