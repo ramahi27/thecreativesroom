@@ -489,7 +489,7 @@ const Settings = () => {
 
         {/* Categories */}
         <section>
-          <h2 className="font-display text-3xl font-black tracking-tighter mb-6">Categories</h2>
+          <h2 className="text-3xl font-black tracking-tighter mb-6 font-serif">Categories</h2>
 
           {catsLoading ? (
             <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
