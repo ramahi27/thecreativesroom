@@ -206,7 +206,7 @@ const Index = () => {
 
       <footer className="border-t hairline mt-20">
         <div className="container py-8 flex items-center justify-between">
-          <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">L&L♥</p>
+          <p className="uppercase tracking-[0.2em] font-serif text-lg text-muted-foreground">L&L♥</p>
         </div>
       </footer>
     </div>
