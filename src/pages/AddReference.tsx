@@ -362,7 +362,7 @@ const AddReference = () => {
               disabled={submitting}
               className="font-mono text-xs uppercase tracking-widest h-12 px-8"
             >
-              {submitting ? progress || "Saving…" : isEdit ? "Save changes" : "Add to archive"}
+              {submitting ? progress || "Saving…" : isEdit ? "Save changes" : isAdmin ? "Add to archive" : "Submit for review"}
             </Button>
             <Button
               type="button"
