@@ -1,0 +1,1 @@
+GRANT SELECT (id, title, type, media_url, source_url, thumbnail_url, brand, agency, year, tags, notes, created_at, updated_at, media_items, categories, published, source) ON public.references TO anon;
