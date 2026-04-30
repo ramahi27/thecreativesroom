@@ -7,6 +7,7 @@ import { ReferenceDetailModal } from "@/components/ReferenceDetailModal";
 import { type Reference } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { useAuth } from "@/hooks/useAuth";
+import { usePageView } from "@/hooks/usePageView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
@@ -33,6 +34,8 @@ const Index = () => {
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>(initial.mediaFilter);
   const [categoryFilter, setCategoryFilter] = useState<string>(initial.categoryFilter);
   const [search, setSearch] = useState(initial.search);
+
+  usePageView(openId ? `/ref/${openId}` : "/", openId ?? null);
 
   useEffect(() => {
     try {
