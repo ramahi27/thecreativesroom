@@ -15,6 +15,7 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<Mode>("signin");
   const [loading, setLoading] = useState(false);
+  const [signedUpEmail, setSignedUpEmail] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Sign in — The Creatives Room";
@@ -34,8 +35,7 @@ const Auth = () => {
           options: { emailRedirectTo: `${window.location.origin}/` },
         });
         if (error) throw error;
-        toast.success("Account created. You can sign in now.");
-        setMode("signin");
+        setSignedUpEmail(email);
       } else if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
