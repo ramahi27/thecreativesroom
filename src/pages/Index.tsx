@@ -120,24 +120,24 @@ const Index = () => {
 
           {/* Visual triad — what you can do here */}
           <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link
-              to="/add"
+            <a
+              href="#archive"
               className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
             >
               <div className="flex items-start justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 01 / Add</span>
-                <Plus className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 01 / Discover</span>
+                <Compass className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
                 <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
-                  Add your<br />own work.
+                  Explore the<br />creative world.
                 </h3>
                 <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
-                  Drop a link or upload a film, photo, or campaign you love.
+                  Browse references shared by other creatives, ad films, photography, design.
                 </p>
               </div>
               <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
-            </Link>
+            </a>
 
             <Link
               to="/mycollection"
@@ -158,24 +158,24 @@ const Index = () => {
               <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
             </Link>
 
-            <a
-              href="#archive"
+            <Link
+              to="/add"
               className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
             >
               <div className="flex items-start justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 03 / Discover</span>
-                <Compass className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 03 / Add</span>
+                <Plus className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
                 <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
-                  Explore the<br />creative world.
+                  Add your<br />own work.
                 </h3>
                 <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
-                  Browse references shared by other creatives, ad films, photography, design.
+                  Drop a link or upload a film, photo, or campaign you love.
                 </p>
               </div>
               <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
-            </a>
+            </Link>
           </div>
         </div>
       </section>
