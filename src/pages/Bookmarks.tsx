@@ -13,7 +13,7 @@ const Bookmarks = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "Bookmarks — The Creatives Room";
+    document.title = "My Collection — The Creatives Room";
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
 
@@ -48,7 +48,7 @@ const Bookmarks = () => {
         <div className="container py-12 md:py-16">
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">⏵ Saved</p>
           <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter uppercase leading-[0.9]">
-            Your <span className="italic font-light">bookmarks</span>.
+            My <span className="italic font-light">Collection</span>.
           </h1>
           <p className="mt-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
             {refs.length} {refs.length === 1 ? "reference" : "references"} saved
@@ -61,9 +61,9 @@ const Bookmarks = () => {
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
         ) : refs.length === 0 ? (
           <div className="py-20 text-center">
-            <p className="font-display text-3xl text-muted-foreground italic">No bookmarks yet.</p>
+            <p className="font-display text-3xl text-muted-foreground italic">Nothing in your collection yet.</p>
             <p className="mt-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
-              Tap the bookmark icon on any reference to save it here.
+              Tap the bookmark icon on any reference to save it to your collection.
             </p>
             <Link
               to="/"

@@ -112,8 +112,7 @@ const Index = () => {
             CREATIVES.
           </h1>
           <p className="mt-8 max-w-xl font-body text-base text-muted-foreground leading-relaxed">
-            A personal vault of commercials, promos, photography, and visual references, curated for the moments when
-            inspiration runs dry.
+            A collaborative library where creatives save, organize, and discover inspiring work.
           </p>
         </div>
       </section>
