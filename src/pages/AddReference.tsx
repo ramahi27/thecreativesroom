@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -28,7 +28,7 @@ const AddReference = () => {
   const [type, setType] = useState<RefType>("video");
   const [title, setTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
-  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [thumbnailUrl] = useState("");
   const [brand, setBrand] = useState("");
   const [agency, setAgency] = useState("");
   const [year, setYear] = useState("");
@@ -59,7 +59,7 @@ const AddReference = () => {
       setType((r.type as RefType) || "video");
       setTitle(r.title || "");
       setSourceUrl(r.source_url || "");
-      setThumbnailUrl(r.thumbnail_url || "");
+      // thumbnail is auto-derived; no manual input
       setBrand(r.brand || "");
       setAgency(r.agency || "");
       setYear(r.year ? String(r.year) : "");
@@ -78,14 +78,15 @@ const AddReference = () => {
   }, [isEdit, editId, navigate]);
 
   if (authLoading || loadingRecord) return null;
-  if (!isAdmin) {
+  // Editing remains admin-only; new submissions are open to any signed-in user (saved as drafts).
+  if (isEdit && !isAdmin) {
     return (
       <div className="min-h-screen grain">
         <SiteHeader />
         <main className="container max-w-md py-20">
           <h1 className="font-display text-4xl font-black tracking-tighter mb-4">Admin only.</h1>
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Your account doesn't have admin privileges.
+            Only admins can edit existing references.
           </p>
         </main>
       </div>
@@ -159,10 +160,27 @@ const AddReference = () => {
         toast.success("Updated");
         navigate(`/ref/${editId}`);
       } else {
-        const { error } = await supabase.from("references").insert({ ...payload, created_by: user!.id });
+        // Admins publish directly; everyone else submits a draft for review.
+        const insertPayload = {
+          ...payload,
+          created_by: user!.id,
+          published: isAdmin,
+        };
+        const { data: inserted, error } = await supabase
+          .from("references")
+          .insert(insertPayload)
+          .select("id")
+          .single();
         if (error) throw error;
-        toast.success("Added to archive");
-        navigate("/");
+        if (!isAdmin && inserted?.id) {
+          // Auto-save user's own submission to their collection
+          await supabase.from("bookmarks").insert({ user_id: user!.id, reference_id: inserted.id });
+          toast.success("Submitted! It's saved to your collection and waiting for admin review.");
+          navigate("/bookmarks");
+        } else {
+          toast.success("Added to archive");
+          navigate("/");
+        }
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
@@ -273,13 +291,25 @@ const AddReference = () => {
             <Label className={labelCls}>
               {isEdit ? "Add more files" : "Upload files (multiple photos & videos allowed)"}
             </Label>
-            <Input
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              onChange={(e) => addFiles(e.target.files)}
-              className={inputCls + " file:text-foreground file:bg-transparent file:border-0"}
-            />
+            <label
+              htmlFor="reference-files"
+              className="relative flex flex-col items-center justify-center gap-2 cursor-pointer bg-secondary hairline border border-dashed border-muted-foreground/40 hover:border-muted-foreground/70 hover:bg-secondary/70 transition-colors px-6 py-12 text-center"
+            >
+              <span className="font-mono text-xs uppercase tracking-widest text-foreground">
+                Click here or drag and drop to add a photo or video.
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Multiple files allowed
+              </span>
+              <input
+                id="reference-files"
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                onChange={(e) => addFiles(e.target.files)}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+            </label>
             {files.length > 0 && (
               <ul className="mt-2 space-y-1">
                 {files.map((f, i) => (
@@ -298,17 +328,6 @@ const AddReference = () => {
                 ))}
               </ul>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label className={labelCls}>Thumbnail URL (optional, auto-detected for YouTube)</Label>
-            <Input
-              type="url"
-              placeholder="https://"
-              value={thumbnailUrl}
-              onChange={(e) => setThumbnailUrl(e.target.value)}
-              className={inputCls}
-            />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -336,10 +355,6 @@ const AddReference = () => {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label className={labelCls}>Notes</Label>
-            <Textarea rows={4} value={notes} onChange={(e) => setNotes(e.target.value)} className={inputCls} />
-          </div>
 
           <div className="flex items-center gap-3 pt-4">
             <Button
@@ -347,7 +362,7 @@ const AddReference = () => {
               disabled={submitting}
               className="font-mono text-xs uppercase tracking-widest h-12 px-8"
             >
-              {submitting ? progress || "Saving…" : isEdit ? "Save changes" : "Add to archive"}
+              {submitting ? progress || "Saving…" : isEdit ? "Save changes" : isAdmin ? "Add to archive" : "Submit for review"}
             </Button>
             <Button
               type="button"
