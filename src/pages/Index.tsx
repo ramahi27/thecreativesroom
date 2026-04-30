@@ -240,7 +240,7 @@ const Index = () => {
       </section>
 
       {/* Grid */}
-      <main className="container py-12">
+      <main id="archive" className="container py-12 scroll-mt-20">
         {loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading archive…</p>
         ) : filtered.length === 0 ? (
