@@ -407,7 +407,7 @@ const Settings = () => {
         <section>
           <header className="flex items-center gap-3 mb-2">
             <Sparkles className="h-5 w-5 text-primary" strokeWidth={1.5} />
-            <h2 className="font-display text-3xl font-black tracking-tighter">Import via link</h2>
+            <h2 className="text-3xl font-black tracking-tighter font-serif">Import via link</h2>
           </header>
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-6">
             Paste a YouTube video / playlist, Vimeo, or web page URL. Playlists become one draft per video. AI cleans titles (strips brand & "case study"), infers brand, categories & tags. Saved to drafts for review.
