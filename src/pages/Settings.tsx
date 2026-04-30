@@ -542,7 +542,7 @@ function CategoryEditor({
 }) {
   return (
     <div>
-      <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground mb-3">
+      <p className="uppercase tracking-[0.25em] text-muted-foreground mb-3 font-serif text-lg">
         {title}
       </p>
       <div className="space-y-2 mb-4">
