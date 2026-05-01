@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
