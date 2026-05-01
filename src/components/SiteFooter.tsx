@@ -24,6 +24,12 @@ export function SiteFooter() {
           >
             Privacy Policy
           </Link>
+          <Link
+            to="/terms"
+            className="font-mono text-[11px] uppercase tracking-widest hover:text-primary transition-colors"
+          >
+            Terms of Service
+          </Link>
           <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
             © {new Date().getFullYear()} The Creatives Room
           </span>

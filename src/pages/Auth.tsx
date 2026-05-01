@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 type Mode = "signin" | "signup" | "forgot";
@@ -17,6 +18,7 @@ const Auth = () => {
   const [mode, setMode] = useState<Mode>("signin");
   const [loading, setLoading] = useState(false);
   const [signedUpEmail, setSignedUpEmail] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     document.title = "Sign in — The Creatives Room";
@@ -30,6 +32,11 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
+        if (!agreed) {
+          toast.error("Please accept the Terms of Service and Privacy Policy.");
+          setLoading(false);
+          return;
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -134,7 +141,36 @@ const Auth = () => {
             </div>
           )}
 
-          <Button type="submit" disabled={loading} className="w-full font-mono text-xs uppercase tracking-widest h-12">
+          {mode === "signup" && (
+            <div className="flex items-start gap-3 pt-1">
+              <Checkbox
+                id="agree"
+                checked={agreed}
+                onCheckedChange={(v) => setAgreed(v === true)}
+                className="mt-0.5"
+              />
+              <Label
+                htmlFor="agree"
+                className="font-mono text-[11px] leading-relaxed text-muted-foreground cursor-pointer"
+              >
+                I agree to the{" "}
+                <Link to="/terms" target="_blank" className="underline text-foreground hover:text-primary">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link to="/privacy" target="_blank" className="underline text-foreground hover:text-primary">
+                  Privacy Policy
+                </Link>
+                .
+              </Label>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            disabled={loading || (mode === "signup" && !agreed)}
+            className="w-full font-mono text-xs uppercase tracking-widest h-12"
+          >
             {loading ? "..." : submitLabel}
           </Button>
 
@@ -153,8 +189,12 @@ const Auth = () => {
               <Button
                 type="button"
                 variant="outline"
-                disabled={loading}
+                disabled={loading || (mode === "signup" && !agreed)}
                 onClick={async () => {
+                  if (mode === "signup" && !agreed) {
+                    toast.error("Please accept the Terms of Service and Privacy Policy.");
+                    return;
+                  }
                   setLoading(true);
                   try {
                     const result = await lovable.auth.signInWithOAuth("google", {

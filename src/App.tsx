@@ -13,6 +13,8 @@ import Bookmarks from "./pages/Bookmarks.tsx";
 import Settings from "./pages/Settings.tsx";
 import Account from "./pages/Account.tsx";
 import Privacy from "./pages/Privacy.tsx";
+import Terms from "./pages/Terms.tsx";
+import { CookieConsent } from "@/components/CookieConsent";
 
 const queryClient = new QueryClient();
 
@@ -35,8 +37,10 @@ const App = () => (
           <Route path="/settings" element={<Settings />} />
           <Route path="/account" element={<Account />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <CookieConsent />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
