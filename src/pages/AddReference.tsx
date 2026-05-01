@@ -131,12 +131,10 @@ const AddReference = () => {
   function addFiles(list: FileList | null) {
     if (!list) return;
     let incoming = Array.from(list);
-    if (!isAdmin) {
-      const before = incoming.length;
-      incoming = incoming.filter((f) => f.type.startsWith("image"));
-      if (incoming.length < before) {
-        toast.error("Only photo uploads are allowed.");
-      }
+    const before = incoming.length;
+    incoming = incoming.filter((f) => f.type.startsWith("image"));
+    if (incoming.length < before) {
+      toast.error("Only photo uploads are allowed. Add videos via the external link field.");
     }
     setFiles((prev) => [...prev, ...incoming]);
   }
@@ -298,17 +296,20 @@ const AddReference = () => {
           </div>
 
           <div className="space-y-2">
-            <Label className={labelCls}>External link (YouTube, Vimeo, IG…)</Label>
+            <Label className={labelCls}>
+              {type === "video" ? "Video link (YouTube, Vimeo, IG…) *" : "External link (YouTube, Vimeo, IG…)"}
+            </Label>
             <Input
               type="url"
+              required={type === "video"}
               placeholder="https://"
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}
               className={inputCls}
             />
-            {!isAdmin && (
+            {type === "video" && (
               <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Note: only photo uploads are accepted from contributors.
+                Videos can only be added via link. Uploads are photo-only.
               </p>
             )}
           </div>
@@ -336,52 +337,48 @@ const AddReference = () => {
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label className={labelCls}>
-              {isEdit
-                ? isAdmin ? "Add more files" : "Add more photos"
-                : isAdmin ? "Upload files (multiple photos & videos allowed)" : "Upload photos (multiple allowed)"}
-            </Label>
-            <label
-              htmlFor="reference-files"
-              className="relative flex flex-col items-center justify-center gap-2 cursor-pointer bg-secondary hairline border border-dashed border-muted-foreground/40 hover:border-muted-foreground/70 hover:bg-secondary/70 transition-colors px-6 py-12 text-center"
-            >
-              <span className="font-mono text-xs uppercase tracking-widest text-foreground">
-                {isAdmin
-                  ? "Click here or drag and drop to add a photo or video."
-                  : "Click here or drag and drop to add a photo."}
-              </span>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                {isAdmin ? "Multiple files allowed" : "Photos only · multiple allowed"}
-              </span>
-              <input
-                id="reference-files"
-                type="file"
-                accept={isAdmin ? "image/*,video/*" : "image/*"}
-                multiple
-                onChange={(e) => addFiles(e.target.files)}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              />
-            </label>
-            {files.length > 0 && (
-              <ul className="mt-2 space-y-1">
-                {files.map((f, i) => (
-                  <li key={i} className="flex items-center justify-between gap-3 bg-secondary px-3 py-2">
-                    <span className="font-mono text-[11px] truncate">
-                      {f.type.startsWith("video") ? "🎬" : "🖼"} {f.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeFile(i)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          {type === "image" && (
+            <div className="space-y-2">
+              <Label className={labelCls}>
+                {isEdit ? "Add more photos" : "Upload photos (multiple allowed)"}
+              </Label>
+              <label
+                htmlFor="reference-files"
+                className="relative flex flex-col items-center justify-center gap-2 cursor-pointer bg-secondary hairline border border-dashed border-muted-foreground/40 hover:border-muted-foreground/70 hover:bg-secondary/70 transition-colors px-6 py-12 text-center"
+              >
+                <span className="font-mono text-xs uppercase tracking-widest text-foreground">
+                  Click here or drag and drop to add a photo.
+                </span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  Photos only · multiple allowed
+                </span>
+                <input
+                  id="reference-files"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => addFiles(e.target.files)}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </label>
+              {files.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {files.map((f, i) => (
+                    <li key={i} className="flex items-center justify-between gap-3 bg-secondary px-3 py-2">
+                      <span className="font-mono text-[11px] truncate">🖼 {f.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeFile(i)}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
