@@ -265,11 +265,12 @@ const Index = () => {
 
       {openId && <ReferenceDetailModal id={openId} onClose={() => navigate("/")} />}
 
-      <footer className="border-t hairline mt-20">
-        <div className="container py-8 flex items-center justify-between">
-          <p className="uppercase tracking-[0.2em] font-serif text-lg text-muted-foreground">L&L♥</p>
+      <SiteFooter />
+      <div className="border-t hairline">
+        <div className="container py-4 flex items-center justify-between">
+          <p className="uppercase tracking-[0.2em] font-serif text-sm text-muted-foreground">L&L♥</p>
         </div>
-      </footer>
+      </div>
     </div>
   );
 };
