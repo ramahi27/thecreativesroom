@@ -308,7 +308,7 @@ const AddReference = () => {
               className={inputCls}
             />
             {type === "video" && (
-              <p className="font-mono. text-[10px] uppercase tracking-widest text-muted-foreground">
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                 Videos can only be added via link. Uploads are photo-only.
               </p>
             )}
