@@ -131,12 +131,10 @@ const AddReference = () => {
   function addFiles(list: FileList | null) {
     if (!list) return;
     let incoming = Array.from(list);
-    if (!isAdmin) {
-      const before = incoming.length;
-      incoming = incoming.filter((f) => f.type.startsWith("image"));
-      if (incoming.length < before) {
-        toast.error("Only photo uploads are allowed.");
-      }
+    const before = incoming.length;
+    incoming = incoming.filter((f) => f.type.startsWith("image"));
+    if (incoming.length < before) {
+      toast.error("Only photo uploads are allowed. Add videos via the external link field.");
     }
     setFiles((prev) => [...prev, ...incoming]);
   }
