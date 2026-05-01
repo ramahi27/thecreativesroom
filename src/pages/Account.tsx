@@ -142,6 +142,7 @@ const Account = () => {
           </Button>
         </section>
       </main>
+      <SiteFooter />
     </div>
   );
 };

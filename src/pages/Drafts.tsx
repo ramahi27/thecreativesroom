@@ -281,6 +281,7 @@ const Drafts = () => {
           </>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 };

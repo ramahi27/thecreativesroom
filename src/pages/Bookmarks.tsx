@@ -177,6 +177,7 @@ const Bookmarks = () => {
           </div>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 };

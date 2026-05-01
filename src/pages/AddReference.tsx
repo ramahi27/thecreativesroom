@@ -428,6 +428,7 @@ const AddReference = () => {
           </div>
         </form>
       </main>
+      <SiteFooter />
     </div>
   );
 };
