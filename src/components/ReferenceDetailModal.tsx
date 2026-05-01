@@ -85,7 +85,29 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     toast.success("Published — now live on the main page");
   }
 
-  async function toggleCategory(cat: string) {
+  async function handleShare() {
+    if (!r) return;
+    const url = `${window.location.origin}/ref/${r.id}`;
+    const shareData = {
+      title: r.title,
+      text: `${r.title} — on The Creatives Room`,
+      url,
+    };
+    try {
+      if (navigator.share && typeof navigator.canShare === "function" ? navigator.canShare(shareData) : !!navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch (err: any) {
+      if (err?.name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied to clipboard");
+    } catch {
+      toast.error("Could not share link");
+    }
+  }
     if (!r) return;
     const current = r.categories || [];
     const nextCats = current.includes(cat) ? current.filter((c) => c !== cat) : [...current, cat];
