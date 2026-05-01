@@ -25,7 +25,7 @@ const AddReference = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const { video: VIDEO_CATEGORIES, photo: PHOTO_CATEGORIES } = useCategories();
 
-  const [type, setType] = useState<RefType>("video");
+  const [type, setType] = useState<RefType>(isAdmin ? "video" : "image");
   const [title, setTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [thumbnailUrl] = useState("");
@@ -238,27 +238,29 @@ const AddReference = () => {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <Label className={labelCls}>Type</Label>
-            <div className="mt-2 flex gap-2">
-              {(["video", "image"] as RefType[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => {
-                    setType(t);
-                    const allowed = t === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES;
-                    setCategories((prev) => prev.filter((c) => (allowed as readonly string[]).includes(c)));
-                  }}
-                  className={`px-4 py-2 font-mono text-xs uppercase tracking-widest border hairline transition-colors ${
-                    type === t ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
+          {isAdmin && (
+            <div>
+              <Label className={labelCls}>Type</Label>
+              <div className="mt-2 flex gap-2">
+                {(["video", "image"] as RefType[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      setType(t);
+                      const allowed = t === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES;
+                      setCategories((prev) => prev.filter((c) => (allowed as readonly string[]).includes(c)));
+                    }}
+                    className={`px-4 py-2 font-mono text-xs uppercase tracking-widest border hairline transition-colors ${
+                      type === t ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div>
             <Label className={labelCls}>Categories (multi-select)</Label>
@@ -295,6 +297,11 @@ const AddReference = () => {
               onChange={(e) => setSourceUrl(e.target.value)}
               className={inputCls}
             />
+            {!isAdmin && (
+              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Note: only photo uploads are accepted from contributors.
+              </p>
+            )}
           </div>
 
           {existingMedia.length > 0 && (
@@ -322,22 +329,26 @@ const AddReference = () => {
 
           <div className="space-y-2">
             <Label className={labelCls}>
-              {isEdit ? "Add more files" : "Upload files (multiple photos & videos allowed)"}
+              {isEdit
+                ? isAdmin ? "Add more files" : "Add more photos"
+                : isAdmin ? "Upload files (multiple photos & videos allowed)" : "Upload photos (multiple allowed)"}
             </Label>
             <label
               htmlFor="reference-files"
               className="relative flex flex-col items-center justify-center gap-2 cursor-pointer bg-secondary hairline border border-dashed border-muted-foreground/40 hover:border-muted-foreground/70 hover:bg-secondary/70 transition-colors px-6 py-12 text-center"
             >
               <span className="font-mono text-xs uppercase tracking-widest text-foreground">
-                Click here or drag and drop to add a photo or video.
+                {isAdmin
+                  ? "Click here or drag and drop to add a photo or video."
+                  : "Click here or drag and drop to add a photo."}
               </span>
               <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Multiple files allowed
+                {isAdmin ? "Multiple files allowed" : "Photos only · multiple allowed"}
               </span>
               <input
                 id="reference-files"
                 type="file"
-                accept="image/*,video/*"
+                accept={isAdmin ? "image/*,video/*" : "image/*"}
                 multiple
                 onChange={(e) => addFiles(e.target.files)}
                 className="absolute inset-0 opacity-0 cursor-pointer"
