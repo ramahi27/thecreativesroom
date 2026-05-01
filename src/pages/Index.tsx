@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { ReferenceDetailModal } from "@/components/ReferenceDetailModal";
 import { type Reference } from "@/lib/references";
@@ -264,11 +265,12 @@ const Index = () => {
 
       {openId && <ReferenceDetailModal id={openId} onClose={() => navigate("/")} />}
 
-      <footer className="border-t hairline mt-20">
-        <div className="container py-8 flex items-center justify-between">
-          <p className="uppercase tracking-[0.2em] font-serif text-lg text-muted-foreground">L&L♥</p>
+      <SiteFooter />
+      <div className="border-t hairline">
+        <div className="container py-4 flex items-center justify-between">
+          <p className="uppercase tracking-[0.2em] font-serif text-sm text-muted-foreground">L&L♥</p>
         </div>
-      </footer>
+      </div>
     </div>
   );
 };
