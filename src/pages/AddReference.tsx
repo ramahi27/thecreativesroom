@@ -129,7 +129,15 @@ const AddReference = () => {
 
   function addFiles(list: FileList | null) {
     if (!list) return;
-    setFiles((prev) => [...prev, ...Array.from(list)]);
+    let incoming = Array.from(list);
+    if (!isAdmin) {
+      const before = incoming.length;
+      incoming = incoming.filter((f) => f.type.startsWith("image"));
+      if (incoming.length < before) {
+        toast.error("Only photo uploads are allowed.");
+      }
+    }
+    setFiles((prev) => [...prev, ...incoming]);
   }
 
   function removeFile(idx: number) {
