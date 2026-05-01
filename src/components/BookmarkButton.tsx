@@ -48,7 +48,7 @@ export function BookmarkButton({ referenceId, variant = "card", className }: Pro
         aria-label={active ? "Remove from collection" : "Add to collection"}
       >
         <Bookmark className={cn("h-3.5 w-3.5", active && "fill-current")} strokeWidth={1.75} />
-        {active ? "Saved" : "Save"}
+        {active ? "Saved" : "Add to My Collection"}
       </button>
     );
   }
