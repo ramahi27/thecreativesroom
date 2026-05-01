@@ -296,17 +296,20 @@ const AddReference = () => {
           </div>
 
           <div className="space-y-2">
-            <Label className={labelCls}>External link (YouTube, Vimeo, IG…)</Label>
+            <Label className={labelCls}>
+              {type === "video" ? "Video link (YouTube, Vimeo, IG…) *" : "External link (YouTube, Vimeo, IG…)"}
+            </Label>
             <Input
               type="url"
+              required={type === "video"}
               placeholder="https://"
               value={sourceUrl}
               onChange={(e) => setSourceUrl(e.target.value)}
               className={inputCls}
             />
-            {!isAdmin && (
-              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                Note: only photo uploads are accepted from contributors.
+            {type === "video" && (
+              <p className="font-mono. text-[10px] uppercase tracking-widest text-muted-foreground">
+                Videos can only be added via link. Uploads are photo-only.
               </p>
             )}
           </div>
