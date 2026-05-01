@@ -9,7 +9,7 @@ import type { Reference, MediaItem } from "@/lib/references";
 import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
-import { ChevronLeft, ChevronRight, ExternalLink, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2 } from "lucide-react";
 
 interface Props {
   id: string;
@@ -83,6 +83,30 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (error) return toast.error(error.message);
     setR({ ...r, published: true } as Reference);
     toast.success("Published — now live on the main page");
+  }
+
+  async function handleShare() {
+    if (!r) return;
+    const url = `${window.location.origin}/ref/${r.id}`;
+    const shareData = {
+      title: r.title,
+      text: `${r.title} — on The Creatives Room`,
+      url,
+    };
+    try {
+      if (navigator.share && typeof navigator.canShare === "function" ? navigator.canShare(shareData) : !!navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch (err: any) {
+      if (err?.name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied to clipboard");
+    } catch {
+      toast.error("Could not share link");
+    }
   }
 
   async function toggleCategory(cat: string) {
@@ -238,6 +262,14 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     </a>
                   )}
                   <BookmarkButton referenceId={r.id} variant="detail" />
+                  <button
+                    onClick={handleShare}
+                    className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary"
+                    aria-label="Share this reference"
+                  >
+                    <Share2 className="h-3 w-3" />
+                    Share
+                  </button>
                 </div>
               </div>
 
