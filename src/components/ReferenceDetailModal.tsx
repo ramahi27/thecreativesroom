@@ -262,6 +262,14 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     </a>
                   )}
                   <BookmarkButton referenceId={r.id} variant="detail" />
+                  <button
+                    onClick={handleShare}
+                    className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary"
+                    aria-label="Share this reference"
+                  >
+                    <Share2 className="h-3 w-3" />
+                    Share
+                  </button>
                 </div>
               </div>
 
