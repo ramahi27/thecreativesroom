@@ -108,6 +108,8 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       toast.error("Could not share link");
     }
   }
+
+  async function toggleCategory(cat: string) {
     if (!r) return;
     const current = r.categories || [];
     const nextCats = current.includes(cat) ? current.filter((c) => c !== cat) : [...current, cat];
