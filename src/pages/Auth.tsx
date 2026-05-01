@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 type Mode = "signin" | "signup" | "forgot";
@@ -17,6 +18,7 @@ const Auth = () => {
   const [mode, setMode] = useState<Mode>("signin");
   const [loading, setLoading] = useState(false);
   const [signedUpEmail, setSignedUpEmail] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
     document.title = "Sign in — The Creatives Room";
@@ -30,6 +32,11 @@ const Auth = () => {
     setLoading(true);
     try {
       if (mode === "signup") {
+        if (!agreed) {
+          toast.error("Please accept the Terms of Service and Privacy Policy.");
+          setLoading(false);
+          return;
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
