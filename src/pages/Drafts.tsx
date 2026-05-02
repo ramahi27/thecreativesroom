@@ -183,16 +183,28 @@ const Drafts = () => {
             </div>
           )}
 
-          {drafts.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {drafts.length > 0 && (
+              <Button
+                onClick={deleteAllOnPage}
+                variant="destructive"
+                size="sm"
+                className="font-mono text-xs uppercase tracking-widest"
+              >
+                <Trash className="h-3.5 w-3.5 mr-2" /> Delete all on this page
+              </Button>
+            )}
             <Button
-              onClick={deleteAllOnPage}
-              variant="destructive"
+              onClick={importAwardWinners}
+              disabled={importing}
+              variant="outline"
               size="sm"
-              className="mt-6 font-mono text-xs uppercase tracking-widest"
+              className="font-mono text-xs uppercase tracking-widest"
             >
-              <Trash className="h-3.5 w-3.5 mr-2" /> Delete all on this page
+              <Award className="h-3.5 w-3.5 mr-2" />
+              {importing ? "Importing…" : "Import award winners"}
             </Button>
-          )}
+          </div>
         </div>
       </section>
 
