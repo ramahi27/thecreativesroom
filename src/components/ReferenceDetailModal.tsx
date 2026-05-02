@@ -83,6 +83,12 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (error) return toast.error(error.message);
     setR({ ...r, published: true } as Reference);
     toast.success("Published — now live on the main page");
+    // If admin came from the Drafts page, return them there with the same filters/page.
+    const returnUrl = sessionStorage.getItem("draftsReturnUrl");
+    if (returnUrl) {
+      sessionStorage.removeItem("draftsReturnUrl");
+      navigate(returnUrl);
+    }
   }
 
   async function handleShare() {
