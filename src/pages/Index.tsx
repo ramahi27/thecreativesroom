@@ -13,10 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Bookmark, Compass, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 type MediaFilter = "all" | "videos" | "photos";
 
 const FILTERS_KEY = "archive:filters";
+const PAGE_SIZE = 100;
 
 const Index = () => {
   const { isAdmin } = useAuth();
@@ -24,6 +26,9 @@ const Index = () => {
   const navigate = useNavigate();
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
 
   const initial = (() => {
     try {
@@ -45,6 +50,20 @@ const Index = () => {
     } catch {}
   }, [mediaFilter, categoryFilter, search]);
 
+  const fetchPage = async (from: number) => {
+    const { data, count, error } = await supabase
+      .from("references")
+      .select(
+        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,notes,created_at,updated_at,media_items,categories,published,source",
+        { count: "exact" }
+      )
+      .eq("published", true)
+      .order("created_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+    if (error) return { list: [] as Reference[], total: 0 };
+    return { list: (data as unknown as Reference[]) || [], total: count ?? 0 };
+  };
+
   useEffect(() => {
     document.title = "The Creatives Room";
     const meta = document.querySelector('meta[name="description"]');
@@ -52,23 +71,27 @@ const Index = () => {
       meta.setAttribute("content", "A curated archive of ad films, commercials, and visual references for creatives.");
 
     (async () => {
-      const { data } = await supabase
-        .from("references")
-        .select(
-          "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,notes,created_at,updated_at,media_items,categories,published,source"
-        )
-        .eq("published", true)
-        .order("created_at", { ascending: false });
-      const list = (data as unknown as Reference[]) || [];
-      // Shuffle so the homepage feels fresh on every visit
-      for (let i = list.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [list[i], list[j]] = [list[j], list[i]];
-      }
+      const { list, total } = await fetchPage(0);
       setRefs(list);
+      setTotalCount(total);
+      setHasMore(list.length < total);
       setLoading(false);
     })();
   }, []);
+
+  const loadMore = async () => {
+    if (loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const { list, total } = await fetchPage(refs.length);
+    setRefs((prev) => {
+      const seen = new Set(prev.map((r) => r.id));
+      const merged = [...prev, ...list.filter((r) => !seen.has(r.id))];
+      setHasMore(merged.length < total);
+      return merged;
+    });
+    setTotalCount(total);
+    setLoadingMore(false);
+  };
 
   const { video: VIDEO_CATEGORIES, photo: PHOTO_CATEGORIES } = useCategories();
 
@@ -255,11 +278,30 @@ const Index = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filtered.map((r) => (
-              <ReferenceCard key={r.id} reference={r} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {filtered.map((r) => (
+                <ReferenceCard key={r.id} reference={r} />
+              ))}
+            </div>
+            <div className="mt-12 flex flex-col items-center gap-3">
+              <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                Showing {filtered.length}
+                {filtered.length !== refs.length ? ` of ${refs.length} loaded` : ""}
+                {totalCount !== null ? ` · ${totalCount} total` : ""}
+              </p>
+              {hasMore && (
+                <Button
+                  variant="outline"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="font-mono text-xs uppercase tracking-widest"
+                >
+                  {loadingMore ? "Loading…" : "Load more"}
+                </Button>
+              )}
+            </div>
+          </>
         )}
       </main>
 
