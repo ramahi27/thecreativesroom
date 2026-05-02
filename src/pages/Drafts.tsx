@@ -240,16 +240,6 @@ const Drafts = () => {
               </Button>
             )}
             <Button
-              onClick={importAwardWinners}
-              disabled={importing}
-              variant="outline"
-              size="sm"
-              className="font-mono text-xs uppercase tracking-widest"
-            >
-              <Award className="h-3.5 w-3.5 mr-2" />
-              {importing ? "Importing…" : "Import award winners"}
-            </Button>
-            <Button
               asChild
               variant="outline"
               size="sm"
