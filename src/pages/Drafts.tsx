@@ -21,14 +21,32 @@ const SOURCE_LABELS: Record<string, string> = {
 
 const Drafts = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [drafts, setDrafts] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => {
+    const p = parseInt(searchParams.get("page") || "0", 10);
+    return Number.isFinite(p) && p >= 0 ? p : 0;
+  });
   const [total, setTotal] = useState(0);
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>(() => searchParams.get("source") || "all");
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
   const [importing, setImporting] = useState(false);
+
+  // Keep URL in sync with filters/page so we can return here with the same view.
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (sourceFilter && sourceFilter !== "all") next.set("source", sourceFilter);
+    if (page > 0) next.set("page", String(page));
+    setSearchParams(next, { replace: true });
+  }, [sourceFilter, page, setSearchParams]);
+
+  // Remember the return URL for when an admin approves a draft from the detail view.
+  useEffect(() => {
+    const qs = searchParams.toString();
+    sessionStorage.setItem("draftsReturnUrl", `/drafts${qs ? `?${qs}` : ""}`);
+  }, [searchParams]);
 
   async function importAwardWinners() {
     setImporting(true);
