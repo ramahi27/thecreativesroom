@@ -8,7 +8,7 @@ import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
-import { Check, Trash2, Trash } from "lucide-react";
+import { Check, Trash2, Trash, Award } from "lucide-react";
 
 const PAGE_SIZE = 24;
 
@@ -28,6 +28,32 @@ const Drafts = () => {
   const [total, setTotal] = useState(0);
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
+  const [importing, setImporting] = useState(false);
+
+  async function importAwardWinners() {
+    setImporting(true);
+    const { data, error } = await supabase.functions.invoke("import-award-winners");
+    setImporting(false);
+    if (error) return toast.error(error.message);
+    const d = data as { new_drafts?: number; folders?: number; folder_links?: number };
+    toast.success(
+      `Imported ${d?.new_drafts ?? 0} new drafts · ${d?.folders ?? 0} folders · ${d?.folder_links ?? 0} folder links`,
+    );
+    setPage(0);
+    // re-fetch by toggling a dependency: easiest is reload the current page
+    const from = 0;
+    const to = PAGE_SIZE - 1;
+    let q = supabase
+      .from("references")
+      .select("*", { count: "exact" })
+      .eq("published", false)
+      .order("created_at", { ascending: false })
+      .range(from, to);
+    if (sourceFilter !== "all") q = q.eq("source", sourceFilter);
+    const { data: rows, count } = await q;
+    setDrafts((rows as unknown as Reference[]) || []);
+    setTotal(count || 0);
+  }
 
   useEffect(() => {
     document.title = "Drafts — The Creatives Room";
@@ -183,16 +209,28 @@ const Drafts = () => {
             </div>
           )}
 
-          {drafts.length > 0 && (
+          <div className="mt-6 flex flex-wrap gap-2">
+            {drafts.length > 0 && (
+              <Button
+                onClick={deleteAllOnPage}
+                variant="destructive"
+                size="sm"
+                className="font-mono text-xs uppercase tracking-widest"
+              >
+                <Trash className="h-3.5 w-3.5 mr-2" /> Delete all on this page
+              </Button>
+            )}
             <Button
-              onClick={deleteAllOnPage}
-              variant="destructive"
+              onClick={importAwardWinners}
+              disabled={importing}
+              variant="outline"
               size="sm"
-              className="mt-6 font-mono text-xs uppercase tracking-widest"
+              className="font-mono text-xs uppercase tracking-widest"
             >
-              <Trash className="h-3.5 w-3.5 mr-2" /> Delete all on this page
+              <Award className="h-3.5 w-3.5 mr-2" />
+              {importing ? "Importing…" : "Import award winners"}
             </Button>
-          )}
+          </div>
         </div>
       </section>
 
