@@ -111,15 +111,28 @@ const Doubletakes = () => {
     if (!isAdmin) return;
     (async () => {
       setLoading(true);
-      // Pull all drafts (cap to 1000 — db default). Should be enough.
-      const { data, error } = await supabase
-        .from("references")
-        .select("*")
-        .eq("published", false)
-        .order("created_at", { ascending: false })
-        .limit(1000);
-      if (error) toast.error(error.message);
-      setDrafts((data as unknown as Reference[]) || []);
+      // Scan BOTH drafts and published references. Pull in pages to avoid
+      // the 1000-row default limit.
+      const all: Reference[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      // Hard upper bound to avoid runaway loops.
+      while (from < 10000) {
+        const { data, error } = await supabase
+          .from("references")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) {
+          toast.error(error.message);
+          break;
+        }
+        const batch = (data as unknown as Reference[]) || [];
+        all.push(...batch);
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+      setDrafts(all);
       setLoading(false);
     })();
   }, [isAdmin]);
@@ -193,7 +206,7 @@ const Doubletakes = () => {
             <span className="italic font-light">double.</span>
           </h1>
           <p className="mt-6 max-w-xl font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Drafts that look suspiciously alike. Compare and decide: keep one, keep both, or delete both.
+            Drafts and published references that look suspiciously alike. Compare and decide: keep one, keep both, or delete either.
           </p>
 
           <div className="mt-8 flex gap-2">
@@ -207,7 +220,7 @@ const Doubletakes = () => {
       <main className="container py-12">
         {loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Scanning {drafts.length} drafts…
+            Scanning {drafts.length} references…
           </p>
         ) : finalPairs.length === 0 ? (
           <div className="py-20 text-center">
@@ -216,7 +229,7 @@ const Doubletakes = () => {
               No doubletakes found.
             </p>
             <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground mt-3">
-              All clear among {drafts.length} drafts.
+              All clear among {drafts.length} references.
             </p>
           </div>
         ) : (
@@ -240,25 +253,38 @@ const Doubletakes = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {[p.a, p.b].map((r) => (
                     <div key={r.id} className="space-y-3">
-                      <ReferenceCard reference={r} />
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          disabled={busy === r.id}
-                          onClick={() => publishOne(r.id)}
-                          className="font-mono text-xs uppercase tracking-widest flex-1"
-                          title="Keep this one and publish it"
+                      <div className="relative">
+                        <ReferenceCard reference={r} />
+                        <span
+                          className={`absolute top-2 left-2 px-2 py-1 font-mono text-[10px] uppercase tracking-widest ${
+                            r.published
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
+                          }`}
                         >
-                          <Check className="h-3.5 w-3.5 mr-2" /> Keep & publish
-                        </Button>
+                          {r.published ? "Published" : "Draft"}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        {!r.published && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            disabled={busy === r.id}
+                            onClick={() => publishOne(r.id)}
+                            className="font-mono text-xs uppercase tracking-widest flex-1"
+                            title="Keep this one and publish it"
+                          >
+                            <Check className="h-3.5 w-3.5 mr-2" /> Keep & publish
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="destructive"
                           disabled={busy === r.id}
                           onClick={() => deleteOne(r.id)}
-                          className="font-mono text-xs uppercase tracking-widest"
-                          title="Delete this draft"
+                          className={`font-mono text-xs uppercase tracking-widest ${r.published ? "flex-1" : ""}`}
+                          title="Delete this reference"
                         >
                           <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
                         </Button>
