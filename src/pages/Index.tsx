@@ -278,11 +278,30 @@ const Index = () => {
             )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filtered.map((r) => (
-              <ReferenceCard key={r.id} reference={r} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {filtered.map((r) => (
+                <ReferenceCard key={r.id} reference={r} />
+              ))}
+            </div>
+            <div className="mt-12 flex flex-col items-center gap-3">
+              <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                Showing {filtered.length}
+                {filtered.length !== refs.length ? ` of ${refs.length} loaded` : ""}
+                {totalCount !== null ? ` · ${totalCount} total` : ""}
+              </p>
+              {hasMore && (
+                <Button
+                  variant="outline"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="font-mono text-xs uppercase tracking-widest"
+                >
+                  {loadingMore ? "Loading…" : "Load more"}
+                </Button>
+              )}
+            </div>
+          </>
         )}
       </main>
 
