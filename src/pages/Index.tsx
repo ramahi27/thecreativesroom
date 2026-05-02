@@ -285,11 +285,7 @@ const Index = () => {
               ))}
             </div>
             <div className="mt-12 flex flex-col items-center gap-3">
-              <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                Showing {filtered.length}
-                {filtered.length !== refs.length ? ` of ${refs.length} loaded` : ""}
-                {totalCount !== null ? ` · ${totalCount} total` : ""}
-              </p>
+              {"\n"}
               {hasMore && (
                 <Button
                   variant="outline"
