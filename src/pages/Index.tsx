@@ -11,7 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/usePageView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Bookmark, Compass, ArrowUpRight } from "lucide-react";
+import { Search, Plus, Bookmark, Compass, ArrowUpRight, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
@@ -256,8 +256,18 @@ const Index = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search client, brand, tag…"
-              className="pl-9 bg-secondary border-0 font-mono text-xs uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
+              className="pl-9 pr-9 bg-secondary border-0 font-mono text-xs uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+              </button>
+            )}
           </div>
         </div>
       </section>
