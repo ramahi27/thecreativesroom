@@ -206,7 +206,7 @@ const Doubletakes = () => {
             <span className="italic font-light">double.</span>
           </h1>
           <p className="mt-6 max-w-xl font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Drafts that look suspiciously alike. Compare and decide: keep one, keep both, or delete both.
+            Drafts and published references that look suspiciously alike. Compare and decide: keep one, keep both, or delete either.
           </p>
 
           <div className="mt-8 flex gap-2">
@@ -220,7 +220,7 @@ const Doubletakes = () => {
       <main className="container py-12">
         {loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-            Scanning {drafts.length} drafts…
+            Scanning {drafts.length} references…
           </p>
         ) : finalPairs.length === 0 ? (
           <div className="py-20 text-center">
@@ -229,7 +229,7 @@ const Doubletakes = () => {
               No doubletakes found.
             </p>
             <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground mt-3">
-              All clear among {drafts.length} drafts.
+              All clear among {drafts.length} references.
             </p>
           </div>
         ) : (
