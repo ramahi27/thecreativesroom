@@ -8,7 +8,7 @@ import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
-import { Check, Trash2, Trash } from "lucide-react";
+import { Check, Trash2, Trash, Award } from "lucide-react";
 
 const PAGE_SIZE = 24;
 
