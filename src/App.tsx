@@ -9,6 +9,7 @@ import Auth from "./pages/Auth.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import AddReference from "./pages/AddReference.tsx";
 import Drafts from "./pages/Drafts.tsx";
+import Doubletakes from "./pages/Doubletakes.tsx";
 import Bookmarks from "./pages/Bookmarks.tsx";
 import Settings from "./pages/Settings.tsx";
 import Account from "./pages/Account.tsx";
@@ -32,6 +33,7 @@ const App = () => (
           <Route path="/edit/:id" element={<AddReference />} />
           <Route path="/ref/:id" element={<Index />} />
           <Route path="/drafts" element={<Drafts />} />
+          <Route path="/drafts/doubletakes" element={<Doubletakes />} />
           <Route path="/bookmarks" element={<Bookmarks />} />
           <Route path="/mycollection" element={<Bookmarks />} />
           <Route path="/settings" element={<Settings />} />
