@@ -111,15 +111,28 @@ const Doubletakes = () => {
     if (!isAdmin) return;
     (async () => {
       setLoading(true);
-      // Pull all drafts (cap to 1000 — db default). Should be enough.
-      const { data, error } = await supabase
-        .from("references")
-        .select("*")
-        .eq("published", false)
-        .order("created_at", { ascending: false })
-        .limit(1000);
-      if (error) toast.error(error.message);
-      setDrafts((data as unknown as Reference[]) || []);
+      // Scan BOTH drafts and published references. Pull in pages to avoid
+      // the 1000-row default limit.
+      const all: Reference[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      // Hard upper bound to avoid runaway loops.
+      while (from < 10000) {
+        const { data, error } = await supabase
+          .from("references")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(from, from + pageSize - 1);
+        if (error) {
+          toast.error(error.message);
+          break;
+        }
+        const batch = (data as unknown as Reference[]) || [];
+        all.push(...batch);
+        if (batch.length < pageSize) break;
+        from += pageSize;
+      }
+      setDrafts(all);
       setLoading(false);
     })();
   }, [isAdmin]);
