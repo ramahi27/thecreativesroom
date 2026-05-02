@@ -13,10 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Search, Plus, Bookmark, Compass, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 type MediaFilter = "all" | "videos" | "photos";
 
 const FILTERS_KEY = "archive:filters";
+const PAGE_SIZE = 100;
 
 const Index = () => {
   const { isAdmin } = useAuth();
