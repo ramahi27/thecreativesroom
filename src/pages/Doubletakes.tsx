@@ -253,25 +253,38 @@ const Doubletakes = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                   {[p.a, p.b].map((r) => (
                     <div key={r.id} className="space-y-3">
-                      <ReferenceCard reference={r} />
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="default"
-                          disabled={busy === r.id}
-                          onClick={() => publishOne(r.id)}
-                          className="font-mono text-xs uppercase tracking-widest flex-1"
-                          title="Keep this one and publish it"
+                      <div className="relative">
+                        <ReferenceCard reference={r} />
+                        <span
+                          className={`absolute top-2 left-2 px-2 py-1 font-mono text-[10px] uppercase tracking-widest ${
+                            r.published
+                              ? "bg-primary text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
+                          }`}
                         >
-                          <Check className="h-3.5 w-3.5 mr-2" /> Keep & publish
-                        </Button>
+                          {r.published ? "Published" : "Draft"}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        {!r.published && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            disabled={busy === r.id}
+                            onClick={() => publishOne(r.id)}
+                            className="font-mono text-xs uppercase tracking-widest flex-1"
+                            title="Keep this one and publish it"
+                          >
+                            <Check className="h-3.5 w-3.5 mr-2" /> Keep & publish
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           variant="destructive"
                           disabled={busy === r.id}
                           onClick={() => deleteOne(r.id)}
-                          className="font-mono text-xs uppercase tracking-widest"
-                          title="Delete this draft"
+                          className={`font-mono text-xs uppercase tracking-widest ${r.published ? "flex-1" : ""}`}
+                          title="Delete this reference"
                         >
                           <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
                         </Button>
