@@ -33,7 +33,7 @@ const Drafts = () => {
   const [total, setTotal] = useState(0);
   const [sourceFilter, setSourceFilter] = useState<string>(() => searchParams.get("source") || "all");
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
-  const [importing, setImporting] = useState(false);
+  
 
   // Keep URL in sync with filters/page so we can return here with the same view.
   useEffect(() => {
