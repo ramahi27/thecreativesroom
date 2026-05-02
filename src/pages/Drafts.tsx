@@ -8,7 +8,7 @@ import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
-import { Check, Trash2, Trash, Award, Copy } from "lucide-react";
+import { Check, Trash2, Trash, Copy } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const PAGE_SIZE = 24;
@@ -33,7 +33,7 @@ const Drafts = () => {
   const [total, setTotal] = useState(0);
   const [sourceFilter, setSourceFilter] = useState<string>(() => searchParams.get("source") || "all");
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
-  const [importing, setImporting] = useState(false);
+  
 
   // Keep URL in sync with filters/page so we can return here with the same view.
   useEffect(() => {
@@ -49,30 +49,7 @@ const Drafts = () => {
     sessionStorage.setItem("draftsReturnUrl", `/drafts${qs ? `?${qs}` : ""}`);
   }, [searchParams]);
 
-  async function importAwardWinners() {
-    setImporting(true);
-    const { data, error } = await supabase.functions.invoke("import-award-winners");
-    setImporting(false);
-    if (error) return toast.error(error.message);
-    const d = data as { new_drafts?: number; folders?: number; folder_links?: number };
-    toast.success(
-      `Imported ${d?.new_drafts ?? 0} new drafts · ${d?.folders ?? 0} folders · ${d?.folder_links ?? 0} folder links`,
-    );
-    setPage(0);
-    // re-fetch by toggling a dependency: easiest is reload the current page
-    const from = 0;
-    const to = PAGE_SIZE - 1;
-    let q = supabase
-      .from("references")
-      .select("*", { count: "exact" })
-      .eq("published", false)
-      .order("created_at", { ascending: false })
-      .range(from, to);
-    if (sourceFilter !== "all") q = q.eq("source", sourceFilter);
-    const { data: rows, count } = await q;
-    setDrafts((rows as unknown as Reference[]) || []);
-    setTotal(count || 0);
-  }
+
 
   useEffect(() => {
     document.title = "Drafts — The Creatives Room";
@@ -239,16 +216,6 @@ const Drafts = () => {
                 <Trash className="h-3.5 w-3.5 mr-2" /> Delete all on this page
               </Button>
             )}
-            <Button
-              onClick={importAwardWinners}
-              disabled={importing}
-              variant="outline"
-              size="sm"
-              className="font-mono text-xs uppercase tracking-widest"
-            >
-              <Award className="h-3.5 w-3.5 mr-2" />
-              {importing ? "Importing…" : "Import award winners"}
-            </Button>
             <Button
               asChild
               variant="outline"
