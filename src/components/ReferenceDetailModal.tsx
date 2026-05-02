@@ -74,6 +74,13 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     const { error } = await supabase.from("references").delete().eq("id", r.id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
+    // If admin came from the Drafts page, return them there with the same filters/page.
+    const returnUrl = sessionStorage.getItem("draftsReturnUrl");
+    if (returnUrl) {
+      sessionStorage.removeItem("draftsReturnUrl");
+      navigate(returnUrl);
+      return;
+    }
     onClose();
   }
 
