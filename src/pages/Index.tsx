@@ -378,6 +378,40 @@ const Index = () => {
         </div>
       </section>
 
+      {/* Matched for your brief */}
+      {matches.length > 0 && (
+        <section id="matched" className="container pt-12 scroll-mt-20">
+          <div className="flex items-end justify-between mb-6 gap-4 flex-wrap">
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-primary mb-2 flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Matched for your brief
+              </p>
+              <h2 className="font-display text-3xl md:text-4xl font-black tracking-tighter leading-none">
+                {matches.length} hand-picked references.
+              </h2>
+            </div>
+            <Button
+              variant="ghost"
+              onClick={clearMatches}
+              className="font-mono text-xs uppercase tracking-widest"
+            >
+              <X className="h-3.5 w-3.5" /> Clear
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {matches.map(({ ref, reason }) => (
+              <div key={ref.id} className="flex flex-col gap-2">
+                <ReferenceCard reference={ref} />
+                <p className="font-mono text-[11px] leading-snug text-muted-foreground italic px-1">
+                  ⏵ {reason}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-12 border-t hairline" />
+        </section>
+      )}
+
       {/* Grid */}
       <main id="archive" className="container py-12 scroll-mt-20">
         {loading ? (
