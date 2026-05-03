@@ -351,7 +351,7 @@ const Bookmarks = () => {
                 </div>
               )}
 
-              {(activeFolder !== null || filtered.length > 0) && (
+              {activeFolder !== null && (
                 <div>
                   {activeFolder !== null && (
                     <div className="flex items-baseline justify-between mb-4">
