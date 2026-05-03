@@ -431,6 +431,51 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                 )}
               </aside>
             </div>
+
+            {related.length > 0 && (
+              <div className="mt-12 border-t hairline pt-8">
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-4">
+                  ⏵ You might also like
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {related.map((rel) => {
+                    const thumb = rel.thumbnail_url || (rel.type === "image" ? rel.media_url : null);
+                    return (
+                      <button
+                        key={rel.id}
+                        onClick={() => navigate(`/ref/${rel.id}`)}
+                        className="group text-left"
+                      >
+                        <div className="relative aspect-video overflow-hidden bg-secondary border hairline">
+                          {thumb ? (
+                            <img
+                              src={thumb}
+                              alt={rel.title}
+                              loading="lazy"
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                                {rel.type}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="mt-2 font-serif text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                          {rel.title}
+                        </p>
+                        {(rel.brand || rel.agency) && (
+                          <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground line-clamp-1">
+                            {rel.brand || rel.agency}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DialogContent>
