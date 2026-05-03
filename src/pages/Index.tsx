@@ -286,11 +286,18 @@ const Index = () => {
               <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Brief
             </span>
             <div className="relative flex-1 min-w-[240px]">
-              <Input
+              <Textarea
                 value={brief}
                 onChange={(e) => setBrief(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    runBriefMatch();
+                  }
+                }}
+                rows={2}
                 placeholder={"What do you need references for?\ne.g. I'm looking for a luxury fragrance commercial with a dark, cinematic, intimate tone"}
-                className="pr-9 bg-secondary border-0 font-mono text-xs placeholder:normal-case"
+                className="pr-9 bg-secondary border-0 font-mono text-xs placeholder:normal-case resize-none min-h-[56px]"
                 disabled={matching}
               />
               {brief && !matching && (
