@@ -324,7 +324,7 @@ const Index = () => {
                 }}
                 rows={2}
                 placeholder={"What do you need references for?\ne.g. I'm looking for a luxury fragrance commercial with a dark, cinematic, intimate tone"}
-                className="pr-9 bg-secondary border-0 font-mono text-xs placeholder:normal-case resize-none min-h-[56px]"
+                className="pr-9 bg-secondary border-0 font-mono text-xs placeholder:normal-case resize-none min-h-[96px] md:min-h-[56px]"
                 disabled={matching}
               />
               {brief && !matching && (
