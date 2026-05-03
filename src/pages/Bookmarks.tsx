@@ -302,105 +302,87 @@ const Bookmarks = () => {
             </Link>
           </div>
         ) : (
-          <div className="flex flex-col lg:flex-row gap-8">
-            <FolderSidebar
-              folders={folders}
-              countForFolder={countForFolder}
-              totalCount={refs.length}
-              uncategorizedCount={uncategorizedIds.size}
-              activeId={activeFolder}
-              onSelect={setActiveFolder}
-              onCreate={(name) => createFolder(name)}
-              onRename={renameFolder}
-              onDelete={(id) => {
-                if (activeFolder === id) setActiveFolder(null);
-                deleteFolder(id);
-              }}
-              onDropOnFolder={handleDropOnFolder}
-              draggingActive={dragging}
-            />
-
-            <div className="flex-1 min-w-0 space-y-10">
-              {activeFolder === null && (
-                <div>
-                  <div className="flex items-baseline justify-between mb-4">
-                    <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                      Collections
-                    </h2>
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {folders.length} {folders.length === 1 ? "folder" : "folders"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                    {folders.map((f) => {
-                      const folderRefs = refs.filter((r) =>
-                        items.some((it) => it.folder_id === f.id && it.reference_id === r.id),
-                      );
-                      return (
-                        <FolderGridCard
-                          key={f.id}
-                          folder={f}
-                          references={folderRefs.slice(0, 3)}
-                          count={countForFolder(f.id)}
-                          onClick={() => setActiveFolder(f.id)}
-                        />
-                      );
-                    })}
-                    <NewFolderCard onClick={() => openCreateFolderDialog([])} />
-                  </div>
+          <div>
+            {activeFolder === null ? (
+              <div>
+                <div className="flex items-baseline justify-between mb-5">
+                  <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                    Collections
+                  </h2>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {folders.length} {folders.length === 1 ? "folder" : "folders"}
+                  </span>
                 </div>
-              )}
-
-              {(activeFolder !== null || filtered.length > 0) && (
-                <div>
-                  {activeFolder !== null && (
-                    <div className="flex items-baseline justify-between mb-4">
-                      <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                        {activeFolder === "uncategorized"
-                          ? "Unsorted"
-                          : folders.find((f) => f.id === activeFolder)?.name}
-                      </h2>
-                      <button
-                        type="button"
-                        onClick={() => setActiveFolder(null)}
-                        className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
-                      >
-                        ← All collections
-                      </button>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {folders.map((f) => {
+                    const folderRefs = refs.filter((r) =>
+                      items.some((it) => it.folder_id === f.id && it.reference_id === r.id),
+                    );
+                    return (
+                      <FolderGridCard
+                        key={f.id}
+                        folder={f}
+                        references={folderRefs.slice(0, 3)}
+                        count={countForFolder(f.id)}
+                        onClick={() => setActiveFolder(f.id)}
+                      />
+                    );
+                  })}
+                  {uncategorizedIds.size > 0 && (
+                    <FolderGridCard
+                      folder={{ id: "uncategorized", name: "Unsorted", color: null, position: 0 }}
+                      references={refs.filter((r) => uncategorizedIds.has(r.id)).slice(0, 3)}
+                      count={uncategorizedIds.size}
+                      onClick={() => setActiveFolder("uncategorized")}
+                    />
                   )}
-                  {filtered.length === 0 ? (
-                    <div className="py-20 text-center">
-                      <p className="font-display text-3xl text-muted-foreground italic">
-                        Nothing here.
-                      </p>
-                      <p className="mt-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-                        Drag a project onto a folder, or use the folder menu on a card.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
-                      {filtered.map((r) => (
-                        <CollectionCard
-                          key={r.id}
-                          reference={r}
-                          folders={folders}
-                          inFolderIds={foldersForReference(r.id)}
-                          selected={selected.has(r.id)}
-                          selectionMode={selectionMode}
-                          onToggleSelect={toggleSelect}
-                          onAddToFolder={addToFolder}
-                          onRemoveFromFolder={removeFromFolder}
-                          onCreateFolder={() => openCreateFolderDialog([r.id])}
-                          onDragStart={() => setDragging(true)}
-                          onDragEnd={() => setDragging(false)}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  <NewFolderCard onClick={() => openCreateFolderDialog([])} />
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div>
+                <div className="flex items-baseline justify-between mb-5">
+                  <h2 className="font-display text-3xl font-bold tracking-tight">
+                    {activeFolder === "uncategorized"
+                      ? "Unsorted"
+                      : folders.find((f) => f.id === activeFolder)?.name}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={() => setActiveFolder(null)}
+                    className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                  >
+                    ← All collections
+                  </button>
+                </div>
+                {filtered.length === 0 ? (
+                  <div className="py-20 text-center">
+                    <p className="font-display text-3xl text-muted-foreground italic">
+                      Nothing here.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    {filtered.map((r) => (
+                      <CollectionCard
+                        key={r.id}
+                        reference={r}
+                        folders={folders}
+                        inFolderIds={foldersForReference(r.id)}
+                        selected={selected.has(r.id)}
+                        selectionMode={selectionMode}
+                        onToggleSelect={toggleSelect}
+                        onAddToFolder={addToFolder}
+                        onRemoveFromFolder={removeFromFolder}
+                        onCreateFolder={() => openCreateFolderDialog([r.id])}
+                        onDragStart={() => setDragging(true)}
+                        onDragEnd={() => setDragging(false)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </main>
