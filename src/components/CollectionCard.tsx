@@ -76,7 +76,7 @@ export function CollectionCard({
       </div>
 
       {/* Folder menu */}
-      <div className="absolute top-3 right-12 z-20 opacity-0 group-hover/wrapper:opacity-100 transition-opacity">
+      <div className="absolute top-3 right-12 z-20 opacity-70 group-hover/wrapper:opacity-100 transition-opacity">
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           <DropdownMenuTrigger asChild>
             <Button
