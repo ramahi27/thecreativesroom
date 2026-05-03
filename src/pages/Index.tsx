@@ -56,6 +56,10 @@ const Index = () => {
       return;
     }
     setMatching(true);
+    // Reset filters so matches are evaluated across all categories
+    setMediaFilter("all");
+    setCategoryFilter("all");
+    setSearch("");
     try {
       const { data, error } = await supabase.functions.invoke("match-brief", {
         body: { brief: text },
