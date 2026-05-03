@@ -22,6 +22,7 @@ export function ReferenceCard({ reference: r }: Props) {
     >
       <div className="relative aspect-video overflow-hidden bg-muted">
         <BookmarkButton referenceId={r.id} />
+        <FolderPickerButton referenceId={r.id} />
         {thumb ? (
           <img
             src={thumb}
