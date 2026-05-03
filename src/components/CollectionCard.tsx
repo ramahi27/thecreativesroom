@@ -125,6 +125,40 @@ export function CollectionCard({
       </div>
 
       <ReferenceCard reference={r} />
+
+      {inFolderIds.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {inFolderIds.map((fid) => {
+            const f = folders.find((x) => x.id === fid);
+            if (!f) return null;
+            const color = f.color || "hsl(var(--muted-foreground))";
+            return (
+              <span
+                key={fid}
+                className="inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 border hairline bg-background/60 backdrop-blur-sm font-mono text-[10px] uppercase tracking-widest group/chip"
+              >
+                <span
+                  className="h-2 w-2 rounded-full"
+                  style={{ backgroundColor: color }}
+                />
+                <span className="truncate max-w-[120px]">{f.name}</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onRemoveFromFolder(fid, r.id);
+                  }}
+                  className="h-4 w-4 inline-flex items-center justify-center rounded-sm hover:bg-destructive/20 hover:text-destructive transition-colors"
+                  aria-label={`Remove from ${f.name}`}
+                >
+                  <X className="h-2.5 w-2.5" strokeWidth={2} />
+                </button>
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
