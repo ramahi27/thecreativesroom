@@ -95,11 +95,10 @@ const Index = () => {
     setRefs((prev) => {
       const seen = new Set(prev.map((r) => r.id));
       const fresh = list.filter((r) => !seen.has(r.id));
-      const merged = [...prev, ...shuffle(fresh)];
-      setHasMore(merged.length < total);
-      return merged;
+      return [...prev, ...shuffle(fresh)];
     });
     setTotalCount(total);
+    setHasMore(refs.length + list.length < total);
     setLoadingMore(false);
   };
 
@@ -136,12 +135,6 @@ const Index = () => {
     });
   }, [refs, mediaFilter, categoryFilter, search]);
 
-  // Auto-load more pages when user is filtering/searching so all matches show
-  useEffect(() => {
-    const isFiltering = mediaFilter !== "all" || categoryFilter !== "all" || search.trim() !== "";
-    if (!isFiltering || loading || loadingMore || !hasMore) return;
-    loadMore();
-  }, [mediaFilter, categoryFilter, search, hasMore, loading, loadingMore, refs.length]);
 
   return (
     <div className="min-h-screen grain">
@@ -311,30 +304,18 @@ const Index = () => {
                 <ReferenceCard key={r.id} reference={r} />
               ))}
             </div>
-            {(() => {
-              const isFiltering = mediaFilter !== "all" || categoryFilter !== "all" || search.trim() !== "";
-              if (!hasMore) return null;
-              return (
-                <div className="mt-12 flex flex-col items-center gap-3">
-                  {isFiltering ? (
-                    loadingMore && (
-                      <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                        Loading more matches…
-                      </p>
-                    )
-                  ) : (
-                    <Button
-                      variant="outline"
-                      onClick={loadMore}
-                      disabled={loadingMore}
-                      className="font-mono text-xs uppercase tracking-widest"
-                    >
-                      {loadingMore ? "Loading…" : "Load more"}
-                    </Button>
-                  )}
-                </div>
-              );
-            })()}
+            {hasMore && (
+              <div className="mt-12 flex flex-col items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                  className="font-mono text-xs uppercase tracking-widest"
+                >
+                  {loadingMore ? "Loading…" : "Load more"}
+                </Button>
+              </div>
+            )}
           </>
         )}
       </main>
