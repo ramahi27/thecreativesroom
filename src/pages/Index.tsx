@@ -214,14 +214,37 @@ const Index = () => {
           {/* Description removed as requested */}
 
 
-          {/* Visual triad — what you can do here */}
-          <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Visual quad — what you can do here */}
+          <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                document.querySelector<HTMLTextAreaElement>('textarea[placeholder^="What do you need"]')?.focus();
+                window.scrollTo({ top: window.innerHeight * 0.6, behavior: "smooth" });
+              }}
+              className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary text-left"
+            >
+              <div className="flex items-start justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 01 / Search by brief</span>
+                <Sparkles className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+              </div>
+              <div>
+                <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
+                  Tell us what<br />you need.
+                </h3>
+                <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
+                  Tell us what you need, we'll find references that fit your direction.
+                </p>
+              </div>
+              <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+            </button>
+
             <a
               href="#archive"
               className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
             >
               <div className="flex items-start justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 01 / Discover</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 02 / Discover</span>
                 <Compass className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
@@ -240,7 +263,7 @@ const Index = () => {
               className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
             >
               <div className="flex items-start justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 02 / Save</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 03 / Save</span>
                 <Bookmark className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
@@ -259,7 +282,7 @@ const Index = () => {
               className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
             >
               <div className="flex items-start justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 03 / Add</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 04 / Add</span>
                 <Plus className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
@@ -273,7 +296,6 @@ const Index = () => {
               <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
             </Link>
           </div>
-        </div>
       </section>
 
       {/* Filter bar */}
