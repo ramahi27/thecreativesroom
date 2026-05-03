@@ -100,8 +100,9 @@ export function FolderPickerButton({ referenceId, className }: Props) {
             onClick={handleTriggerClick}
             aria-label="Add to folder"
             className={cn(
-              "absolute top-3 right-12 z-10 h-8 w-8 flex items-center justify-center rounded-full backdrop-blur-md transition-all",
-              "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+              "absolute z-10 h-8 w-8 flex items-center justify-center rounded-full backdrop-blur-md transition-all",
+              "top-[5.25rem] left-3 opacity-100",
+              "md:top-3 md:right-12 md:left-auto md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100",
               active
                 ? "opacity-100 bg-primary text-primary-foreground"
                 : "bg-background/80 text-foreground hover:bg-background",

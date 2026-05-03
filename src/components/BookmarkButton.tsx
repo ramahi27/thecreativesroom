@@ -59,8 +59,9 @@ export function BookmarkButton({ referenceId, variant = "card", className }: Pro
       aria-pressed={active}
       aria-label={active ? "Remove from collection" : "Add to collection"}
       className={cn(
-        "absolute top-3 right-3 z-10 h-8 w-8 flex items-center justify-center rounded-full backdrop-blur-md transition-all",
-        "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+        "absolute z-10 h-8 w-8 flex items-center justify-center rounded-full backdrop-blur-md transition-all",
+        "top-12 left-3 opacity-100",
+        "md:top-3 md:right-3 md:left-auto md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100",
         active
           ? "opacity-100 bg-primary text-primary-foreground"
           : "bg-background/80 text-foreground hover:bg-background",
