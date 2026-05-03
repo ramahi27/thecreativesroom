@@ -68,6 +68,16 @@ export function useBookmarks() {
     loadFor(user.id).then(() => setLoading(false));
   }, [user]);
 
+  useEffect(() => {
+    const handler = () => {
+      if (!user) return;
+      loaded = false;
+      loadFor(user.id);
+    };
+    window.addEventListener("bookmarks:refresh", handler);
+    return () => window.removeEventListener("bookmarks:refresh", handler);
+  }, [user]);
+
   const refresh = useCallback(async () => {
     if (!user) return;
     loaded = false;
