@@ -95,11 +95,10 @@ const Index = () => {
     setRefs((prev) => {
       const seen = new Set(prev.map((r) => r.id));
       const fresh = list.filter((r) => !seen.has(r.id));
-      const merged = [...prev, ...shuffle(fresh)];
-      setHasMore(merged.length < total);
-      return merged;
+      return [...prev, ...shuffle(fresh)];
     });
     setTotalCount(total);
+    setHasMore(refs.length + list.length < total);
     setLoadingMore(false);
   };
 
