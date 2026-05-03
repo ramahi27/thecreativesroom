@@ -11,9 +11,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/usePageView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Bookmark, Compass, ArrowUpRight, X } from "lucide-react";
+import { Search, Plus, Bookmark, Compass, ArrowUpRight, X, Sparkles, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type MediaFilter = "all" | "videos" | "photos";
 
