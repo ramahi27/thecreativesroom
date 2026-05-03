@@ -3,6 +3,7 @@ import type { Reference } from "@/lib/references";
 import { detectPlatform } from "@/lib/references";
 import { Play, ImageIcon, Link2 } from "lucide-react";
 import { BookmarkButton } from "@/components/BookmarkButton";
+import { FolderPickerButton } from "@/components/FolderPickerButton";
 
 interface Props {
   reference: Reference;
