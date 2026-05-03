@@ -60,6 +60,38 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const goPrev = useCallback(() => prev && navigate(`/ref/${prev.id}`), [prev, navigate]);
   const goNext = useCallback(() => next && navigate(`/ref/${next.id}`), [next, navigate]);
 
+  const related = useMemo(() => {
+    if (!r || allRefs.length === 0) return [] as Reference[];
+    const myTags = new Set((r.tags || []).map((t) => t.toLowerCase()));
+    const myCats = new Set((r.categories || []).map((c) => c.toLowerCase()));
+    const myBrand = (r.brand || "").toLowerCase().trim();
+    const myAgency = (r.agency || "").toLowerCase().trim();
+    const scored = allRefs
+      .filter((x) => x.id !== r.id)
+      .map((x) => {
+        let score = 0;
+        const tagOverlap = (x.tags || []).reduce(
+          (n, t) => n + (myTags.has(t.toLowerCase()) ? 1 : 0),
+          0,
+        );
+        score += tagOverlap * 3;
+        const catOverlap = (x.categories || []).reduce(
+          (n, c) => n + (myCats.has(c.toLowerCase()) ? 1 : 0),
+          0,
+        );
+        score += catOverlap * 2;
+        if (myBrand && (x.brand || "").toLowerCase().trim() === myBrand) score += 4;
+        if (myAgency && (x.agency || "").toLowerCase().trim() === myAgency) score += 2;
+        if (x.type === r.type) score += 1;
+        return { x, score };
+      })
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 6)
+      .map((s) => s.x);
+    return scored;
+  }, [r, allRefs]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "ArrowLeft") goPrev();
@@ -399,6 +431,51 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                 )}
               </aside>
             </div>
+
+            {related.length > 0 && (
+              <div className="mt-12 border-t hairline pt-8">
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-4">
+                  ⏵ You might also like
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                  {related.map((rel) => {
+                    const thumb = rel.thumbnail_url || (rel.type === "image" ? rel.media_url : null);
+                    return (
+                      <button
+                        key={rel.id}
+                        onClick={() => navigate(`/ref/${rel.id}`)}
+                        className="group text-left"
+                      >
+                        <div className="relative aspect-video overflow-hidden bg-secondary border hairline">
+                          {thumb ? (
+                            <img
+                              src={thumb}
+                              alt={rel.title}
+                              loading="lazy"
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                                {rel.type}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <p className="mt-2 font-serif text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                          {rel.title}
+                        </p>
+                        {(rel.brand || rel.agency) && (
+                          <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground line-clamp-1">
+                            {rel.brand || rel.agency}
+                          </p>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </DialogContent>
