@@ -12,7 +12,7 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { FolderPlus, MoreVertical } from "lucide-react";
+import { FolderPlus, X } from "lucide-react";
 import type { Folder } from "@/hooks/useFolders";
 
 interface Props {
