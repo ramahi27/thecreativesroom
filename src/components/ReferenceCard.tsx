@@ -3,6 +3,7 @@ import type { Reference } from "@/lib/references";
 import { detectPlatform } from "@/lib/references";
 import { Play, ImageIcon, Link2 } from "lucide-react";
 import { BookmarkButton } from "@/components/BookmarkButton";
+import { FolderPickerButton } from "@/components/FolderPickerButton";
 
 interface Props {
   reference: Reference;
@@ -21,6 +22,7 @@ export function ReferenceCard({ reference: r }: Props) {
     >
       <div className="relative aspect-video overflow-hidden bg-muted">
         <BookmarkButton referenceId={r.id} />
+        <FolderPickerButton referenceId={r.id} />
         {thumb ? (
           <img
             src={thumb}
