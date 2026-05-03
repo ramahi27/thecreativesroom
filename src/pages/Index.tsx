@@ -273,7 +273,46 @@ const Index = () => {
 
       {/* Filter bar */}
       <section className="border-b hairline bg-background/80 backdrop-blur-xl">
-        <div className="container py-4 flex flex-wrap items-center gap-4">
+        <div className="container pt-4 pb-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              runBriefMatch();
+            }}
+            className="flex flex-wrap items-center gap-3"
+          >
+            <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Brief
+            </span>
+            <div className="relative flex-1 min-w-[240px]">
+              <Input
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+                placeholder="Describe your brief — e.g. bold youthful sneaker launch, energetic, neon"
+                className="pr-9 bg-secondary border-0 font-mono text-xs placeholder:normal-case"
+                disabled={matching}
+              />
+              {brief && !matching && (
+                <button
+                  type="button"
+                  onClick={clearMatches}
+                  aria-label="Clear brief"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                </button>
+              )}
+            </div>
+            <Button
+              type="submit"
+              disabled={matching}
+              className="font-mono text-xs uppercase tracking-widest"
+            >
+              {matching ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching…</> : "Match brief"}
+            </Button>
+          </form>
+        </div>
+        <div className="container py-3 flex flex-wrap items-center gap-4">
           <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Filter</span>
           <Select
             value={mediaFilter}
