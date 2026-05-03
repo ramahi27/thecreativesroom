@@ -262,7 +262,7 @@ const Index = () => {
                   Add your<br />favourite work.
                 </h3>
                 <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
-                  Drop a film link or upload photo or campaign you love.
+                  Save references from anywhere, no more lost links or messy folders
                 </p>
               </div>
               <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
@@ -288,7 +288,7 @@ const Index = () => {
               <Input
                 value={brief}
                 onChange={(e) => setBrief(e.target.value)}
-                placeholder="Describe your brief — e.g. bold youthful sneaker launch, energetic, neon"
+                placeholder="What are you working on? — e.g. I’m working on a luxury fragrance campaign with a dark, cinematic, intimate tone"
                 className="pr-9 bg-secondary border-0 font-mono text-xs placeholder:normal-case"
                 disabled={matching}
               />
