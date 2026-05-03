@@ -288,7 +288,7 @@ const Index = () => {
               <Input
                 value={brief}
                 onChange={(e) => setBrief(e.target.value)}
-                placeholder="What are you working on? — e.g. I’m working on a luxury fragrance campaign with a dark, cinematic, intimate tone"
+                placeholder={"What do you need references for?\ne.g. I'm looking for a luxury fragrance commercial with a dark, cinematic, intimate tone"}
                 className="pr-9 bg-secondary border-0 font-mono text-xs placeholder:normal-case"
                 disabled={matching}
               />
