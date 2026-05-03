@@ -322,9 +322,9 @@ const Index = () => {
                     runBriefMatch();
                   }
                 }}
-                rows={2}
+                rows={3}
                 placeholder={"What do you need references for?\ne.g. I'm looking for a luxury fragrance commercial with a dark, cinematic, intimate tone"}
-                className="pr-9 bg-secondary border-0 font-mono text-xs placeholder:normal-case resize-none min-h-[96px] md:min-h-[56px]"
+                className="pr-9 bg-secondary border-0 font-mono text-sm leading-snug placeholder:normal-case resize-none py-3"
                 disabled={matching}
               />
               {brief && !matching && (
