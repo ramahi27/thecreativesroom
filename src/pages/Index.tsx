@@ -296,6 +296,7 @@ const Index = () => {
               <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
             </Link>
           </div>
+        </div>
       </section>
 
       {/* Filter bar */}
