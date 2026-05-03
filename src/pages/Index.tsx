@@ -11,6 +11,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/usePageView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Search, Plus, Bookmark, Compass, ArrowUpRight, X, Sparkles, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,10 @@ const Index = () => {
       return;
     }
     setMatching(true);
+    // Reset filters so matches are evaluated across all categories
+    setMediaFilter("all");
+    setCategoryFilter("all");
+    setSearch("");
     try {
       const { data, error } = await supabase.functions.invoke("match-brief", {
         body: { brief: text },
@@ -209,14 +214,37 @@ const Index = () => {
           {/* Description removed as requested */}
 
 
-          {/* Visual triad — what you can do here */}
-          <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Visual quad — what you can do here */}
+          <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                document.querySelector<HTMLTextAreaElement>('textarea[placeholder^="What do you need"]')?.focus();
+                window.scrollTo({ top: window.innerHeight * 0.6, behavior: "smooth" });
+              }}
+              className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary text-left"
+            >
+              <div className="flex items-start justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 01 / Search by brief</span>
+                <Sparkles className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+              </div>
+              <div>
+                <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
+                  Tell us what<br />you need.
+                </h3>
+                <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
+                  Tell us what you need, we'll find references that fit your direction.
+                </p>
+              </div>
+              <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+            </button>
+
             <a
               href="#archive"
               className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
             >
               <div className="flex items-start justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 01 / Discover</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 02 / Discover</span>
                 <Compass className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
@@ -235,7 +263,7 @@ const Index = () => {
               className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
             >
               <div className="flex items-start justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 02 / Save</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 03 / Save</span>
                 <Bookmark className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
@@ -254,7 +282,7 @@ const Index = () => {
               className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
             >
               <div className="flex items-start justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 03 / Add</span>
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 04 / Add</span>
                 <Plus className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
@@ -285,11 +313,18 @@ const Index = () => {
               <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Brief
             </span>
             <div className="relative flex-1 min-w-[240px]">
-              <Input
+              <Textarea
                 value={brief}
                 onChange={(e) => setBrief(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    runBriefMatch();
+                  }
+                }}
+                rows={2}
                 placeholder={"What do you need references for?\ne.g. I'm looking for a luxury fragrance commercial with a dark, cinematic, intimate tone"}
-                className="pr-9 bg-secondary border-0 font-mono text-xs placeholder:normal-case"
+                className="pr-9 bg-secondary border-0 font-mono text-xs placeholder:normal-case resize-none min-h-[56px]"
                 disabled={matching}
               />
               {brief && !matching && (
