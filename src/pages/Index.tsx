@@ -135,12 +135,6 @@ const Index = () => {
     });
   }, [refs, mediaFilter, categoryFilter, search]);
 
-  // Auto-load more pages when user is filtering/searching so all matches show
-  useEffect(() => {
-    const isFiltering = mediaFilter !== "all" || categoryFilter !== "all" || search.trim() !== "";
-    if (!isFiltering || loading || loadingMore || !hasMore) return;
-    loadMore();
-  }, [mediaFilter, categoryFilter, search, hasMore, loading, loadingMore, refs.length]);
 
   return (
     <div className="min-h-screen grain">
