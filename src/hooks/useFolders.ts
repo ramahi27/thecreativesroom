@@ -49,6 +49,12 @@ export function useFolders() {
     refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    const handler = () => refresh();
+    window.addEventListener("folders:refresh", handler);
+    return () => window.removeEventListener("folders:refresh", handler);
+  }, [refresh]);
+
   const createFolder = useCallback(
     async (name: string, color?: string) => {
       if (!user || !name.trim()) return null;

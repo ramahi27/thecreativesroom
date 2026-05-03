@@ -89,7 +89,19 @@ export function useBookmarks() {
           .delete()
           .eq("user_id", user.id)
           .eq("reference_id", referenceId);
-        if (error) await refresh();
+        if (error) {
+          await refresh();
+        } else {
+          // Cascade: also remove from all of the user's folders
+          await supabase
+            .from("folder_items")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("reference_id", referenceId);
+          window.dispatchEvent(
+            new CustomEvent("folders:refresh", { detail: { referenceId } }),
+          );
+        }
         return { error: error?.message };
       } else {
         const { error } = await supabase
