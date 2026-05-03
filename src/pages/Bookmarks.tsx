@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { useCategories } from "@/hooks/useCategories";
 import { useFolders } from "@/hooks/useFolders";
 import { CollectionCard } from "@/components/CollectionCard";
-import { FolderSidebar } from "@/components/FolderSidebar";
+
 import { FolderGridCard, NewFolderCard } from "@/components/FolderGridCard";
 import {
   Select,
