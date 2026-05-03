@@ -1,4 +1,5 @@
-import { Plus } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
 import type { Folder } from "@/hooks/useFolders";
 import type { Reference } from "@/lib/references";
 
@@ -7,6 +8,9 @@ interface Props {
   references: Reference[];
   count: number;
   onClick: () => void;
+  onDelete?: () => void;
+  onDropReference?: (e: React.DragEvent) => void;
+  draggingActive?: boolean;
 }
 
 function thumbOf(r: Reference): string | null {
@@ -36,77 +40,122 @@ function topTags(refs: Reference[], limit = 3): string[] {
     .map(([t]) => t);
 }
 
-export function FolderGridCard({ folder, references, count, onClick }: Props) {
-  const color = folder.color || "hsl(var(--muted-foreground))";
+export function FolderGridCard({
+  folder,
+  references,
+  count,
+  onClick,
+  onDelete,
+  onDropReference,
+  draggingActive,
+}: Props) {
+  const [isOver, setIsOver] = useState(false);
   const thumbs = references.map(thumbOf);
   const [t1, t2, t3] = [thumbs[0], thumbs[1], thumbs[2]];
   const tags = topTags(references);
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group text-left flex flex-col border hairline bg-card transition-all hover:border-foreground hover:shadow-xl hover:-translate-y-0.5"
+    <div
+      onDragOver={
+        onDropReference
+          ? (e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
+              setIsOver(true);
+            }
+          : undefined
+      }
+      onDragLeave={onDropReference ? () => setIsOver(false) : undefined}
+      onDrop={
+        onDropReference
+          ? (e) => {
+              e.preventDefault();
+              setIsOver(false);
+              onDropReference(e);
+            }
+          : undefined
+      }
+      className={`group relative flex flex-col border bg-card transition-all hover:border-foreground hover:shadow-xl hover:-translate-y-0.5 ${
+        isOver ? "ring-2 ring-primary scale-[1.02] shadow-2xl border-primary" : "hairline"
+      } ${draggingActive ? "border-dashed" : ""}`}
     >
-      <div className="relative aspect-[4/3] grid grid-cols-3 grid-rows-2 gap-0.5 bg-muted overflow-hidden">
-        <div className="col-span-2 row-span-2 bg-secondary overflow-hidden">
-          {t1 ? (
-            <img
-              src={t1}
-              alt=""
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-              loading="lazy"
-            />
-          ) : (
-            <div className="h-full w-full" style={{ backgroundColor: color, opacity: 0.25 }} />
-          )}
-        </div>
-        <div className="bg-secondary overflow-hidden">
-          {t2 ? (
-            <img src={t2} alt="" className="h-full w-full object-cover" loading="lazy" />
-          ) : (
-            <div className="h-full w-full bg-muted" />
-          )}
-        </div>
-        <div className="bg-secondary overflow-hidden">
-          {t3 ? (
-            <img src={t3} alt="" className="h-full w-full object-cover" loading="lazy" />
-          ) : (
-            <div className="h-full w-full bg-muted" />
-          )}
-        </div>
-        <span
-          className="absolute top-2 left-2 h-2.5 w-2.5 rounded-full ring-2 ring-background"
-          style={{ backgroundColor: color }}
-          aria-hidden
-        />
-      </div>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (confirm(`Delete folder "${folder.name}"? Projects will not be deleted.`)) {
+              onDelete();
+            }
+          }}
+          className="absolute top-2 right-2 z-10 h-7 w-7 inline-flex items-center justify-center bg-background/90 backdrop-blur-md border hairline opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground hover:border-destructive"
+          aria-label="Delete folder"
+          title="Delete folder"
+        >
+          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </button>
+      )}
 
-      <div className="p-4 flex flex-col gap-2.5">
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="font-display text-xl font-bold tracking-tight truncate">{folder.name}</h3>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
-            {count} {count === 1 ? "ref" : "refs"}
-          </span>
-        </div>
-        {tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {tags.map((t) => (
-              <span
-                key={t}
-                className="px-2 py-0.5 bg-secondary font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
-              >
-                {t}
-              </span>
-            ))}
+      <button
+        type="button"
+        onClick={onClick}
+        className="text-left flex flex-col"
+      >
+        <div className="relative aspect-[4/3] grid grid-cols-3 grid-rows-2 gap-0.5 bg-muted overflow-hidden">
+          <div className="col-span-2 row-span-2 bg-secondary overflow-hidden">
+            {t1 ? (
+              <img
+                src={t1}
+                alt=""
+                className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                loading="lazy"
+              />
+            ) : (
+              <div className="h-full w-full bg-muted" />
+            )}
           </div>
-        ) : (
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">
-            No tags yet
-          </span>
-        )}
-      </div>
-    </button>
+          <div className="bg-secondary overflow-hidden">
+            {t2 ? (
+              <img src={t2} alt="" className="h-full w-full object-cover" loading="lazy" />
+            ) : (
+              <div className="h-full w-full bg-muted" />
+            )}
+          </div>
+          <div className="bg-secondary overflow-hidden">
+            {t3 ? (
+              <img src={t3} alt="" className="h-full w-full object-cover" loading="lazy" />
+            ) : (
+              <div className="h-full w-full bg-muted" />
+            )}
+          </div>
+        </div>
+
+        <div className="p-4 flex flex-col gap-2.5">
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 className="font-display text-xl font-bold tracking-tight truncate">{folder.name}</h3>
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
+              {count} {count === 1 ? "ref" : "refs"}
+            </span>
+          </div>
+          {tags.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map((t) => (
+                <span
+                  key={t}
+                  className="px-2 py-0.5 bg-secondary font-mono text-[10px] uppercase tracking-widest text-muted-foreground"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/50">
+              No tags yet
+            </span>
+          )}
+        </div>
+      </button>
+    </div>
   );
 }
 

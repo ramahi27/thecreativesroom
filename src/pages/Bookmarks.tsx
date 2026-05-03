@@ -304,48 +304,76 @@ const Bookmarks = () => {
         ) : (
           <div>
             {activeFolder === null ? (
-              <div>
-                <div className="flex items-baseline justify-between mb-5">
-                  <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                    Collections
-                  </h2>
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                    {folders.length} {folders.length === 1 ? "folder" : "folders"}
-                  </span>
+              <div className="space-y-12">
+                <div>
+                  <div className="flex items-baseline justify-between mb-5">
+                    <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                      Collections
+                    </h2>
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      {folders.length} {folders.length === 1 ? "folder" : "folders"}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    {folders.map((f) => {
+                      const folderRefs = refs.filter((r) =>
+                        items.some((it) => it.folder_id === f.id && it.reference_id === r.id),
+                      );
+                      return (
+                        <FolderGridCard
+                          key={f.id}
+                          folder={f}
+                          references={folderRefs.slice(0, 3)}
+                          count={countForFolder(f.id)}
+                          onClick={() => setActiveFolder(f.id)}
+                          onDelete={() => deleteFolder(f.id)}
+                          onDropReference={(e) => handleDropOnFolder(f.id, e)}
+                          draggingActive={dragging}
+                        />
+                      );
+                    })}
+                    <NewFolderCard onClick={() => openCreateFolderDialog([])} />
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                  {folders.map((f) => {
-                    const folderRefs = refs.filter((r) =>
-                      items.some((it) => it.folder_id === f.id && it.reference_id === r.id),
-                    );
-                    return (
-                      <FolderGridCard
-                        key={f.id}
-                        folder={f}
-                        references={folderRefs.slice(0, 3)}
-                        count={countForFolder(f.id)}
-                        onClick={() => setActiveFolder(f.id)}
-                      />
-                    );
-                  })}
-                  {uncategorizedIds.size > 0 && (
-                    <FolderGridCard
-                      folder={{ id: "uncategorized", name: "Unsorted", color: null, position: 0 }}
-                      references={refs.filter((r) => uncategorizedIds.has(r.id)).slice(0, 3)}
-                      count={uncategorizedIds.size}
-                      onClick={() => setActiveFolder("uncategorized")}
-                    />
-                  )}
-                  <NewFolderCard onClick={() => openCreateFolderDialog([])} />
-                </div>
+
+                {uncategorizedIds.size > 0 && (
+                  <div>
+                    <div className="flex items-baseline justify-between mb-5">
+                      <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                        Unsorted
+                      </h2>
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                        Drag onto a folder above
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                      {refs
+                        .filter((r) => uncategorizedIds.has(r.id))
+                        .map((r) => (
+                          <CollectionCard
+                            key={r.id}
+                            reference={r}
+                            folders={folders}
+                            inFolderIds={foldersForReference(r.id)}
+                            selected={selected.has(r.id)}
+                            selectionMode={selectionMode}
+                            onToggleSelect={toggleSelect}
+                            onAddToFolder={addToFolder}
+                            onRemoveFromFolder={removeFromFolder}
+                            onCreateFolder={() => openCreateFolderDialog([r.id])}
+                            onDragStart={() => setDragging(true)}
+                            onDragEnd={() => setDragging(false)}
+                          />
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div>
                 <div className="flex items-baseline justify-between mb-5">
                   <h2 className="font-display text-3xl font-bold tracking-tight">
-                    {activeFolder === "uncategorized"
-                      ? "Unsorted"
-                      : folders.find((f) => f.id === activeFolder)?.name}
+                    {folders.find((f) => f.id === activeFolder)?.name}
                   </h2>
                   <button
                     type="button"

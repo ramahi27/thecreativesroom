@@ -131,16 +131,11 @@ export function CollectionCard({
           {inFolderIds.map((fid) => {
             const f = folders.find((x) => x.id === fid);
             if (!f) return null;
-            const color = f.color || "hsl(var(--muted-foreground))";
             return (
               <span
                 key={fid}
                 className="inline-flex items-center gap-1.5 pl-2 pr-1 py-0.5 border hairline bg-background/60 backdrop-blur-sm font-mono text-[10px] uppercase tracking-widest group/chip"
               >
-                <span
-                  className="h-2 w-2 rounded-full"
-                  style={{ backgroundColor: color }}
-                />
                 <span className="truncate max-w-[120px]">{f.name}</span>
                 <button
                   type="button"
