@@ -11,9 +11,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { usePageView } from "@/hooks/usePageView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, Plus, Bookmark, Compass, ArrowUpRight, X } from "lucide-react";
+import { Search, Plus, Bookmark, Compass, ArrowUpRight, X, Sparkles, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 type MediaFilter = "all" | "videos" | "photos";
 
@@ -41,6 +42,62 @@ const Index = () => {
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>(initial.mediaFilter);
   const [categoryFilter, setCategoryFilter] = useState<string>(initial.categoryFilter);
   const [search, setSearch] = useState(initial.search);
+
+  // Brief matching
+  const [brief, setBrief] = useState("");
+  const [matching, setMatching] = useState(false);
+  const [matches, setMatches] = useState<Array<{ ref: Reference; reason: string }>>([]);
+
+  const runBriefMatch = async () => {
+    const text = brief.trim();
+    if (text.length < 3) {
+      toast.error("Write a short brief first.");
+      return;
+    }
+    setMatching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("match-brief", {
+        body: { brief: text },
+      });
+      if (error) throw error;
+      const list = (data?.matches || []) as Array<{ id: string; reason: string }>;
+      if (list.length === 0) {
+        toast.info("No strong matches found.");
+        setMatches([]);
+        return;
+      }
+      // Fetch full ref data for matched IDs
+      const ids = list.map((m) => m.id);
+      const { data: rows } = await supabase
+        .from("references")
+        .select(
+          "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,notes,created_at,updated_at,media_items,categories,published,source"
+        )
+        .in("id", ids);
+      const byId = new Map((rows as unknown as Reference[] | null)?.map((r) => [r.id, r]) ?? []);
+      const ordered = list
+        .map((m) => {
+          const ref = byId.get(m.id);
+          return ref ? { ref, reason: m.reason } : null;
+        })
+        .filter(Boolean) as Array<{ ref: Reference; reason: string }>;
+      setMatches(ordered);
+      // Scroll to matched section
+      setTimeout(() => {
+        document.getElementById("matched")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Couldn't match your brief.");
+    } finally {
+      setMatching(false);
+    }
+  };
+
+  const clearMatches = () => {
+    setMatches([]);
+    setBrief("");
+  };
 
   usePageView(openId ? `/ref/${openId}` : "/", openId ?? null);
 
@@ -216,7 +273,46 @@ const Index = () => {
 
       {/* Filter bar */}
       <section className="border-b hairline bg-background/80 backdrop-blur-xl">
-        <div className="container py-4 flex flex-wrap items-center gap-4">
+        <div className="container pt-4 pb-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              runBriefMatch();
+            }}
+            className="flex flex-wrap items-center gap-3"
+          >
+            <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Brief
+            </span>
+            <div className="relative flex-1 min-w-[240px]">
+              <Input
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+                placeholder="Describe your brief — e.g. bold youthful sneaker launch, energetic, neon"
+                className="pr-9 bg-secondary border-0 font-mono text-xs placeholder:normal-case"
+                disabled={matching}
+              />
+              {brief && !matching && (
+                <button
+                  type="button"
+                  onClick={clearMatches}
+                  aria-label="Clear brief"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                </button>
+              )}
+            </div>
+            <Button
+              type="submit"
+              disabled={matching}
+              className="font-mono text-xs uppercase tracking-widest"
+            >
+              {matching ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching…</> : "Match brief"}
+            </Button>
+          </form>
+        </div>
+        <div className="container py-3 flex flex-wrap items-center gap-4">
           <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Filter</span>
           <Select
             value={mediaFilter}
@@ -281,6 +377,40 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Matched for your brief */}
+      {matches.length > 0 && (
+        <section id="matched" className="container pt-12 scroll-mt-20">
+          <div className="flex items-end justify-between mb-6 gap-4 flex-wrap">
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-primary mb-2 flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Matched for your brief
+              </p>
+              <h2 className="font-display text-3xl md:text-4xl font-black tracking-tighter leading-none">
+                {matches.length} hand-picked references.
+              </h2>
+            </div>
+            <Button
+              variant="ghost"
+              onClick={clearMatches}
+              className="font-mono text-xs uppercase tracking-widest"
+            >
+              <X className="h-3.5 w-3.5" /> Clear
+            </Button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {matches.map(({ ref, reason }) => (
+              <div key={ref.id} className="flex flex-col gap-2">
+                <ReferenceCard reference={ref} />
+                <p className="font-mono text-[11px] leading-snug text-muted-foreground italic px-1">
+                  ⏵ {reason}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-12 border-t hairline" />
+        </section>
+      )}
 
       {/* Grid */}
       <main id="archive" className="container py-12 scroll-mt-20">
