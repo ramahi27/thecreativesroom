@@ -316,7 +316,7 @@ const Index = () => {
       <SiteFooter />
       <div className="border-t hairline">
         <div className="container py-4 flex items-center justify-between">
-          <p className="uppercase tracking-[0.2em] font-serif text-sm text-muted-foreground">L&L♥</p>
+          <p className="uppercase tracking-[0.2em] font-serif text-sm text-muted-foreground">{"\n"}</p>
         </div>
       </div>
     </div>

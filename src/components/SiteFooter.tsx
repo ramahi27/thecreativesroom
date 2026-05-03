@@ -30,8 +30,8 @@ export function SiteFooter() {
           >
             Terms of Service
           </Link>
-          <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            © {new Date().getFullYear()} The Creatives Room
+          <span className="font-mono uppercase tracking-widest text-muted-foreground text-xs text-right whitespace-pre-line">
+            © {new Date().getFullYear()} THE CREATIVES ROOM{"\n"}L&L♥
           </span>
         </div>
       </div>
