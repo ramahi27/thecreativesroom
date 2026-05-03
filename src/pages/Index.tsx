@@ -50,6 +50,15 @@ const Index = () => {
     } catch {}
   }, [mediaFilter, categoryFilter, search]);
 
+  const shuffle = <T,>(arr: T[]): T[] => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
   const fetchPage = async (from: number) => {
     const { data, count, error } = await supabase
       .from("references")
@@ -72,7 +81,7 @@ const Index = () => {
 
     (async () => {
       const { list, total } = await fetchPage(0);
-      setRefs(list);
+      setRefs(shuffle(list));
       setTotalCount(total);
       setHasMore(list.length < total);
       setLoading(false);
@@ -85,7 +94,8 @@ const Index = () => {
     const { list, total } = await fetchPage(refs.length);
     setRefs((prev) => {
       const seen = new Set(prev.map((r) => r.id));
-      const merged = [...prev, ...list.filter((r) => !seen.has(r.id))];
+      const fresh = list.filter((r) => !seen.has(r.id));
+      const merged = [...prev, ...shuffle(fresh)];
       setHasMore(merged.length < total);
       return merged;
     });
