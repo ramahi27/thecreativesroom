@@ -43,6 +43,62 @@ const Index = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>(initial.categoryFilter);
   const [search, setSearch] = useState(initial.search);
 
+  // Brief matching
+  const [brief, setBrief] = useState("");
+  const [matching, setMatching] = useState(false);
+  const [matches, setMatches] = useState<Array<{ ref: Reference; reason: string }>>([]);
+
+  const runBriefMatch = async () => {
+    const text = brief.trim();
+    if (text.length < 3) {
+      toast.error("Write a short brief first.");
+      return;
+    }
+    setMatching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("match-brief", {
+        body: { brief: text },
+      });
+      if (error) throw error;
+      const list = (data?.matches || []) as Array<{ id: string; reason: string }>;
+      if (list.length === 0) {
+        toast.info("No strong matches found.");
+        setMatches([]);
+        return;
+      }
+      // Fetch full ref data for matched IDs
+      const ids = list.map((m) => m.id);
+      const { data: rows } = await supabase
+        .from("references")
+        .select(
+          "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,notes,created_at,updated_at,media_items,categories,published,source"
+        )
+        .in("id", ids);
+      const byId = new Map((rows as unknown as Reference[] | null)?.map((r) => [r.id, r]) ?? []);
+      const ordered = list
+        .map((m) => {
+          const ref = byId.get(m.id);
+          return ref ? { ref, reason: m.reason } : null;
+        })
+        .filter(Boolean) as Array<{ ref: Reference; reason: string }>;
+      setMatches(ordered);
+      // Scroll to matched section
+      setTimeout(() => {
+        document.getElementById("matched")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e?.message || "Couldn't match your brief.");
+    } finally {
+      setMatching(false);
+    }
+  };
+
+  const clearMatches = () => {
+    setMatches([]);
+    setBrief("");
+  };
+
   usePageView(openId ? `/ref/${openId}` : "/", openId ?? null);
 
   useEffect(() => {
