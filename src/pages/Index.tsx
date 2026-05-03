@@ -311,19 +311,30 @@ const Index = () => {
                 <ReferenceCard key={r.id} reference={r} />
               ))}
             </div>
-            <div className="mt-12 flex flex-col items-center gap-3">
-              {"\n"}
-              {hasMore && (
-                <Button
-                  variant="outline"
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="font-mono text-xs uppercase tracking-widest"
-                >
-                  {loadingMore ? "Loading…" : "Load more"}
-                </Button>
-              )}
-            </div>
+            {(() => {
+              const isFiltering = mediaFilter !== "all" || categoryFilter !== "all" || search.trim() !== "";
+              if (!hasMore) return null;
+              return (
+                <div className="mt-12 flex flex-col items-center gap-3">
+                  {isFiltering ? (
+                    loadingMore && (
+                      <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                        Loading more matches…
+                      </p>
+                    )
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={loadMore}
+                      disabled={loadingMore}
+                      className="font-mono text-xs uppercase tracking-widest"
+                    >
+                      {loadingMore ? "Loading…" : "Load more"}
+                    </Button>
+                  )}
+                </div>
+              );
+            })()}
           </>
         )}
       </main>
