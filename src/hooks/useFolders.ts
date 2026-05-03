@@ -55,6 +55,8 @@ export function useFolders() {
     return () => window.removeEventListener("folders:refresh", handler);
   }, [refresh]);
 
+  const broadcast = () => window.dispatchEvent(new CustomEvent("folders:refresh"));
+
   const createFolder = useCallback(
     async (name: string, color?: string) => {
       if (!user || !name.trim()) return null;
@@ -66,6 +68,7 @@ export function useFolders() {
         .single();
       if (error) return null;
       setFolders((prev) => [...prev, data as Folder]);
+      broadcast();
       return data as Folder;
     },
     [user, folders.length],
@@ -74,23 +77,54 @@ export function useFolders() {
   const renameFolder = useCallback(
     async (id: string, name: string) => {
       const { error } = await supabase.from("folders").update({ name }).eq("id", id);
-      if (!error) setFolders((prev) => prev.map((f) => (f.id === id ? { ...f, name } : f)));
+      if (!error) {
+        setFolders((prev) => prev.map((f) => (f.id === id ? { ...f, name } : f)));
+        broadcast();
+      }
     },
     [],
   );
 
   const updateColor = useCallback(async (id: string, color: string) => {
     const { error } = await supabase.from("folders").update({ color }).eq("id", id);
-    if (!error) setFolders((prev) => prev.map((f) => (f.id === id ? { ...f, color } : f)));
-  }, []);
-
-  const deleteFolder = useCallback(async (id: string) => {
-    const { error } = await supabase.from("folders").delete().eq("id", id);
     if (!error) {
-      setFolders((prev) => prev.filter((f) => f.id !== id));
-      setItems((prev) => prev.filter((it) => it.folder_id !== id));
+      setFolders((prev) => prev.map((f) => (f.id === id ? { ...f, color } : f)));
+      broadcast();
     }
   }, []);
+
+  const deleteFolder = useCallback(
+    async (id: string) => {
+      if (!user) return;
+      // Find references that live ONLY in this folder, so we can also remove
+      // their bookmarks (per product rule: deleting a folder should NOT push
+      // its projects back into "Unsorted").
+      const inThis = items.filter((it) => it.folder_id === id).map((it) => it.reference_id);
+      const inOthers = new Set(
+        items.filter((it) => it.folder_id !== id).map((it) => it.reference_id),
+      );
+      const orphanedRefIds = inThis.filter((rid) => !inOthers.has(rid));
+
+      const { error } = await supabase.from("folders").delete().eq("id", id);
+      if (error) return;
+
+      setFolders((prev) => prev.filter((f) => f.id !== id));
+      setItems((prev) => prev.filter((it) => it.folder_id !== id));
+
+      if (orphanedRefIds.length > 0) {
+        await supabase
+          .from("bookmarks")
+          .delete()
+          .eq("user_id", user.id)
+          .in("reference_id", orphanedRefIds);
+        window.dispatchEvent(
+          new CustomEvent("bookmarks:refresh", { detail: { referenceIds: orphanedRefIds } }),
+        );
+      }
+      broadcast();
+    },
+    [user, items],
+  );
 
   const addToFolder = useCallback(
     async (folderId: string, referenceIds: string[]) => {
@@ -100,7 +134,6 @@ export function useFolders() {
         reference_id: rid,
         user_id: user.id,
       }));
-      // optimistic
       setItems((prev) => {
         const next = [...prev];
         for (const r of rows) {
@@ -115,6 +148,7 @@ export function useFolders() {
         ignoreDuplicates: true,
       });
       if (error) refresh();
+      else broadcast();
     },
     [user, refresh],
   );
@@ -130,6 +164,7 @@ export function useFolders() {
         .eq("folder_id", folderId)
         .eq("reference_id", referenceId);
       if (error) refresh();
+      else broadcast();
     },
     [refresh],
   );

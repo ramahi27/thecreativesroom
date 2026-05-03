@@ -87,7 +87,8 @@ const Bookmarks = () => {
 
   useEffect(() => {
     if (!user) return;
-    (async () => {
+    let cancelled = false;
+    const fetchRefs = async () => {
       const { data: marks } = await supabase
         .from("bookmarks")
         .select("reference_id, created_at")
@@ -95,16 +96,27 @@ const Bookmarks = () => {
         .order("created_at", { ascending: false });
       const ids = (marks || []).map((m: any) => m.reference_id);
       if (ids.length === 0) {
-        setRefs([]);
-        setLoading(false);
+        if (!cancelled) {
+          setRefs([]);
+          setLoading(false);
+        }
         return;
       }
       const { data: list } = await supabase.from("references").select("*").in("id", ids);
       const byId = new Map((list || []).map((r: any) => [r.id, r as Reference]));
       const ordered = ids.map((i) => byId.get(i)).filter(Boolean) as Reference[];
-      setRefs(ordered);
-      setLoading(false);
-    })();
+      if (!cancelled) {
+        setRefs(ordered);
+        setLoading(false);
+      }
+    };
+    fetchRefs();
+    const handler = () => fetchRefs();
+    window.addEventListener("bookmarks:refresh", handler);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("bookmarks:refresh", handler);
+    };
   }, [user]);
 
   const availableCategories = useMemo(() => {
