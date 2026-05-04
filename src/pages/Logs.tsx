@@ -150,6 +150,16 @@ const Logs = () => {
           <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
             {filtered.length} {filtered.length === 1 ? "entry" : "entries"}
           </span>
+          <Button
+            type="button"
+            onClick={handleBackfillAll}
+            disabled={backfilling || rows.length === 0}
+            variant="outline"
+            className="font-mono text-[11px] uppercase tracking-widest h-9"
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-2" />
+            {backfilling ? backfillProgress || "Generating…" : "Backfill AI metadata"}
+          </Button>
           <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
             <Input
