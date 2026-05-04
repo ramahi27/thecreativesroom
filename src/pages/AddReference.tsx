@@ -17,7 +17,18 @@ import {
   type MediaItem,
 } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
-import { X } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
+
+function metadataToTags(m: any): string[] {
+  const out: string[] = [];
+  if (m?.mood) out.push(`mood:${m.mood}`);
+  if (m?.tone) out.push(`tone:${m.tone}`);
+  if (m?.colour_palette) out.push(`palette:${m.colour_palette}`);
+  if (m?.industry) out.push(`industry:${m.industry}`);
+  if (m?.format) out.push(`format:${m.format}`);
+  if (Array.isArray(m?.tags)) out.push(...m.tags.map((t: string) => String(t).trim()).filter(Boolean));
+  return out;
+}
 
 const AddReference = () => {
   const navigate = useNavigate();
