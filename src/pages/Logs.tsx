@@ -40,6 +40,7 @@ type LogRow = {
   approved_by: string | null;
   created_by_email: string | null;
   approved_by_email: string | null;
+  has_ai_metadata?: boolean;
 };
 
 const formatDate = (s: string | null) => {
