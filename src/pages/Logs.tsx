@@ -5,8 +5,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+function metadataToTags(m: any): string[] {
+  const out: string[] = [];
+  if (m?.mood) out.push(`mood:${m.mood}`);
+  if (m?.tone) out.push(`tone:${m.tone}`);
+  if (m?.colour_palette) out.push(`palette:${m.colour_palette}`);
+  if (m?.industry) out.push(`industry:${m.industry}`);
+  if (m?.format) out.push(`format:${m.format}`);
+  if (Array.isArray(m?.tags)) out.push(...m.tags.map((t: string) => String(t).trim()).filter(Boolean));
+  return out;
+}
 
 type LogRow = {
   id: string;
@@ -40,6 +53,48 @@ const Logs = () => {
   const [rows, setRows] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillProgress, setBackfillProgress] = useState<string>("");
+
+  async function handleBackfillAll() {
+    if (!confirm(`Generate AI metadata for all ${rows.length} references? This may take a while.`)) return;
+    setBackfilling(true);
+    let ok = 0;
+    let failed = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      setBackfillProgress(`${i + 1}/${rows.length} · ${r.title}`);
+      try {
+        const { data: ref } = await supabase
+          .from("references")
+          .select("tags")
+          .eq("id", r.id)
+          .maybeSingle();
+        const existing: string[] = Array.isArray(ref?.tags) ? (ref!.tags as string[]) : [];
+        const { data, error } = await supabase.functions.invoke("generate-metadata", {
+          body: { title: r.title, brand: r.brand, image_url: r.thumbnail_url },
+        });
+        if (error || !(data as any)?.metadata) {
+          failed++;
+          continue;
+        }
+        const newTags = metadataToTags((data as any).metadata);
+        const merged = Array.from(new Set([...existing, ...newTags]));
+        const { error: upErr } = await supabase
+          .from("references")
+          .update({ tags: merged })
+          .eq("id", r.id);
+        if (upErr) failed++;
+        else ok++;
+      } catch {
+        failed++;
+      }
+      await new Promise((res) => setTimeout(res, 400));
+    }
+    setBackfilling(false);
+    setBackfillProgress("");
+    toast.success(`Backfill done · ${ok} updated, ${failed} failed`);
+  }
 
   useEffect(() => {
     document.title = "Admin · Logs — The Creatives Room";
@@ -95,6 +150,16 @@ const Logs = () => {
           <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
             {filtered.length} {filtered.length === 1 ? "entry" : "entries"}
           </span>
+          <Button
+            type="button"
+            onClick={handleBackfillAll}
+            disabled={backfilling || rows.length === 0}
+            variant="outline"
+            className="font-mono text-[11px] uppercase tracking-widest h-9"
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-2" />
+            {backfilling ? backfillProgress || "Generating…" : "Backfill AI metadata"}
+          </Button>
           <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
             <Input

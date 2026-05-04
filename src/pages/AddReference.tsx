@@ -17,7 +17,18 @@ import {
   type MediaItem,
 } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
-import { X } from "lucide-react";
+import { X, Sparkles } from "lucide-react";
+
+function metadataToTags(m: any): string[] {
+  const out: string[] = [];
+  if (m?.mood) out.push(`mood:${m.mood}`);
+  if (m?.tone) out.push(`tone:${m.tone}`);
+  if (m?.colour_palette) out.push(`palette:${m.colour_palette}`);
+  if (m?.industry) out.push(`industry:${m.industry}`);
+  if (m?.format) out.push(`format:${m.format}`);
+  if (Array.isArray(m?.tags)) out.push(...m.tags.map((t: string) => String(t).trim()).filter(Boolean));
+  return out;
+}
 
 const AddReference = () => {
   const navigate = useNavigate();
@@ -42,6 +53,36 @@ const AddReference = () => {
   const [progress, setProgress] = useState<string>("");
   const [loadingRecord, setLoadingRecord] = useState(isEdit);
   const [submittedToCollection, setSubmittedToCollection] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  async function handleGenerateMetadata() {
+    if (!title.trim()) {
+      toast.error("Add a title first");
+      return;
+    }
+    setGenerating(true);
+    try {
+      const image_url =
+        existingMedia.find((m) => m.kind === "image")?.url ||
+        (sourceUrl ? deriveThumbnail(sourceUrl) || (await fetchThumbnail(sourceUrl)) : null);
+      const { data, error } = await supabase.functions.invoke("generate-metadata", {
+        body: { title, brand: brand || null, image_url },
+      });
+      if (error) throw error;
+      const meta = (data as any)?.metadata;
+      if (!meta) throw new Error("No metadata");
+      const newTags = metadataToTags(meta);
+      const existing = tags.split(",").map((t) => t.trim()).filter(Boolean);
+      const merged = Array.from(new Set([...existing, ...newTags]));
+      setTags(merged.join(", "));
+      if (meta.curatorial_note && !notes.trim()) setNotes(meta.curatorial_note);
+      toast.success("Metadata generated");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to generate metadata");
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   useEffect(() => {
     document.title = isEdit ? "Edit reference — The Creatives Room" : "Add reference — The Creatives Room";
@@ -396,7 +437,18 @@ const AddReference = () => {
           </div>
 
           <div className="space-y-2">
-            <Label className={labelCls}>Tags (comma separated)</Label>
+            <div className="flex items-center justify-between gap-3">
+              <Label className={labelCls}>Tags (comma separated)</Label>
+              <button
+                type="button"
+                onClick={handleGenerateMetadata}
+                disabled={generating || !title.trim()}
+                className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-primary hover:opacity-80 disabled:opacity-40"
+              >
+                <Sparkles className="h-3 w-3" />
+                {generating ? "Generating…" : "Auto-fill with AI"}
+              </button>
+            </div>
             <Input
               placeholder="cinematic, automotive, slow-motion"
               value={tags}
