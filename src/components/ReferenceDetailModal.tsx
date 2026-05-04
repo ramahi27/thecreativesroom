@@ -379,12 +379,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
                 {/* Tags hidden from UI but kept in metadata */}
 
-                {r.notes && (
-                  <div className="border-t hairline pt-6">
-                    <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Notes</p>
-                    <p className="font-body text-sm leading-relaxed whitespace-pre-wrap">{r.notes}</p>
-                  </div>
-                )}
+                {/* Notes hidden from UI but kept in metadata */}
 
                 {isAdmin && (
                   <div className="border-t hairline pt-6 flex flex-wrap gap-3">
