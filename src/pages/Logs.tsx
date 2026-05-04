@@ -64,13 +64,18 @@ const Logs = () => {
   const [backfillProgress, setBackfillProgress] = useState<string>("");
 
   async function handleBackfillAll() {
-    if (!confirm(`Generate AI metadata for all ${rows.length} references? This may take a while.`)) return;
+    const pending = rows.filter((r) => !r.has_ai_metadata);
+    if (pending.length === 0) {
+      toast.info("All references already have AI metadata.");
+      return;
+    }
+    if (!confirm(`Generate AI metadata for ${pending.length} reference(s) without metadata?`)) return;
     setBackfilling(true);
     let ok = 0;
     let failed = 0;
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
-      setBackfillProgress(`${i + 1}/${rows.length} · ${r.title}`);
+    for (let i = 0; i < pending.length; i++) {
+      const r = pending[i];
+      setBackfillProgress(`${i + 1}/${pending.length} · ${r.title}`);
       try {
         const { data: ref } = await supabase
           .from("references")
@@ -92,7 +97,10 @@ const Logs = () => {
           .update({ tags: merged })
           .eq("id", r.id);
         if (upErr) failed++;
-        else ok++;
+        else {
+          ok++;
+          setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, has_ai_metadata: true } : x)));
+        }
       } catch {
         failed++;
       }
@@ -115,9 +123,21 @@ const Logs = () => {
       if (error) {
         console.error(error);
         setRows([]);
-      } else {
-        setRows((data as LogRow[]) || []);
+        setLoading(false);
+        return;
       }
+      const baseRows = (data as LogRow[]) || [];
+      // Fetch tags for all rows to determine AI metadata state
+      const ids = baseRows.map((r) => r.id);
+      let tagsMap = new Map<string, string[]>();
+      if (ids.length) {
+        const { data: tagRows } = await supabase
+          .from("references")
+          .select("id,tags")
+          .in("id", ids);
+        (tagRows || []).forEach((t: any) => tagsMap.set(t.id, t.tags || []));
+      }
+      setRows(baseRows.map((r) => ({ ...r, has_ai_metadata: hasAiMetadata(tagsMap.get(r.id)) })));
       setLoading(false);
     })();
   }, [isAdmin]);
