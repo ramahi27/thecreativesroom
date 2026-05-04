@@ -10,22 +10,15 @@ import { Search, Sparkles, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
-const META_PREFIXES = ["mood:", "tone:", "palette:", "industry:", "format:"];
-function hasAiMetadata(tags: string[] | null | undefined, notes: string | null | undefined): boolean {
+const AI_MARKER = "ai:processed";
+function hasAiMetadata(tags: string[] | null | undefined): boolean {
   if (!Array.isArray(tags)) return false;
-  const hasTags = tags.some((t) => META_PREFIXES.some((p) => t.toLowerCase().startsWith(p)));
-  const hasNotes = !!(notes && notes.trim());
-  return hasTags && hasNotes;
+  return tags.some((t) => t.toLowerCase() === AI_MARKER);
 }
 
 function metadataToTags(m: any): string[] {
-  const out: string[] = [];
-  if (m?.mood) out.push(`mood:${m.mood}`);
-  if (m?.tone) out.push(`tone:${m.tone}`);
-  if (m?.colour_palette) out.push(`palette:${m.colour_palette}`);
-  if (m?.industry) out.push(`industry:${m.industry}`);
-  if (m?.format) out.push(`format:${m.format}`);
-  if (Array.isArray(m?.tags)) out.push(...m.tags.map((t: string) => String(t).trim()).filter(Boolean));
+  const out: string[] = [AI_MARKER];
+  if (Array.isArray(m?.tags)) out.push(...m.tags.map((t: string) => String(t).trim().toLowerCase()).filter(Boolean));
   return out;
 }
 
@@ -81,12 +74,12 @@ const Logs = () => {
       try {
         const { data: ref } = await supabase
           .from("references")
-          .select("tags,notes")
+          .select("tags")
           .eq("id", r.id)
           .maybeSingle();
         const existing: string[] = Array.isArray(ref?.tags) ? (ref!.tags as string[]) : [];
         const { data, error } = await supabase.functions.invoke("generate-metadata", {
-          body: { title: r.title, brand: r.brand, image_url: r.thumbnail_url },
+          body: { title: r.title, brand: r.brand },
         });
         const meta = (data as any)?.metadata;
         if (error || !meta) {
@@ -95,13 +88,9 @@ const Logs = () => {
         }
         const newTags = metadataToTags(meta);
         const merged = Array.from(new Set([...existing, ...newTags]));
-        const update: any = { tags: merged };
-        if (meta.curatorial_note && !ref?.notes?.trim()) {
-          update.notes = meta.curatorial_note;
-        }
         const { error: upErr } = await supabase
           .from("references")
-          .update(update)
+          .update({ tags: merged })
           .eq("id", r.id);
         if (upErr) failed++;
         else {
@@ -136,17 +125,17 @@ const Logs = () => {
       const baseRows = (data as LogRow[]) || [];
       // Fetch tags for all rows to determine AI metadata state
       const ids = baseRows.map((r) => r.id);
-      let infoMap = new Map<string, { tags: string[]; notes: string | null }>();
+      let infoMap = new Map<string, { tags: string[] }>();
       if (ids.length) {
         const { data: tagRows } = await supabase
           .from("references")
-          .select("id,tags,notes")
+          .select("id,tags")
           .in("id", ids);
-        (tagRows || []).forEach((t: any) => infoMap.set(t.id, { tags: t.tags || [], notes: t.notes }));
+        (tagRows || []).forEach((t: any) => infoMap.set(t.id, { tags: t.tags || [] }));
       }
       setRows(baseRows.map((r) => {
         const info = infoMap.get(r.id);
-        return { ...r, has_ai_metadata: hasAiMetadata(info?.tags, info?.notes) };
+        return { ...r, has_ai_metadata: hasAiMetadata(info?.tags) };
       }));
       setLoading(false);
     })();

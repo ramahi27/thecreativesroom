@@ -19,14 +19,10 @@ import {
 import { useCategories } from "@/hooks/useCategories";
 import { X } from "lucide-react";
 
+const AI_MARKER = "ai:processed";
 function metadataToTags(m: any): string[] {
-  const out: string[] = [];
-  if (m?.mood) out.push(`mood:${m.mood}`);
-  if (m?.tone) out.push(`tone:${m.tone}`);
-  if (m?.colour_palette) out.push(`palette:${m.colour_palette}`);
-  if (m?.industry) out.push(`industry:${m.industry}`);
-  if (m?.format) out.push(`format:${m.format}`);
-  if (Array.isArray(m?.tags)) out.push(...m.tags.map((t: string) => String(t).trim()).filter(Boolean));
+  const out: string[] = [AI_MARKER];
+  if (Array.isArray(m?.tags)) out.push(...m.tags.map((t: string) => String(t).trim().toLowerCase()).filter(Boolean));
   return out;
 }
 
@@ -232,10 +228,9 @@ const AddReference = () => {
 
       // Auto-fire AI metadata generation in the background (best effort).
       if (savedId) {
-        const finalImg = finalThumb || items.find((i) => i.kind === "image")?.url || null;
         supabase.functions
           .invoke("generate-metadata", {
-            body: { title, brand: brand || null, image_url: finalImg },
+            body: { title, brand: brand || null },
           })
           .then(async ({ data, error }) => {
             const meta = (data as any)?.metadata;
@@ -243,14 +238,12 @@ const AddReference = () => {
             const newTags = metadataToTags(meta);
             const { data: cur } = await supabase
               .from("references")
-              .select("tags,notes")
+              .select("tags")
               .eq("id", savedId!)
               .maybeSingle();
             const existing: string[] = Array.isArray(cur?.tags) ? (cur!.tags as string[]) : [];
             const merged = Array.from(new Set([...existing, ...newTags]));
-            const update: any = { tags: merged };
-            if (meta.curatorial_note && !cur?.notes) update.notes = meta.curatorial_note;
-            await supabase.from("references").update(update).eq("id", savedId!);
+            await supabase.from("references").update({ tags: merged }).eq("id", savedId!);
           })
           .catch(() => {});
       }
