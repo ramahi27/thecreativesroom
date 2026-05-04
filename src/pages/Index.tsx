@@ -164,6 +164,16 @@ const Index = () => {
     setLoadingMore(false);
   };
 
+  // When a filter is active, ensure all references are loaded so results are complete
+  useEffect(() => {
+    const filterActive =
+      mediaFilter !== "all" || categoryFilter !== "all" || search.trim().length > 0;
+    if (!filterActive || loading || loadingMore || !hasMore) return;
+    loadMore();
+    // loadMore updates refs/hasMore which will re-trigger this effect until fully loaded
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaFilter, categoryFilter, search, hasMore, loading, loadingMore]);
+
   const { video: VIDEO_CATEGORIES, photo: PHOTO_CATEGORIES } = useCategories();
 
   const availableCategories = useMemo(() => {
