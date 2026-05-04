@@ -5,8 +5,21 @@ import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+function metadataToTags(m: any): string[] {
+  const out: string[] = [];
+  if (m?.mood) out.push(`mood:${m.mood}`);
+  if (m?.tone) out.push(`tone:${m.tone}`);
+  if (m?.colour_palette) out.push(`palette:${m.colour_palette}`);
+  if (m?.industry) out.push(`industry:${m.industry}`);
+  if (m?.format) out.push(`format:${m.format}`);
+  if (Array.isArray(m?.tags)) out.push(...m.tags.map((t: string) => String(t).trim()).filter(Boolean));
+  return out;
+}
 
 type LogRow = {
   id: string;
