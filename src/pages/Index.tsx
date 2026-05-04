@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 type MediaFilter = "all" | "videos" | "photos";
+type SortBy = "default" | "newest" | "oldest" | "campaign_newest" | "campaign_oldest" | "title";
 
 const FILTERS_KEY = "archive:filters";
 const PAGE_SIZE = 100;
@@ -34,6 +35,7 @@ const Index = () => {
 
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<SortBy>("default");
   const [search, setSearch] = useState("");
 
   // Brief matching
