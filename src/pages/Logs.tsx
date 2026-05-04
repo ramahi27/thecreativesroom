@@ -11,9 +11,11 @@ import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const META_PREFIXES = ["mood:", "tone:", "palette:", "industry:", "format:"];
-function hasAiMetadata(tags: string[] | null | undefined): boolean {
+function hasAiMetadata(tags: string[] | null | undefined, notes: string | null | undefined): boolean {
   if (!Array.isArray(tags)) return false;
-  return tags.some((t) => META_PREFIXES.some((p) => t.toLowerCase().startsWith(p)));
+  const hasTags = tags.some((t) => META_PREFIXES.some((p) => t.toLowerCase().startsWith(p)));
+  const hasNotes = !!(notes && notes.trim());
+  return hasTags && hasNotes;
 }
 
 function metadataToTags(m: any): string[] {
@@ -79,22 +81,27 @@ const Logs = () => {
       try {
         const { data: ref } = await supabase
           .from("references")
-          .select("tags")
+          .select("tags,notes")
           .eq("id", r.id)
           .maybeSingle();
         const existing: string[] = Array.isArray(ref?.tags) ? (ref!.tags as string[]) : [];
         const { data, error } = await supabase.functions.invoke("generate-metadata", {
           body: { title: r.title, brand: r.brand, image_url: r.thumbnail_url },
         });
-        if (error || !(data as any)?.metadata) {
+        const meta = (data as any)?.metadata;
+        if (error || !meta) {
           failed++;
           continue;
         }
-        const newTags = metadataToTags((data as any).metadata);
+        const newTags = metadataToTags(meta);
         const merged = Array.from(new Set([...existing, ...newTags]));
+        const update: any = { tags: merged };
+        if (meta.curatorial_note && !ref?.notes?.trim()) {
+          update.notes = meta.curatorial_note;
+        }
         const { error: upErr } = await supabase
           .from("references")
-          .update({ tags: merged })
+          .update(update)
           .eq("id", r.id);
         if (upErr) failed++;
         else {
@@ -129,15 +136,18 @@ const Logs = () => {
       const baseRows = (data as LogRow[]) || [];
       // Fetch tags for all rows to determine AI metadata state
       const ids = baseRows.map((r) => r.id);
-      let tagsMap = new Map<string, string[]>();
+      let infoMap = new Map<string, { tags: string[]; notes: string | null }>();
       if (ids.length) {
         const { data: tagRows } = await supabase
           .from("references")
-          .select("id,tags")
+          .select("id,tags,notes")
           .in("id", ids);
-        (tagRows || []).forEach((t: any) => tagsMap.set(t.id, t.tags || []));
+        (tagRows || []).forEach((t: any) => infoMap.set(t.id, { tags: t.tags || [], notes: t.notes }));
       }
-      setRows(baseRows.map((r) => ({ ...r, has_ai_metadata: hasAiMetadata(tagsMap.get(r.id)) })));
+      setRows(baseRows.map((r) => {
+        const info = infoMap.get(r.id);
+        return { ...r, has_ai_metadata: hasAiMetadata(info?.tags, info?.notes) };
+      }));
       setLoading(false);
     })();
   }, [isAdmin]);
