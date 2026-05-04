@@ -326,11 +326,16 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   </h1>
                 </div>
 
-                <dl className="space-y-3 border-t hairline pt-6">
-                  {r.brand && <Row label="Brand" value={r.brand} />}
-                  {r.agency && <Row label="Agency" value={r.agency} />}
-                  {r.year && <Row label="Year" value={String(r.year)} />}
-                </dl>
+                {(() => {
+                  const isFilmTv = (r.categories || []).includes("Film and TV scenes");
+                  return (
+                    <dl className="space-y-3 border-t hairline pt-6">
+                      {r.brand && <Row label={isFilmTv ? "Title" : "Brand"} value={r.brand} />}
+                      {r.agency && <Row label={isFilmTv ? "Director" : "Agency"} value={r.agency} />}
+                      {r.year && <Row label="Year" value={String(r.year)} />}
+                    </dl>
+                  );
+                })()}
 
                 {isAdmin ? (
                   <div className="border-t hairline pt-6">

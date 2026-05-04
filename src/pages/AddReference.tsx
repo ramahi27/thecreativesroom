@@ -414,20 +414,25 @@ const AddReference = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label className={labelCls}>Brand</Label>
-              <Input value={brand} onChange={(e) => setBrand(e.target.value)} className={inputCls} />
-            </div>
-            <div className="space-y-2">
-              <Label className={labelCls}>Agency</Label>
-              <Input value={agency} onChange={(e) => setAgency(e.target.value)} className={inputCls} />
-            </div>
-            <div className="space-y-2">
-              <Label className={labelCls}>Year</Label>
-              <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} className={inputCls} />
-            </div>
-          </div>
+          {(() => {
+            const isFilmTv = categories.includes("Film and TV scenes");
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className={labelCls}>{isFilmTv ? "Title" : "Brand"}</Label>
+                  <Input value={brand} onChange={(e) => setBrand(e.target.value)} className={inputCls} />
+                </div>
+                <div className="space-y-2">
+                  <Label className={labelCls}>{isFilmTv ? "Director" : "Agency"}</Label>
+                  <Input value={agency} onChange={(e) => setAgency(e.target.value)} className={inputCls} />
+                </div>
+                <div className="space-y-2">
+                  <Label className={labelCls}>Year</Label>
+                  <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} className={inputCls} />
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="space-y-2">
             <Label className={labelCls}>Tags (comma separated)</Label>
