@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 type MediaFilter = "all" | "videos" | "photos";
+type SortBy = "default" | "newest" | "oldest" | "campaign_newest" | "campaign_oldest" | "title";
 
 const FILTERS_KEY = "archive:filters";
 const PAGE_SIZE = 100;
@@ -34,6 +35,7 @@ const Index = () => {
 
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<SortBy>("default");
   const [search, setSearch] = useState("");
 
   // Brief matching
@@ -156,15 +158,15 @@ const Index = () => {
     setLoadingMore(false);
   };
 
-  // When a filter is active, ensure all references are loaded so results are complete
+  // When a filter or sort is active, ensure all references are loaded so results are complete
   useEffect(() => {
     const filterActive =
-      mediaFilter !== "all" || categoryFilter !== "all" || search.trim().length > 0;
+      mediaFilter !== "all" || categoryFilter !== "all" || search.trim().length > 0 || sortBy !== "default";
     if (!filterActive || loading || loadingMore || !hasMore) return;
     loadMore();
     // loadMore updates refs/hasMore which will re-trigger this effect until fully loaded
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaFilter, categoryFilter, search, hasMore, loading, loadingMore]);
+  }, [mediaFilter, categoryFilter, search, sortBy, hasMore, loading, loadingMore]);
 
   const { video: VIDEO_CATEGORIES, photo: PHOTO_CATEGORIES } = useCategories();
 
@@ -176,7 +178,7 @@ const Index = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return refs.filter((r) => {
+    const list = refs.filter((r) => {
       if (mediaFilter === "videos" && !(r.type === "video" || r.type === "link")) return false;
       if (mediaFilter === "photos" && r.type !== "image") return false;
       if (categoryFilter !== "all" && !(r.categories || []).includes(categoryFilter)) return false;
@@ -197,7 +199,29 @@ const Index = () => {
       }
       return true;
     });
-  }, [refs, mediaFilter, categoryFilter, search]);
+
+    if (sortBy === "default") return list;
+    const sorted = [...list];
+    const time = (s?: string | null) => (s ? new Date(s).getTime() : 0);
+    switch (sortBy) {
+      case "newest":
+        sorted.sort((a, b) => time(b.created_at) - time(a.created_at));
+        break;
+      case "oldest":
+        sorted.sort((a, b) => time(a.created_at) - time(b.created_at));
+        break;
+      case "campaign_newest":
+        sorted.sort((a, b) => (b.year || 0) - (a.year || 0));
+        break;
+      case "campaign_oldest":
+        sorted.sort((a, b) => (a.year || 9999) - (b.year || 9999));
+        break;
+      case "title":
+        sorted.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+        break;
+    }
+    return sorted;
+  }, [refs, mediaFilter, categoryFilter, search, sortBy]);
 
 
   return (
@@ -387,6 +411,20 @@ const Index = () => {
                   {c}
                 </SelectItem>
               ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+            <SelectTrigger className="w-[200px] bg-secondary border-0 font-mono text-xs uppercase tracking-widest">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default" className="font-mono text-xs uppercase tracking-widest">Sort: Default</SelectItem>
+              <SelectItem value="newest" className="font-mono text-xs uppercase tracking-widest">Newly added</SelectItem>
+              <SelectItem value="oldest" className="font-mono text-xs uppercase tracking-widest">Oldest added</SelectItem>
+              <SelectItem value="campaign_newest" className="font-mono text-xs uppercase tracking-widest">Campaign · newest</SelectItem>
+              <SelectItem value="campaign_oldest" className="font-mono text-xs uppercase tracking-widest">Campaign · oldest</SelectItem>
+              <SelectItem value="title" className="font-mono text-xs uppercase tracking-widest">Title A–Z</SelectItem>
             </SelectContent>
           </Select>
 

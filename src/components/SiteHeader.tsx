@@ -58,6 +58,11 @@ export function SiteHeader() {
                     Admin settings
                   </DropdownMenuItem>
                 )}
+                {isAdmin && (
+                  <DropdownMenuItem onClick={() => navigate("/logs")}>
+                    Logs
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={async () => {
