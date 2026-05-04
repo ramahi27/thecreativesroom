@@ -377,7 +377,18 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   )
                 )}
 
-                {/* Tags hidden from UI but kept in metadata */}
+                {isAdmin && Array.isArray(r.tags) && r.tags.length > 0 && (
+                  <div className="border-t hairline pt-6">
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Tags (admin)</p>
+                    <div className="flex flex-wrap gap-2">
+                      {r.tags.map((t: string) => (
+                        <span key={t} className="font-mono text-[11px] uppercase tracking-widest px-2 py-1 bg-muted text-muted-foreground">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Notes hidden from UI but kept in metadata */}
 
