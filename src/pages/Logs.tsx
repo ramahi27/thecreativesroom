@@ -6,9 +6,15 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Sparkles } from "lucide-react";
+import { Search, Sparkles, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+const META_PREFIXES = ["mood:", "tone:", "palette:", "industry:", "format:"];
+function hasAiMetadata(tags: string[] | null | undefined): boolean {
+  if (!Array.isArray(tags)) return false;
+  return tags.some((t) => META_PREFIXES.some((p) => t.toLowerCase().startsWith(p)));
+}
 
 function metadataToTags(m: any): string[] {
   const out: string[] = [];
