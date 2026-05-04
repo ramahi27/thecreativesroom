@@ -13,6 +13,7 @@ import Doubletakes from "./pages/Doubletakes.tsx";
 import Bookmarks from "./pages/Bookmarks.tsx";
 import Settings from "./pages/Settings.tsx";
 import Logs from "./pages/Logs.tsx";
+import Users from "./pages/Users.tsx";
 import Account from "./pages/Account.tsx";
 import Privacy from "./pages/Privacy.tsx";
 import Terms from "./pages/Terms.tsx";
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/mycollection" element={<Bookmarks />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/logs" element={<Logs />} />
+          <Route path="/users" element={<Users />} />
           <Route path="/account" element={<Account />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
