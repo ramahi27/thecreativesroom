@@ -53,6 +53,48 @@ const Logs = () => {
   const [rows, setRows] = useState<LogRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillProgress, setBackfillProgress] = useState<string>("");
+
+  async function handleBackfillAll() {
+    if (!confirm(`Generate AI metadata for all ${rows.length} references? This may take a while.`)) return;
+    setBackfilling(true);
+    let ok = 0;
+    let failed = 0;
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i];
+      setBackfillProgress(`${i + 1}/${rows.length} · ${r.title}`);
+      try {
+        const { data: ref } = await supabase
+          .from("references")
+          .select("tags")
+          .eq("id", r.id)
+          .maybeSingle();
+        const existing: string[] = Array.isArray(ref?.tags) ? (ref!.tags as string[]) : [];
+        const { data, error } = await supabase.functions.invoke("generate-metadata", {
+          body: { title: r.title, brand: r.brand, image_url: r.thumbnail_url },
+        });
+        if (error || !(data as any)?.metadata) {
+          failed++;
+          continue;
+        }
+        const newTags = metadataToTags((data as any).metadata);
+        const merged = Array.from(new Set([...existing, ...newTags]));
+        const { error: upErr } = await supabase
+          .from("references")
+          .update({ tags: merged })
+          .eq("id", r.id);
+        if (upErr) failed++;
+        else ok++;
+      } catch {
+        failed++;
+      }
+      await new Promise((res) => setTimeout(res, 400));
+    }
+    setBackfilling(false);
+    setBackfillProgress("");
+    toast.success(`Backfill done · ${ok} updated, ${failed} failed`);
+  }
 
   useEffect(() => {
     document.title = "Admin · Logs — The Creatives Room";
