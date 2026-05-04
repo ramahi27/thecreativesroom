@@ -32,17 +32,9 @@ const Index = () => {
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState<number | null>(null);
 
-  const initial = (() => {
-    try {
-      const raw = sessionStorage.getItem(FILTERS_KEY);
-      if (raw) return JSON.parse(raw) as { mediaFilter: MediaFilter; categoryFilter: string; search: string };
-    } catch {}
-    return { mediaFilter: "all" as MediaFilter, categoryFilter: "all", search: "" };
-  })();
-
-  const [mediaFilter, setMediaFilter] = useState<MediaFilter>(initial.mediaFilter);
-  const [categoryFilter, setCategoryFilter] = useState<string>(initial.categoryFilter);
-  const [search, setSearch] = useState(initial.search);
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
   // Brief matching
   const [brief, setBrief] = useState("");
@@ -108,9 +100,9 @@ const Index = () => {
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(FILTERS_KEY, JSON.stringify({ mediaFilter, categoryFilter, search }));
+      sessionStorage.removeItem(FILTERS_KEY);
     } catch {}
-  }, [mediaFilter, categoryFilter, search]);
+  }, []);
 
   const shuffle = <T,>(arr: T[]): T[] => {
     const a = [...arr];
