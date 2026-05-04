@@ -426,15 +426,13 @@ const AddReference = () => {
                   <Label className={labelCls}>{isFilmTv ? "Director" : "Agency"}</Label>
                   <Input value={agency} onChange={(e) => setAgency(e.target.value)} className={inputCls} />
                 </div>
+                <div className="space-y-2">
+                  <Label className={labelCls}>Year</Label>
+                  <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} className={inputCls} />
+                </div>
               </div>
             );
           })()}
-          <div className="hidden">
-            <div className="space-y-2">
-              <Label className={labelCls}>Year</Label>
-              <Input type="number" value={year} onChange={(e) => setYear(e.target.value)} className={inputCls} />
-            </div>
-          </div>
 
           <div className="space-y-2">
             <Label className={labelCls}>Tags (comma separated)</Label>
