@@ -156,6 +156,8 @@ export type Database = {
       references: {
         Row: {
           agency: string | null
+          approved_at: string | null
+          approved_by: string | null
           brand: string | null
           categories: string[]
           created_at: string
@@ -176,6 +178,8 @@ export type Database = {
         }
         Insert: {
           agency?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           brand?: string | null
           categories?: string[]
           created_at?: string
@@ -196,6 +200,8 @@ export type Database = {
         }
         Update: {
           agency?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           brand?: string | null
           categories?: string[]
           created_at?: string
@@ -243,6 +249,23 @@ export type Database = {
     }
     Functions: {
       get_admin_stats: { Args: never; Returns: Json }
+      get_reference_logs: {
+        Args: never
+        Returns: {
+          approved_at: string
+          approved_by: string
+          approved_by_email: string
+          brand: string
+          created_at: string
+          created_by: string
+          created_by_email: string
+          id: string
+          thumbnail_url: string
+          title: string
+          type: string
+          year: number
+        }[]
+      }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
       has_role: {
         Args: {
