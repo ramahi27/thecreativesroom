@@ -414,6 +414,20 @@ const Index = () => {
             </SelectContent>
           </Select>
 
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+            <SelectTrigger className="w-[200px] bg-secondary border-0 font-mono text-xs uppercase tracking-widest">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="default" className="font-mono text-xs uppercase tracking-widest">Sort: Default</SelectItem>
+              <SelectItem value="newest" className="font-mono text-xs uppercase tracking-widest">Newly added</SelectItem>
+              <SelectItem value="oldest" className="font-mono text-xs uppercase tracking-widest">Oldest added</SelectItem>
+              <SelectItem value="campaign_newest" className="font-mono text-xs uppercase tracking-widest">Campaign · newest</SelectItem>
+              <SelectItem value="campaign_oldest" className="font-mono text-xs uppercase tracking-widest">Campaign · oldest</SelectItem>
+              <SelectItem value="title" className="font-mono text-xs uppercase tracking-widest">Title A–Z</SelectItem>
+            </SelectContent>
+          </Select>
+
           <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
