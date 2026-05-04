@@ -253,6 +253,7 @@ const Logs = () => {
                         </span>
                       )}
                     </TableCell>
+                    <TableCell className="font-mono text-xs">
                       {r.created_by_email || (r.created_by ? "—" : "system")}
                     </TableCell>
                     <TableCell className="font-mono text-xs">
