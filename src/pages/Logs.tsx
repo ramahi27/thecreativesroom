@@ -125,17 +125,17 @@ const Logs = () => {
       const baseRows = (data as LogRow[]) || [];
       // Fetch tags for all rows to determine AI metadata state
       const ids = baseRows.map((r) => r.id);
-      let infoMap = new Map<string, { tags: string[]; notes: string | null }>();
+      let infoMap = new Map<string, { tags: string[] }>();
       if (ids.length) {
         const { data: tagRows } = await supabase
           .from("references")
-          .select("id,tags,notes")
+          .select("id,tags")
           .in("id", ids);
-        (tagRows || []).forEach((t: any) => infoMap.set(t.id, { tags: t.tags || [], notes: t.notes }));
+        (tagRows || []).forEach((t: any) => infoMap.set(t.id, { tags: t.tags || [] }));
       }
       setRows(baseRows.map((r) => {
         const info = infoMap.get(r.id);
-        return { ...r, has_ai_metadata: hasAiMetadata(info?.tags, info?.notes) };
+        return { ...r, has_ai_metadata: hasAiMetadata(info?.tags) };
       }));
       setLoading(false);
     })();
