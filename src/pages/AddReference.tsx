@@ -467,18 +467,7 @@ const AddReference = () => {
           </div>
 
           <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <Label className={labelCls}>Tags (comma separated)</Label>
-              <button
-                type="button"
-                onClick={handleGenerateMetadata}
-                disabled={generating || !title.trim()}
-                className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-primary hover:opacity-80 disabled:opacity-40"
-              >
-                <Sparkles className="h-3 w-3" />
-                {generating ? "Generating…" : "Auto-fill with AI"}
-              </button>
-            </div>
+            <Label className={labelCls}>Tags (comma separated)</Label>
             <Input
               placeholder="cinematic, automotive, slow-motion"
               value={tags}
