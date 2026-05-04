@@ -377,18 +377,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   )
                 )}
 
-                {r.tags?.length > 0 && (
-                  <div className="border-t hairline pt-6">
-                    <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Tags</p>
-                    <div className="flex flex-wrap gap-2">
-                      {r.tags.map((t) => (
-                        <span key={t} className="font-mono text-xs px-2 py-1 bg-secondary">
-                          #{t}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Tags hidden from UI but kept in metadata */}
 
                 {r.notes && (
                   <div className="border-t hairline pt-6">

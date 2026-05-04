@@ -6,9 +6,15 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Sparkles } from "lucide-react";
+import { Search, Sparkles, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+const META_PREFIXES = ["mood:", "tone:", "palette:", "industry:", "format:"];
+function hasAiMetadata(tags: string[] | null | undefined): boolean {
+  if (!Array.isArray(tags)) return false;
+  return tags.some((t) => META_PREFIXES.some((p) => t.toLowerCase().startsWith(p)));
+}
 
 function metadataToTags(m: any): string[] {
   const out: string[] = [];
@@ -34,6 +40,7 @@ type LogRow = {
   approved_by: string | null;
   created_by_email: string | null;
   approved_by_email: string | null;
+  has_ai_metadata?: boolean;
 };
 
 const formatDate = (s: string | null) => {
@@ -57,13 +64,18 @@ const Logs = () => {
   const [backfillProgress, setBackfillProgress] = useState<string>("");
 
   async function handleBackfillAll() {
-    if (!confirm(`Generate AI metadata for all ${rows.length} references? This may take a while.`)) return;
+    const pending = rows.filter((r) => !r.has_ai_metadata);
+    if (pending.length === 0) {
+      toast.info("All references already have AI metadata.");
+      return;
+    }
+    if (!confirm(`Generate AI metadata for ${pending.length} reference(s) without metadata?`)) return;
     setBackfilling(true);
     let ok = 0;
     let failed = 0;
-    for (let i = 0; i < rows.length; i++) {
-      const r = rows[i];
-      setBackfillProgress(`${i + 1}/${rows.length} · ${r.title}`);
+    for (let i = 0; i < pending.length; i++) {
+      const r = pending[i];
+      setBackfillProgress(`${i + 1}/${pending.length} · ${r.title}`);
       try {
         const { data: ref } = await supabase
           .from("references")
@@ -85,7 +97,10 @@ const Logs = () => {
           .update({ tags: merged })
           .eq("id", r.id);
         if (upErr) failed++;
-        else ok++;
+        else {
+          ok++;
+          setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, has_ai_metadata: true } : x)));
+        }
       } catch {
         failed++;
       }
@@ -108,9 +123,21 @@ const Logs = () => {
       if (error) {
         console.error(error);
         setRows([]);
-      } else {
-        setRows((data as LogRow[]) || []);
+        setLoading(false);
+        return;
       }
+      const baseRows = (data as LogRow[]) || [];
+      // Fetch tags for all rows to determine AI metadata state
+      const ids = baseRows.map((r) => r.id);
+      let tagsMap = new Map<string, string[]>();
+      if (ids.length) {
+        const { data: tagRows } = await supabase
+          .from("references")
+          .select("id,tags")
+          .in("id", ids);
+        (tagRows || []).forEach((t: any) => tagsMap.set(t.id, t.tags || []));
+      }
+      setRows(baseRows.map((r) => ({ ...r, has_ai_metadata: hasAiMetadata(tagsMap.get(r.id)) })));
       setLoading(false);
     })();
   }, [isAdmin]);
@@ -148,17 +175,17 @@ const Logs = () => {
       <section className="border-b hairline bg-background/80 backdrop-blur-xl">
         <div className="container py-3 flex flex-wrap items-center gap-4">
           <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-            {filtered.length} {filtered.length === 1 ? "entry" : "entries"}
+            {filtered.length} {filtered.length === 1 ? "entry" : "entries"} · {rows.filter((r) => !r.has_ai_metadata).length} missing AI
           </span>
           <Button
             type="button"
             onClick={handleBackfillAll}
-            disabled={backfilling || rows.length === 0}
+            disabled={backfilling || rows.filter((r) => !r.has_ai_metadata).length === 0}
             variant="outline"
             className="font-mono text-[11px] uppercase tracking-widest h-9"
           >
             <Sparkles className="h-3.5 w-3.5 mr-2" />
-            {backfilling ? backfillProgress || "Generating…" : "Backfill AI metadata"}
+            {backfilling ? backfillProgress || "Generating…" : `Backfill missing (${rows.filter((r) => !r.has_ai_metadata).length})`}
           </Button>
           <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
@@ -184,6 +211,7 @@ const Logs = () => {
                 <TableRow>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">#</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Reference</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">AI</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Added by</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Approved by</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Approved at</TableHead>
@@ -213,6 +241,17 @@ const Logs = () => {
                           </div>
                         </div>
                       </Link>
+                    </TableCell>
+                    <TableCell>
+                      {r.has_ai_metadata ? (
+                        <span title="Has AI metadata" className="inline-flex h-5 w-5 items-center justify-center border hairline bg-primary/10 text-primary">
+                          <Check className="h-3 w-3" strokeWidth={2.5} />
+                        </span>
+                      ) : (
+                        <span title="Missing AI metadata" className="inline-flex h-5 w-5 items-center justify-center border hairline text-muted-foreground">
+                          <XIcon className="h-3 w-3" strokeWidth={2} />
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell className="font-mono text-xs">
                       {r.created_by_email || (r.created_by ? "—" : "system")}
