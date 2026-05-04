@@ -236,13 +236,13 @@ const AddReference = () => {
         notes: notes || null,
       };
 
+      let savedId: string | null = null;
       if (isEdit) {
         const { error } = await supabase.from("references").update(payload).eq("id", editId!);
         if (error) throw error;
+        savedId = editId!;
         toast.success("Updated");
-        navigate(`/ref/${editId}`);
       } else {
-        // Admins publish directly; everyone else submits a draft for review.
         const insertPayload = {
           ...payload,
           created_by: user!.id,
@@ -254,14 +254,44 @@ const AddReference = () => {
           .select("id")
           .single();
         if (error) throw error;
-        if (!isAdmin && inserted?.id) {
-          // Auto-save user's own submission to their collection
-          await supabase.from("bookmarks").insert({ user_id: user!.id, reference_id: inserted.id });
-          setSubmittedToCollection(true);
-        } else {
-          toast.success("Added to archive");
-          navigate("/");
+        savedId = inserted?.id ?? null;
+        if (!isAdmin && savedId) {
+          await supabase.from("bookmarks").insert({ user_id: user!.id, reference_id: savedId });
         }
+      }
+
+      // Auto-fire AI metadata generation in the background (best effort).
+      if (savedId) {
+        const finalImg = finalThumb || items.find((i) => i.kind === "image")?.url || null;
+        supabase.functions
+          .invoke("generate-metadata", {
+            body: { title, brand: brand || null, image_url: finalImg },
+          })
+          .then(async ({ data, error }) => {
+            const meta = (data as any)?.metadata;
+            if (error || !meta) return;
+            const newTags = metadataToTags(meta);
+            const { data: cur } = await supabase
+              .from("references")
+              .select("tags,notes")
+              .eq("id", savedId!)
+              .maybeSingle();
+            const existing: string[] = Array.isArray(cur?.tags) ? (cur!.tags as string[]) : [];
+            const merged = Array.from(new Set([...existing, ...newTags]));
+            const update: any = { tags: merged };
+            if (meta.curatorial_note && !cur?.notes) update.notes = meta.curatorial_note;
+            await supabase.from("references").update(update).eq("id", savedId!);
+          })
+          .catch(() => {});
+      }
+
+      if (isEdit) {
+        navigate(`/ref/${editId}`);
+      } else if (!isAdmin) {
+        setSubmittedToCollection(true);
+      } else {
+        toast.success("Added to archive");
+        navigate("/");
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to save");
