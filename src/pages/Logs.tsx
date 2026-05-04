@@ -74,12 +74,12 @@ const Logs = () => {
       try {
         const { data: ref } = await supabase
           .from("references")
-          .select("tags,notes")
+          .select("tags")
           .eq("id", r.id)
           .maybeSingle();
         const existing: string[] = Array.isArray(ref?.tags) ? (ref!.tags as string[]) : [];
         const { data, error } = await supabase.functions.invoke("generate-metadata", {
-          body: { title: r.title, brand: r.brand, image_url: r.thumbnail_url },
+          body: { title: r.title, brand: r.brand },
         });
         const meta = (data as any)?.metadata;
         if (error || !meta) {
@@ -88,13 +88,9 @@ const Logs = () => {
         }
         const newTags = metadataToTags(meta);
         const merged = Array.from(new Set([...existing, ...newTags]));
-        const update: any = { tags: merged };
-        if (meta.curatorial_note && !ref?.notes?.trim()) {
-          update.notes = meta.curatorial_note;
-        }
         const { error: upErr } = await supabase
           .from("references")
-          .update(update)
+          .update({ tags: merged })
           .eq("id", r.id);
         if (upErr) failed++;
         else {
