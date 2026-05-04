@@ -78,19 +78,6 @@ export function ReferenceCard({ reference: r }: Props) {
           </p>
         )}
 
-        {r.tags && r.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 pt-1">
-            {r.tags.slice(0, 3).map((t) => (
-              <span
-                key={t}
-                className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground"
-              >
-                #{t}
-              </span>
-            ))}
-          </div>
-        )}
-
         {platform && (
           <p className="font-mono text-[10px] uppercase tracking-widest text-primary/80 pt-1">
             ↗ {platform}
