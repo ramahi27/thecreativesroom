@@ -228,10 +228,9 @@ const AddReference = () => {
 
       // Auto-fire AI metadata generation in the background (best effort).
       if (savedId) {
-        const finalImg = finalThumb || items.find((i) => i.kind === "image")?.url || null;
         supabase.functions
           .invoke("generate-metadata", {
-            body: { title, brand: brand || null, image_url: finalImg },
+            body: { title, brand: brand || null },
           })
           .then(async ({ data, error }) => {
             const meta = (data as any)?.metadata;
@@ -239,14 +238,12 @@ const AddReference = () => {
             const newTags = metadataToTags(meta);
             const { data: cur } = await supabase
               .from("references")
-              .select("tags,notes")
+              .select("tags")
               .eq("id", savedId!)
               .maybeSingle();
             const existing: string[] = Array.isArray(cur?.tags) ? (cur!.tags as string[]) : [];
             const merged = Array.from(new Set([...existing, ...newTags]));
-            const update: any = { tags: merged };
-            if (meta.curatorial_note && !cur?.notes) update.notes = meta.curatorial_note;
-            await supabase.from("references").update(update).eq("id", savedId!);
+            await supabase.from("references").update({ tags: merged }).eq("id", savedId!);
           })
           .catch(() => {});
       }
