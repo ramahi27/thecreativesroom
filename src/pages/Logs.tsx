@@ -211,6 +211,7 @@ const Logs = () => {
                 <TableRow>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">#</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Reference</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">AI</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Added by</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Approved by</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Approved at</TableHead>
