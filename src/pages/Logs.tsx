@@ -242,7 +242,17 @@ const Logs = () => {
                         </div>
                       </Link>
                     </TableCell>
-                    <TableCell className="font-mono text-xs">
+                    <TableCell>
+                      {r.has_ai_metadata ? (
+                        <span title="Has AI metadata" className="inline-flex h-5 w-5 items-center justify-center border hairline bg-primary/10 text-primary">
+                          <Check className="h-3 w-3" strokeWidth={2.5} />
+                        </span>
+                      ) : (
+                        <span title="Missing AI metadata" className="inline-flex h-5 w-5 items-center justify-center border hairline text-muted-foreground">
+                          <XIcon className="h-3 w-3" strokeWidth={2} />
+                        </span>
+                      )}
+                    </TableCell>
                       {r.created_by_email || (r.created_by ? "—" : "system")}
                     </TableCell>
                     <TableCell className="font-mono text-xs">
