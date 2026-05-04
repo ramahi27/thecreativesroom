@@ -53,6 +53,36 @@ const AddReference = () => {
   const [progress, setProgress] = useState<string>("");
   const [loadingRecord, setLoadingRecord] = useState(isEdit);
   const [submittedToCollection, setSubmittedToCollection] = useState(false);
+  const [generating, setGenerating] = useState(false);
+
+  async function handleGenerateMetadata() {
+    if (!title.trim()) {
+      toast.error("Add a title first");
+      return;
+    }
+    setGenerating(true);
+    try {
+      const image_url =
+        existingMedia.find((m) => m.kind === "image")?.url ||
+        (sourceUrl ? deriveThumbnail(sourceUrl) || (await fetchThumbnail(sourceUrl)) : null);
+      const { data, error } = await supabase.functions.invoke("generate-metadata", {
+        body: { title, brand: brand || null, image_url },
+      });
+      if (error) throw error;
+      const meta = (data as any)?.metadata;
+      if (!meta) throw new Error("No metadata");
+      const newTags = metadataToTags(meta);
+      const existing = tags.split(",").map((t) => t.trim()).filter(Boolean);
+      const merged = Array.from(new Set([...existing, ...newTags]));
+      setTags(merged.join(", "));
+      if (meta.curatorial_note && !notes.trim()) setNotes(meta.curatorial_note);
+      toast.success("Metadata generated");
+    } catch (e: any) {
+      toast.error(e?.message || "Failed to generate metadata");
+    } finally {
+      setGenerating(false);
+    }
+  }
 
   useEffect(() => {
     document.title = isEdit ? "Edit reference — The Creatives Room" : "Add reference — The Creatives Room";
