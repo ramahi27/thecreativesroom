@@ -267,6 +267,18 @@ export type Database = {
         }[]
       }
       get_user_id_by_email: { Args: { _email: string }; Returns: string }
+      get_user_overview: {
+        Args: never
+        Returns: {
+          bookmarks_count: number
+          created_at: string
+          email: string
+          is_admin: boolean
+          references_added: number
+          references_approved: number
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
