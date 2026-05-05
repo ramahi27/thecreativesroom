@@ -11,6 +11,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2 } from "lucide-react";
 import { consumeModalReturn, clearModalReturn, peekModalReturn } from "@/lib/modalReturn";
+import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
 interface Props {
   id: string;
