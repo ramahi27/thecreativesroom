@@ -144,38 +144,6 @@ const Settings = () => {
     }
   }
 
-  async function handleScrape(e: React.FormEvent) {
-    e.preventDefault();
-    const url = scrapeUrl.trim();
-    if (!url) return;
-    setScraping(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("scrape-link", { body: { url } });
-      if (error) throw error;
-      if (!data?.success) throw new Error(data?.error || "Failed to scrape");
-      if (data.playlist) {
-        toast.success(`Playlist imported — ${data.count} drafts created`, {
-          description: data.failed_count
-            ? `${data.failed_count} video(s) failed`
-            : "All videos saved as drafts",
-          action: { label: "Review", onClick: () => navigate("/drafts") },
-        });
-        setRecentScrapes((prev) => [...(data.drafts || []), ...prev].slice(0, 24));
-      } else {
-        toast.success("Added to drafts", {
-          description: data.draft.title,
-          action: { label: "Review", onClick: () => navigate("/drafts") },
-        });
-        setRecentScrapes((prev) => [data.draft, ...prev].slice(0, 8));
-      }
-      setScrapeUrl("");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to scrape link");
-    } finally {
-      setScraping(false);
-    }
-  }
-
   async function saveCategories(key: "video_categories" | "photo_categories", values: string[]) {
     const { error } = await supabase
       .from("app_settings")
