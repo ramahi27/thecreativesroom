@@ -8,8 +8,10 @@ import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
-import { Check, Trash2, Trash, Copy } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Check, Trash2, Trash, Copy, Sparkles, Link2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const PAGE_SIZE = 24;
 
