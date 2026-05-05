@@ -9,7 +9,7 @@ import type { Reference, MediaItem } from "@/lib/references";
 import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
-import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface Props {
   id: string;
