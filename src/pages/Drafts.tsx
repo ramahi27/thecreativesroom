@@ -178,6 +178,8 @@ const Drafts = () => {
     setDrafts((d) => d.filter((r) => r.id !== id));
     setTotal((t) => Math.max(0, t - 1));
     toast.success("Published");
+    // Backfill missing brand/agency/year from AI in the background.
+    enrichReferenceMetadata(id);
   }
 
   async function remove(id: string) {
