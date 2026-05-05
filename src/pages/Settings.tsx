@@ -48,11 +48,6 @@ const Settings = () => {
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [adding, setAdding] = useState(false);
 
-  const [scrapeUrl, setScrapeUrl] = useState("");
-  const [scraping, setScraping] = useState(false);
-  const [recentScrapes, setRecentScrapes] = useState<
-    { id: string; title: string; thumbnail_url: string | null; brand: string | null }[]
-  >([]);
 
   const [videoCats, setVideoCats] = useState<string[]>([]);
   const [photoCats, setPhotoCats] = useState<string[]>([]);
