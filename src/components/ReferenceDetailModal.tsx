@@ -262,9 +262,41 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       <button
                         key={i}
                         onClick={() => setActiveMedia(i)}
+                        draggable={isAdmin && uploaded.length > 1}
+                        onDragStart={(e) => {
+                          if (!isAdmin) return;
+                          e.dataTransfer.setData("text/plain", String(i));
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                        onDragOver={(e) => {
+                          if (isAdmin && uploaded.length > 1) {
+                            e.preventDefault();
+                            e.dataTransfer.dropEffect = "move";
+                          }
+                        }}
+                        onDrop={async (e) => {
+                          if (!isAdmin || !r) return;
+                          e.preventDefault();
+                          const from = Number(e.dataTransfer.getData("text/plain"));
+                          if (Number.isNaN(from) || from === i) return;
+                          const next = [...uploaded];
+                          const [moved] = next.splice(from, 1);
+                          next.splice(i, 0, moved);
+                          const prevR = r;
+                          setR({ ...r, media_items: next } as Reference);
+                          setActiveMedia(i);
+                          const { error } = await supabase
+                            .from("references")
+                            .update({ media_items: next as any })
+                            .eq("id", r.id);
+                          if (error) {
+                            setR(prevR);
+                            toast.error(error.message);
+                          }
+                        }}
                         className={`relative shrink-0 aspect-video w-28 overflow-hidden border hairline ${
                           safeIdx === i ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"
-                        }`}
+                        } ${isAdmin && uploaded.length > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
                       >
                         {m.kind === "video" ? (
                           <video src={m.url} className="w-full h-full object-cover" muted />
