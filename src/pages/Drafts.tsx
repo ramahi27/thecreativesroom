@@ -24,6 +24,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 const Drafts = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [drafts, setDrafts] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +36,8 @@ const Drafts = () => {
   const [total, setTotal] = useState(0);
   const [sourceFilter, setSourceFilter] = useState<string>(() => searchParams.get("source") || "all");
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
+  const [scrapeUrl, setScrapeUrl] = useState("");
+  const [scraping, setScraping] = useState(false);
   
 
   // Keep URL in sync with filters/page so we can return here with the same view.
