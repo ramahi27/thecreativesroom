@@ -212,6 +212,7 @@ function collectImages(html: string, baseUrl: string, primary: string | null): s
 
   // 2. <img> tags — only large ones (width attr >= 400, or srcset descriptor >= 600w)
   const imgTagRe = /<img\b[^>]*>/gi;
+  let m: RegExpExecArray | null;
   while ((m = imgTagRe.exec(html)) !== null) {
     const tag = m[0];
     const wAttr = tag.match(/\bwidth=["']?(\d+)/i)?.[1];
