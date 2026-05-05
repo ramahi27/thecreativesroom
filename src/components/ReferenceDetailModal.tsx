@@ -277,19 +277,42 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                 {totalSlides > 1 && (
                   <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                     {uploaded.map((m, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setActiveMedia(i)}
-                        className={`relative shrink-0 aspect-video w-28 overflow-hidden border hairline ${
-                          safeIdx === i ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"
-                        }`}
-                      >
-                        {m.kind === "video" ? (
-                          <video src={m.url} className="w-full h-full object-cover" muted />
-                        ) : (
-                          <img src={m.url} className="w-full h-full object-cover" alt="" />
+                      <div key={i} className="shrink-0 relative group">
+                        <button
+                          onClick={() => setActiveMedia(i)}
+                          className={`relative block aspect-video w-28 overflow-hidden border hairline ${
+                            safeIdx === i ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"
+                          }`}
+                        >
+                          {m.kind === "video" ? (
+                            <video src={m.url} className="w-full h-full object-cover" muted />
+                          ) : (
+                            <img src={m.url} className="w-full h-full object-cover" alt="" />
+                          )}
+                        </button>
+                        {isAdmin && uploaded.length > 1 && items.length > 1 && (
+                          <div className="absolute inset-x-0 bottom-0 flex justify-between bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); reorderMedia(i, -1); }}
+                              disabled={i === 0}
+                              className="flex-1 py-1 hover:bg-primary/20 disabled:opacity-30 disabled:hover:bg-transparent"
+                              aria-label="Move left"
+                            >
+                              <ArrowLeft className="h-3 w-3 mx-auto" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); reorderMedia(i, 1); }}
+                              disabled={i === items.length - 1}
+                              className="flex-1 py-1 hover:bg-primary/20 disabled:opacity-30 disabled:hover:bg-transparent"
+                              aria-label="Move right"
+                            >
+                              <ArrowRight className="h-3 w-3 mx-auto" />
+                            </button>
+                          </div>
                         )}
-                      </button>
+                      </div>
                     ))}
                     {hasEmbed && (
                       <button
