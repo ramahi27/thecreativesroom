@@ -136,6 +136,40 @@ const Drafts = () => {
     );
   }
 
+  async function handleScrape(e: React.FormEvent) {
+    e.preventDefault();
+    const url = scrapeUrl.trim();
+    if (!url) return;
+    setScraping(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("scrape-link", { body: { url } });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Failed to scrape");
+      if (data.playlist) {
+        toast.success(`Playlist imported — ${data.count} drafts created`, {
+          description: data.failed_count ? `${data.failed_count} video(s) failed` : "All videos saved as drafts",
+        });
+      } else {
+        toast.success("Added to drafts", { description: data.draft.title });
+      }
+      setScrapeUrl("");
+      // Refresh drafts list
+      setPage(0);
+      const { data: refreshed, count } = await supabase
+        .from("references")
+        .select("*", { count: "exact" })
+        .eq("published", false)
+        .order("created_at", { ascending: false })
+        .range(0, PAGE_SIZE - 1);
+      setDrafts((refreshed as unknown as Reference[]) || []);
+      setTotal(count || 0);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to scrape link");
+    } finally {
+      setScraping(false);
+    }
+  }
+
   async function publish(id: string) {
     setBusyId(id);
     const { error } = await supabase.from("references").update({ published: true }).eq("id", id);
