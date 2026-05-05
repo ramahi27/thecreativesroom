@@ -5,6 +5,7 @@ import { detectPlatform } from "@/lib/references";
 import { Play, ImageIcon, Link2 } from "lucide-react";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { FolderPickerButton } from "@/components/FolderPickerButton";
+import { rememberModalReturn } from "@/lib/modalReturn";
 
 interface Props {
   reference: Reference;
