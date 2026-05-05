@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { X, Plus, Shield, Trash2, BarChart3, Users, Eye, Bookmark, Clock } from "lucide-react";
+import { rememberModalReturn } from "@/lib/modalReturn";
 
 interface AdminStats {
   total_visitors: number;
