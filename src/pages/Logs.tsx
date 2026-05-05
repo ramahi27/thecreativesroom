@@ -10,17 +10,12 @@ import { Search, Sparkles, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { rememberModalReturn } from "@/lib/modalReturn";
+import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
-const AI_MARKER = "ai:processed";
-function hasAiMetadata(tags: string[] | null | undefined): boolean {
-  if (!Array.isArray(tags)) return false;
-  return tags.some((t) => t.toLowerCase() === AI_MARKER);
-}
-
-function metadataToTags(m: any): string[] {
-  const out: string[] = [AI_MARKER];
-  if (Array.isArray(m?.tags)) out.push(...m.tags.map((t: string) => String(t).trim().toLowerCase()).filter(Boolean));
-  return out;
+// A reference is considered "AI-complete" only if brand, agency, AND year
+// are all filled. Missing any of those means the AI box should show as unticked.
+function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null }): boolean {
+  return Boolean(r.brand && r.agency && r.year);
 }
 
 type LogRow = {
