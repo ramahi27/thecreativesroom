@@ -197,7 +197,10 @@ const AddReference = () => {
       const firstMediaUrl = items[0]?.url ?? null;
       const auto = sourceUrl ? deriveThumbnail(sourceUrl) || (await fetchThumbnail(sourceUrl)) : null;
       const firstImage = items.find((i) => i.kind === "image")?.url ?? null;
-      const finalThumb = thumbnailUrl || auto || firstImage;
+      // For photo projects, the first photo is ALWAYS the thumbnail.
+      const finalThumb = type === "image"
+        ? (firstImage || thumbnailUrl || auto)
+        : (thumbnailUrl || auto || firstImage);
 
       setProgress("Saving…");
 

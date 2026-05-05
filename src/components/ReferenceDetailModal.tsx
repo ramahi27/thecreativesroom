@@ -283,11 +283,15 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                           const [moved] = next.splice(from, 1);
                           next.splice(i, 0, moved);
                           const prevR = r;
-                          setR({ ...r, media_items: next } as Reference);
+                          // For photo projects, the first photo is always the thumbnail.
+                          const newThumb = r.type === "image"
+                            ? (next.find((it) => it.kind === "image")?.url ?? r.thumbnail_url)
+                            : r.thumbnail_url;
+                          setR({ ...r, media_items: next, thumbnail_url: newThumb } as Reference);
                           setActiveMedia(i);
                           const { error } = await supabase
                             .from("references")
-                            .update({ media_items: next as any })
+                            .update({ media_items: next as any, thumbnail_url: newThumb })
                             .eq("id", r.id);
                           if (error) {
                             setR(prevR);
