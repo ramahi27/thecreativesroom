@@ -1,5 +1,8 @@
-// Generates 15-30 descriptive tags for a reference using Lovable AI.
-// Uses only the title and brand (image is intentionally ignored).
+// Generates descriptive tags AND infers missing campaign metadata
+// (brand, agency, year) for a reference using Lovable AI. The model uses
+// its training-data knowledge of advertising/photography campaigns to fill
+// in the blanks — useful when admins approve or add a project where these
+// fields are unknown.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,13 +10,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `You are a creative reference librarian and visual advertising analyst. You will receive a reference containing a title and a brand. Analyze ONLY the title and brand — ignore any image. Infer intelligently from title and brand context. Return only the structured tool call. Produce between 15 and 30 short, descriptive, lowercase tag phrases (1-3 words each) that capture themes, industry, audience, style cues, emotional tone, cultural context, and notable creative angles. No duplicates. No hashtags. No explanations.`;
+const SYSTEM_PROMPT = `You are a creative reference librarian and advertising/photography campaign expert with deep knowledge of brands, agencies, photographers, directors, and notable campaigns.
+
+You will receive a reference describing an advertising or photography project (title, possibly brand, agency, year, source URL, notes). Your job:
+1. Produce 15-30 short, descriptive, lowercase tag phrases (1-3 words each) covering themes, industry, audience, style cues, emotional tone, cultural context, and creative angles. No duplicates, no hashtags, no explanations.
+2. If brand, agency, or year are missing or empty, infer them from the title, source URL, and any other context using your knowledge of real campaigns. Only fill a field if you are reasonably confident; otherwise leave it null. Year must be an integer between 1950 and the current year. Do NOT overwrite values that were already supplied — those are sent only as context.
+
+Return only the structured tool call.`;
 
 const TOOL = {
   type: "function",
   function: {
     name: "emit_metadata",
-    description: "Emit 15-30 descriptive tags for the reference.",
+    description: "Emit tags and inferred missing campaign metadata.",
     parameters: {
       type: "object",
       properties: {
@@ -22,6 +31,21 @@ const TOOL = {
           items: { type: "string" },
           minItems: 15,
           maxItems: 30,
+        },
+        brand: {
+          type: ["string", "null"],
+          description:
+            "Inferred brand/advertiser name if missing. Null if unknown or already provided.",
+        },
+        agency: {
+          type: ["string", "null"],
+          description:
+            "Inferred creative agency or production company if missing. Null if unknown or already provided.",
+        },
+        year: {
+          type: ["integer", "null"],
+          description:
+            "Inferred year (4-digit) the campaign was released if missing. Null if unknown or already provided.",
         },
       },
       required: ["tags"],
@@ -36,7 +60,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { title, brand } = await req.json();
+    const body = await req.json();
+    const {
+      title,
+      brand = null,
+      agency = null,
+      year = null,
+      source_url = null,
+      notes = null,
+    } = body || {};
     if (!title || typeof title !== "string") {
       return new Response(JSON.stringify({ error: "title is required" }), {
         status: 400,
@@ -46,6 +78,15 @@ Deno.serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+    const userContext = [
+      `title: ${title}`,
+      `brand: ${brand || "(missing — please infer if possible)"}`,
+      `agency: ${agency || "(missing — please infer if possible)"}`,
+      `year: ${year || "(missing — please infer if possible)"}`,
+      `source_url: ${source_url || "(none)"}`,
+      `notes: ${notes || "(none)"}`,
+    ].join("\n");
 
     const resp = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -59,10 +100,7 @@ Deno.serve(async (req) => {
           model: "google/gemini-2.5-flash",
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
-            {
-              role: "user",
-              content: `title: ${title}\nbrand: ${brand || "(unknown)"}`,
-            },
+            { role: "user", content: userContext },
           ],
           tools: [TOOL],
           tool_choice: {
@@ -111,7 +149,8 @@ Deno.serve(async (req) => {
     console.error("generate-metadata error:", e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
     );
   }
 });
