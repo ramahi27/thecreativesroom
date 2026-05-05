@@ -178,46 +178,79 @@ async function scrapeGeneric(url: string): Promise<Scraped> {
   };
 }
 
-/** Pull image URLs from the page: all og:image variants + reasonably-sized <img> tags. */
+/** Skip patterns for non-campaign images (logos, avatars, ads, etc.) */
+const SKIP_URL_RE = /logo|avatar|icon|thumbnail|thumb[-_]|author|profile|banner|ads?[-_/]|sponsor|widget|favicon|sprite|placeholder|spinner|emoji/i;
+
+/** Pull hero/main campaign image URLs only. Prefers og:image, then large <img> tags. */
 function collectImages(html: string, baseUrl: string, primary: string | null): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
-  const push = (raw: string | null | undefined) => {
-    if (!raw) return;
+  const normalize = (raw: string | null | undefined): string | null => {
+    if (!raw) return null;
     let u = raw.trim();
-    if (!u) return;
+    if (!u) return null;
     if (u.startsWith("//")) u = "https:" + u;
     if (u.startsWith("/")) {
-      try { u = new URL(u, baseUrl).toString(); } catch { return; }
+      try { u = new URL(u, baseUrl).toString(); } catch { return null; }
     }
-    if (!/^https?:\/\//i.test(u)) return;
-    // Skip obvious icons/sprites/svgs/data uris
-    if (/\.(svg)(\?|$)/i.test(u)) return;
-    if (/sprite|icon|logo|favicon|placeholder|spinner|avatar|emoji/i.test(u)) return;
-    if (seen.has(u)) return;
+    if (!/^https?:\/\//i.test(u)) return null;
+    if (/\.(svg)(\?|$)/i.test(u)) return null;
+    if (SKIP_URL_RE.test(u)) return null;
+    return u;
+  };
+  const push = (raw: string | null | undefined) => {
+    const u = normalize(raw);
+    if (!u || seen.has(u)) return;
     seen.add(u);
     out.push(u);
   };
 
+  // 1. og:image first — site's designated hero image
   push(primary);
-
-  // All og:image / og:image:url / og:image:secure_url tags (Open Graph supports multiple)
   const ogRe = /<meta[^>]+(?:property|name)=["']og:image(?::(?:url|secure_url))?["'][^>]+content=["']([^"']+)["']/gi;
   let m: RegExpExecArray | null;
   while ((m = ogRe.exec(html)) !== null) push(m[1]);
   const ogRe2 = /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']og:image(?::(?:url|secure_url))?["']/gi;
   while ((m = ogRe2.exec(html)) !== null) push(m[1]);
+  // twitter:image as another designated hero
+  const twRe = /<meta[^>]+(?:property|name)=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/gi;
+  while ((m = twRe.exec(html)) !== null) push(m[1]);
 
-  // <img src> and srcset
-  const imgRe = /<img[^>]+(?:src|data-src|data-lazy-src)=["']([^"']+)["'][^>]*>/gi;
-  while ((m = imgRe.exec(html)) !== null) push(m[1]);
-  const srcsetRe = /<img[^>]+srcset=["']([^"']+)["']/gi;
-  while ((m = srcsetRe.exec(html)) !== null) {
-    const first = m[1].split(",").map(s => s.trim().split(/\s+/)[0]).filter(Boolean);
-    for (const u of first) push(u);
+  // 2. <img> tags — only large ones (width attr >= 400, or srcset descriptor >= 600w)
+  const imgTagRe = /<img\b[^>]*>/gi;
+  while ((m = imgTagRe.exec(html)) !== null) {
+    const tag = m[0];
+    const wAttr = tag.match(/\bwidth=["']?(\d+)/i)?.[1];
+    const hAttr = tag.match(/\bheight=["']?(\d+)/i)?.[1];
+    const w = wAttr ? parseInt(wAttr) : 0;
+    const h = hAttr ? parseInt(hAttr) : 0;
+    // If dimensions declared and below threshold, skip
+    if (w && w < 400) continue;
+    if (h && h > 0 && h < 300) continue;
+
+    const srcset = tag.match(/\bsrcset=["']([^"']+)["']/i)?.[1];
+    let chosen: string | null = null;
+    let chosenW = 0;
+    if (srcset) {
+      // Pick largest descriptor >= 600w
+      for (const part of srcset.split(",")) {
+        const [u, descRaw] = part.trim().split(/\s+/);
+        const desc = parseInt(descRaw || "0");
+        if (desc >= chosenW) { chosenW = desc; chosen = u; }
+      }
+      if (chosenW && chosenW < 600) chosen = null;
+    }
+    if (!chosen) {
+      chosen = tag.match(/\b(?:src|data-src|data-lazy-src|data-original)=["']([^"']+)["']/i)?.[1] || null;
+    }
+    // Without explicit dimensions, only accept if there was a srcset >= 600w,
+    // OR the width attr explicitly says >= 600
+    const hasGoodSignal = (w >= 600) || (chosenW >= 600);
+    if (!hasGoodSignal) continue;
+    push(chosen);
   }
 
-  return out.slice(0, 30);
+  return out.slice(0, 15);
 }
 
 async function inferMetadata(
