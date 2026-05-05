@@ -5,6 +5,7 @@ import { detectPlatform } from "@/lib/references";
 import { Play, ImageIcon, Link2 } from "lucide-react";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { FolderPickerButton } from "@/components/FolderPickerButton";
+import { rememberModalReturn } from "@/lib/modalReturn";
 
 interface Props {
   reference: Reference;
@@ -33,6 +34,7 @@ export function ReferenceCard({ reference: r }: Props) {
   return (
     <Link
       to={`/ref/${r.id}`}
+      onClick={() => rememberModalReturn()}
       className="reveal-card group block overflow-hidden bg-card border hairline"
     >
       <div className="relative aspect-video overflow-hidden bg-muted">

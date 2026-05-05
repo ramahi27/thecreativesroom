@@ -10,6 +10,7 @@ import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2 } from "lucide-react";
+import { consumeModalReturn, clearModalReturn, peekModalReturn } from "@/lib/modalReturn";
 
 interface Props {
   id: string;
@@ -101,19 +102,20 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [goPrev, goNext]);
 
+  const returnToOpener = useCallback(() => {
+    if (peekModalReturn()) {
+      consumeModalReturn(navigate, "/");
+    } else {
+      onClose();
+    }
+  }, [navigate, onClose]);
+
   async function handleDelete() {
     if (!r || !confirm("Delete this reference?")) return;
     const { error } = await supabase.from("references").delete().eq("id", r.id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
-    // If admin came from the Drafts page, return them there with the same filters/page.
-    const returnUrl = sessionStorage.getItem("draftsReturnUrl");
-    if (returnUrl) {
-      sessionStorage.removeItem("draftsReturnUrl");
-      navigate(returnUrl);
-      return;
-    }
-    onClose();
+    returnToOpener();
   }
 
   async function handleApprove() {
@@ -122,12 +124,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (error) return toast.error(error.message);
     setR({ ...r, published: true } as Reference);
     toast.success("Published — now live on the main page");
-    // If admin came from the Drafts page, return them there with the same filters/page.
-    const returnUrl = sessionStorage.getItem("draftsReturnUrl");
-    if (returnUrl) {
-      sessionStorage.removeItem("draftsReturnUrl");
-      navigate(returnUrl);
-    }
+    returnToOpener();
   }
 
   async function handleShare() {
@@ -181,7 +178,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const current = !currentIsEmbed ? uploaded[safeIdx] : null;
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
+    <Dialog open onOpenChange={(o) => !o && returnToOpener()}>
       <DialogContent className="max-w-[1600px] w-[96vw] max-h-[95vh] overflow-y-auto p-0 bg-background grain">
         {/* Prev / Next side arrows */}
         {prev && (
@@ -445,7 +442,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        onClose();
                         navigate(`/edit/${r.id}`);
                       }}
                       className="font-mono text-xs uppercase tracking-widest"
