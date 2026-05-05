@@ -43,8 +43,12 @@ export function ReferenceCard({ reference: r }: Props) {
             src={thumb}
             alt={r.title}
             loading="lazy"
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              setPos(smartPosition(img.naturalWidth, img.naturalHeight));
+            }}
             className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-            style={{ objectPosition: r.type === "image" ? "center 30%" : "center" }}
+            style={{ objectPosition: pos }}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-secondary to-background">
