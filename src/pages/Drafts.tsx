@@ -216,6 +216,35 @@ const Drafts = () => {
             Imported references waiting to go live. Publish to add to the main archive, or delete.
           </p>
 
+          {/* Import via link */}
+          <div className="mt-8 max-w-2xl border hairline p-5 bg-muted/30">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-primary" strokeWidth={1.5} />
+              <h2 className="font-mono text-xs uppercase tracking-widest">Import via link</h2>
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-4">
+              YouTube (videos/playlists), Vimeo, or any web page. Multi-image campaigns import all images.
+            </p>
+            <form onSubmit={handleScrape} className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  type="url"
+                  required
+                  placeholder="https://..."
+                  value={scrapeUrl}
+                  onChange={(e) => setScrapeUrl(e.target.value)}
+                  className="bg-secondary border-0 font-mono pl-9"
+                  disabled={scraping}
+                />
+              </div>
+              <Button type="submit" disabled={scraping} className="font-mono text-xs uppercase tracking-widest">
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                {scraping ? "Scraping…" : "Scrape & draft"}
+              </Button>
+            </form>
+          </div>
+
           {/* Source filter */}
           {sources.length > 0 && (
             <div className="mt-8 flex flex-wrap gap-2 items-center">
