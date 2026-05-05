@@ -17,7 +17,7 @@ import {
   type MediaItem,
 } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
-import { X } from "lucide-react";
+import { X, ArrowUp, ArrowDown } from "lucide-react";
 
 const AI_MARKER = "ai:processed";
 function metadataToTags(m: any): string[] {
@@ -152,6 +152,16 @@ const AddReference = () => {
 
   function removeExisting(idx: number) {
     setExistingMedia((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function moveExisting(idx: number, dir: -1 | 1) {
+    setExistingMedia((prev) => {
+      const next = [...prev];
+      const j = idx + dir;
+      if (j < 0 || j >= next.length) return prev;
+      [next[idx], next[j]] = [next[j], next[idx]];
+      return next;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -350,21 +360,54 @@ const AddReference = () => {
 
           {existingMedia.length > 0 && (
             <div className="space-y-2">
-              <Label className={labelCls}>Current media</Label>
+              <Label className={labelCls}>
+                Current media{existingMedia.length > 1 ? " · drag-free reorder with arrows" : ""}
+              </Label>
               <ul className="space-y-1">
                 {existingMedia.map((m, i) => (
-                  <li key={i} className="flex items-center justify-between gap-3 bg-secondary px-3 py-2">
-                    <span className="font-mono text-[11px] truncate">
-                      {m.kind === "video" ? "🎬" : "🖼"} {m.url.split("/").pop()}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => removeExisting(i)}
-                      className="text-muted-foreground hover:text-foreground"
-                      aria-label="Remove"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+                  <li key={`${m.url}-${i}`} className="flex items-center justify-between gap-3 bg-secondary px-3 py-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {m.kind === "image" ? (
+                        <img src={m.url} alt="" className="h-10 w-10 object-cover shrink-0" />
+                      ) : (
+                        <span className="h-10 w-10 grid place-items-center bg-background text-xs">🎬</span>
+                      )}
+                      <span className="font-mono text-[11px] truncate">
+                        {i + 1}. {m.url.split("/").pop()}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {existingMedia.length > 1 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => moveExisting(i, -1)}
+                            disabled={i === 0}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                            aria-label="Move up"
+                          >
+                            <ArrowUp className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => moveExisting(i, 1)}
+                            disabled={i === existingMedia.length - 1}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-30"
+                            aria-label="Move down"
+                          >
+                            <ArrowDown className="h-3 w-3" />
+                          </button>
+                        </>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeExisting(i)}
+                        className="text-muted-foreground hover:text-foreground ml-1"
+                        aria-label="Remove"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
