@@ -34,6 +34,7 @@ export function ReferenceCard({ reference: r }: Props) {
   return (
     <Link
       to={`/ref/${r.id}`}
+      onClick={() => rememberModalReturn()}
       className="reveal-card group block overflow-hidden bg-card border hairline"
     >
       <div className="relative aspect-video overflow-hidden bg-muted">
