@@ -164,13 +164,60 @@ async function scrapeGeneric(url: string): Promise<Scraped> {
   if (thumb && thumb.startsWith("/")) thumb = new URL(thumb, url).toString();
   const siteName = pickMeta(html, ["og:site_name"]) || "";
   const ogVideo = pickMeta(html, ["og:video", "og:video:url", "og:video:secure_url"]);
+
+  // Collect multiple images from the page (for multi-image campaigns)
+  const images = collectImages(html, url, thumb);
+
   return {
     title: title.slice(0, 250),
     source_url: url,
     thumbnail_url: thumb,
-    type: ogVideo ? "video" : thumb ? "image" : "link",
+    type: ogVideo ? "video" : (images.length > 0 ? "image" : "link"),
     brand_guess: siteName,
+    images,
   };
+}
+
+/** Pull image URLs from the page: all og:image variants + reasonably-sized <img> tags. */
+function collectImages(html: string, baseUrl: string, primary: string | null): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (raw: string | null | undefined) => {
+    if (!raw) return;
+    let u = raw.trim();
+    if (!u) return;
+    if (u.startsWith("//")) u = "https:" + u;
+    if (u.startsWith("/")) {
+      try { u = new URL(u, baseUrl).toString(); } catch { return; }
+    }
+    if (!/^https?:\/\//i.test(u)) return;
+    // Skip obvious icons/sprites/svgs/data uris
+    if (/\.(svg)(\?|$)/i.test(u)) return;
+    if (/sprite|icon|logo|favicon|placeholder|spinner|avatar|emoji/i.test(u)) return;
+    if (seen.has(u)) return;
+    seen.add(u);
+    out.push(u);
+  };
+
+  push(primary);
+
+  // All og:image / og:image:url / og:image:secure_url tags (Open Graph supports multiple)
+  const ogRe = /<meta[^>]+(?:property|name)=["']og:image(?::(?:url|secure_url))?["'][^>]+content=["']([^"']+)["']/gi;
+  let m: RegExpExecArray | null;
+  while ((m = ogRe.exec(html)) !== null) push(m[1]);
+  const ogRe2 = /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']og:image(?::(?:url|secure_url))?["']/gi;
+  while ((m = ogRe2.exec(html)) !== null) push(m[1]);
+
+  // <img src> and srcset
+  const imgRe = /<img[^>]+(?:src|data-src|data-lazy-src)=["']([^"']+)["'][^>]*>/gi;
+  while ((m = imgRe.exec(html)) !== null) push(m[1]);
+  const srcsetRe = /<img[^>]+srcset=["']([^"']+)["']/gi;
+  while ((m = srcsetRe.exec(html)) !== null) {
+    const first = m[1].split(",").map(s => s.trim().split(/\s+/)[0]).filter(Boolean);
+    for (const u of first) push(u);
+  }
+
+  return out.slice(0, 30);
 }
 
 async function inferMetadata(
