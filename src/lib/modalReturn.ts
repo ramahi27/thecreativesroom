@@ -58,11 +58,20 @@ export function consumeModalReturn(navigate: NavigateFunction, fallback = "/") {
   const target = entry?.url || fallback;
   const scroll = entry?.scroll ?? 0;
   navigate(target);
-  // Restore scroll after the destination route has rendered.
-  // Two rAFs handles both initial paint and any layout shift.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      window.scrollTo({ top: scroll, left: 0, behavior: "auto" });
-    });
-  });
+  // Restore scroll once the destination has rendered enough content to
+  // actually reach that offset. Poll briefly because the page may re-fetch
+  // data after navigation, growing the document height asynchronously.
+  const start = performance.now();
+  const tryScroll = () => {
+    const maxY = Math.max(
+      0,
+      document.documentElement.scrollHeight - window.innerHeight,
+    );
+    const target = Math.min(scroll, maxY);
+    window.scrollTo({ top: target, left: 0, behavior: "auto" });
+    if (target < scroll && performance.now() - start < 1500) {
+      requestAnimationFrame(tryScroll);
+    }
+  };
+  requestAnimationFrame(() => requestAnimationFrame(tryScroll));
 }
