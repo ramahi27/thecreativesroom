@@ -178,7 +178,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const current = !currentIsEmbed ? uploaded[safeIdx] : null;
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()}>
+    <Dialog open onOpenChange={(o) => !o && returnToOpener()}>
       <DialogContent className="max-w-[1600px] w-[96vw] max-h-[95vh] overflow-y-auto p-0 bg-background grain">
         {/* Prev / Next side arrows */}
         {prev && (
