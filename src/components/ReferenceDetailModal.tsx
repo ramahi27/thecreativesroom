@@ -166,6 +166,24 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     }
   }
 
+  async function reorderMedia(idx: number, dir: -1 | 1) {
+    if (!r) return;
+    const list: MediaItem[] = Array.isArray(r.media_items) ? [...r.media_items] : [];
+    const j = idx + dir;
+    if (j < 0 || j >= list.length) return;
+    [list[idx], list[j]] = [list[j], list[idx]];
+    const prev = r.media_items;
+    setR({ ...r, media_items: list } as Reference);
+    setActiveMedia(j);
+    const { error } = await supabase.from("references").update({ media_items: list as any }).eq("id", r.id);
+    if (error) {
+      setR({ ...r, media_items: prev } as Reference);
+      toast.error(error.message);
+    } else {
+      toast.success("Order updated");
+    }
+  }
+
   const platform = r ? detectPlatform(r.source_url) : null;
   const embedUrl = r ? getEmbedUrl(r.source_url) : null;
   const items: MediaItem[] = r && Array.isArray(r.media_items) ? r.media_items : [];
