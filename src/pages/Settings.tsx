@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { X, Plus, Shield, Trash2, Sparkles, Link2, ExternalLink, BarChart3, Users, Eye, Bookmark, Clock } from "lucide-react";
+import { X, Plus, Shield, Trash2, BarChart3, Users, Eye, Bookmark, Clock } from "lucide-react";
 
 interface AdminStats {
   total_visitors: number;
