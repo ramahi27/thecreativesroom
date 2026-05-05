@@ -12,6 +12,7 @@ import { Check, Trash2, Trash, Copy, Sparkles, Link2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
 const PAGE_SIZE = 24;
 
@@ -178,6 +179,8 @@ const Drafts = () => {
     setDrafts((d) => d.filter((r) => r.id !== id));
     setTotal((t) => Math.max(0, t - 1));
     toast.success("Published");
+    // Backfill missing brand/agency/year from AI in the background.
+    enrichReferenceMetadata(id);
   }
 
   async function remove(id: string) {

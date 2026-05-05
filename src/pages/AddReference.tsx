@@ -246,10 +246,18 @@ const AddReference = () => {
       }
 
       // Auto-fire AI metadata generation in the background (best effort).
+      // Also backfills brand/agency/year when they were left blank.
       if (savedId) {
         supabase.functions
           .invoke("generate-metadata", {
-            body: { title, brand: brand || null },
+            body: {
+              title,
+              brand: brand || null,
+              agency: agency || null,
+              year: year ? Number(year) : null,
+              source_url: sourceUrl || null,
+              notes: notes || null,
+            },
           })
           .then(async ({ data, error }) => {
             const meta = (data as any)?.metadata;
@@ -257,12 +265,22 @@ const AddReference = () => {
             const newTags = metadataToTags(meta);
             const { data: cur } = await supabase
               .from("references")
-              .select("tags")
+              .select("tags,brand,agency,year")
               .eq("id", savedId!)
               .maybeSingle();
             const existing: string[] = Array.isArray(cur?.tags) ? (cur!.tags as string[]) : [];
             const merged = Array.from(new Set([...existing, ...newTags]));
-            await supabase.from("references").update({ tags: merged }).eq("id", savedId!);
+            const updates: { tags: string[]; brand?: string; agency?: string; year?: number } = { tags: merged };
+            if (!cur?.brand && typeof meta.brand === "string" && meta.brand.trim()) {
+              updates.brand = meta.brand.trim();
+            }
+            if (!cur?.agency && typeof meta.agency === "string" && meta.agency.trim()) {
+              updates.agency = meta.agency.trim();
+            }
+            if (!cur?.year && Number.isInteger(meta.year)) {
+              updates.year = meta.year;
+            }
+            await supabase.from("references").update(updates).eq("id", savedId!);
           })
           .catch(() => {});
       }
