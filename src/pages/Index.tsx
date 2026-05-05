@@ -525,7 +525,20 @@ const Index = () => {
         )}
       </main>
 
-      {openId && <ReferenceDetailModal id={openId} onClose={() => navigate("/")} />}
+      {openId && (
+        <ReferenceDetailModal
+          id={openId}
+          onClose={() => {
+            // If user opened the modal from within the app, go back to the previous page.
+            // Otherwise (deep link), fall back to home.
+            if (window.history.state && window.history.state.idx > 0) {
+              navigate(-1);
+            } else {
+              navigate("/");
+            }
+          }}
+        />
+      )}
 
       <SiteFooter />
       <div className="border-t hairline">
