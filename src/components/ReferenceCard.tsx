@@ -25,7 +25,16 @@ function smartPosition(w: number, h: number): string {
 }
 
 export function ReferenceCard({ reference: r }: Props) {
-  const thumb = r.thumbnail_url || (r.type === "image" ? r.media_url : null);
+  // For photo projects, always prefer the first photo as the thumbnail.
+  const firstMediaImage = (() => {
+    const items = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
+    if (!Array.isArray(items)) return null;
+    const firstImg = items.find((it) => it?.kind === "image" && it.url);
+    return firstImg?.url ?? null;
+  })();
+  const thumb = r.type === "image"
+    ? (firstMediaImage || r.thumbnail_url || r.media_url)
+    : (r.thumbnail_url || (r.type === "image" ? r.media_url : null));
   const platform = detectPlatform(r.source_url);
   const [pos, setPos] = useState<string>("center 35%");
 
