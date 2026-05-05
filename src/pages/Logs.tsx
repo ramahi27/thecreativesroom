@@ -23,6 +23,7 @@ type LogRow = {
   title: string;
   thumbnail_url: string | null;
   brand: string | null;
+  agency: string | null;
   type: string;
   year: number | null;
   created_at: string;
