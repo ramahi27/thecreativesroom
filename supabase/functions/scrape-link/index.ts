@@ -160,13 +160,14 @@ async function scrapeGeneric(url: string): Promise<Scraped> {
     pickMeta(html, ["og:title", "twitter:title"]) ||
     html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim() ||
     new URL(url).hostname;
-  let thumb = pickMeta(html, ["og:image", "twitter:image", "twitter:image:src"]);
-  if (thumb && thumb.startsWith("/")) thumb = new URL(thumb, url).toString();
   const siteName = pickMeta(html, ["og:site_name"]) || "";
   const ogVideo = pickMeta(html, ["og:video", "og:video:url", "og:video:secure_url"]);
 
-  // Collect multiple images from the page (for multi-image campaigns)
-  const images = collectImages(html, url, thumb);
+  // Collect campaign images from the page body only — skip og:image / twitter:image
+  // meta tags since those are usually the site's promo/share thumbnail, not the
+  // actual campaign hero. Use the first scraped image as the thumbnail instead.
+  const images = collectImages(html, url, null);
+  const thumb = images[0] || null;
 
   return {
     title: title.slice(0, 250),
@@ -205,19 +206,13 @@ function collectImages(html: string, baseUrl: string, primary: string | null): s
     out.push(u);
   };
 
-  // 1. og:image first — site's designated hero image
-  push(primary);
-  const ogRe = /<meta[^>]+(?:property|name)=["']og:image(?::(?:url|secure_url))?["'][^>]+content=["']([^"']+)["']/gi;
-  let m: RegExpExecArray | null;
-  while ((m = ogRe.exec(html)) !== null) push(m[1]);
-  const ogRe2 = /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']og:image(?::(?:url|secure_url))?["']/gi;
-  while ((m = ogRe2.exec(html)) !== null) push(m[1]);
-  // twitter:image as another designated hero
-  const twRe = /<meta[^>]+(?:property|name)=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/gi;
-  while ((m = twRe.exec(html)) !== null) push(m[1]);
+  // Skip og:image / twitter:image meta tags — those are page share thumbnails,
+  // not campaign hero images. Only use real <img> tags from the page body.
+  void primary;
 
   // 2. <img> tags — only large ones (width attr >= 400, or srcset descriptor >= 600w)
   const imgTagRe = /<img\b[^>]*>/gi;
+  let m: RegExpExecArray | null;
   while ((m = imgTagRe.exec(html)) !== null) {
     const tag = m[0];
     const wAttr = tag.match(/\bwidth=["']?(\d+)/i)?.[1];
