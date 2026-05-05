@@ -26,6 +26,7 @@ function smartPosition(w: number, h: number): string {
 export function ReferenceCard({ reference: r }: Props) {
   const thumb = r.thumbnail_url || (r.type === "image" ? r.media_url : null);
   const platform = detectPlatform(r.source_url);
+  const [pos, setPos] = useState<string>("center 35%");
 
   const Icon = r.type === "video" ? Play : r.type === "image" ? ImageIcon : Link2;
 
