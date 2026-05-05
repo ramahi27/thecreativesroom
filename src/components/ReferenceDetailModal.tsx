@@ -102,19 +102,20 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [goPrev, goNext]);
 
+  const returnToOpener = useCallback(() => {
+    if (peekModalReturn()) {
+      consumeModalReturn(navigate, "/");
+    } else {
+      onClose();
+    }
+  }, [navigate, onClose]);
+
   async function handleDelete() {
     if (!r || !confirm("Delete this reference?")) return;
     const { error } = await supabase.from("references").delete().eq("id", r.id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
-    // If admin came from the Drafts page, return them there with the same filters/page.
-    const returnUrl = sessionStorage.getItem("draftsReturnUrl");
-    if (returnUrl) {
-      sessionStorage.removeItem("draftsReturnUrl");
-      navigate(returnUrl);
-      return;
-    }
-    onClose();
+    returnToOpener();
   }
 
   async function handleApprove() {
@@ -123,12 +124,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (error) return toast.error(error.message);
     setR({ ...r, published: true } as Reference);
     toast.success("Published — now live on the main page");
-    // If admin came from the Drafts page, return them there with the same filters/page.
-    const returnUrl = sessionStorage.getItem("draftsReturnUrl");
-    if (returnUrl) {
-      sessionStorage.removeItem("draftsReturnUrl");
-      navigate(returnUrl);
-    }
+    returnToOpener();
   }
 
   async function handleShare() {
