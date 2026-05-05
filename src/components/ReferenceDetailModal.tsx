@@ -442,7 +442,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     <Button
                       variant="outline"
                       onClick={() => {
-                        onClose();
                         navigate(`/edit/${r.id}`);
                       }}
                       className="font-mono text-xs uppercase tracking-widest"
