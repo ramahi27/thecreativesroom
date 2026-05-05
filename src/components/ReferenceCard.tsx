@@ -34,7 +34,7 @@ export function ReferenceCard({ reference: r }: Props) {
   })();
   const thumb = r.type === "image"
     ? (firstMediaImage || r.thumbnail_url || r.media_url)
-    : (r.thumbnail_url || (r.type === "image" ? r.media_url : null));
+    : (r.thumbnail_url || null);
   const platform = detectPlatform(r.source_url);
   const [pos, setPos] = useState<string>("center 35%");
 
