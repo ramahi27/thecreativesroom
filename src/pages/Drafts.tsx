@@ -8,8 +8,10 @@ import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
-import { Check, Trash2, Trash, Copy } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Check, Trash2, Trash, Copy, Sparkles, Link2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const PAGE_SIZE = 24;
 
@@ -22,6 +24,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
 const Drafts = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [drafts, setDrafts] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +36,8 @@ const Drafts = () => {
   const [total, setTotal] = useState(0);
   const [sourceFilter, setSourceFilter] = useState<string>(() => searchParams.get("source") || "all");
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
+  const [scrapeUrl, setScrapeUrl] = useState("");
+  const [scraping, setScraping] = useState(false);
   
 
   // Keep URL in sync with filters/page so we can return here with the same view.
@@ -131,6 +136,40 @@ const Drafts = () => {
     );
   }
 
+  async function handleScrape(e: React.FormEvent) {
+    e.preventDefault();
+    const url = scrapeUrl.trim();
+    if (!url) return;
+    setScraping(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("scrape-link", { body: { url } });
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Failed to scrape");
+      if (data.playlist) {
+        toast.success(`Playlist imported — ${data.count} drafts created`, {
+          description: data.failed_count ? `${data.failed_count} video(s) failed` : "All videos saved as drafts",
+        });
+      } else {
+        toast.success("Added to drafts", { description: data.draft.title });
+      }
+      setScrapeUrl("");
+      // Refresh drafts list
+      setPage(0);
+      const { data: refreshed, count } = await supabase
+        .from("references")
+        .select("*", { count: "exact" })
+        .eq("published", false)
+        .order("created_at", { ascending: false })
+        .range(0, PAGE_SIZE - 1);
+      setDrafts((refreshed as unknown as Reference[]) || []);
+      setTotal(count || 0);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to scrape link");
+    } finally {
+      setScraping(false);
+    }
+  }
+
   async function publish(id: string) {
     setBusyId(id);
     const { error } = await supabase.from("references").update({ published: true }).eq("id", id);
@@ -176,6 +215,35 @@ const Drafts = () => {
           <p className="mt-6 max-w-xl font-mono text-xs uppercase tracking-widest text-muted-foreground">
             Imported references waiting to go live. Publish to add to the main archive, or delete.
           </p>
+
+          {/* Import via link */}
+          <div className="mt-8 max-w-2xl border hairline p-5 bg-muted/30">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-primary" strokeWidth={1.5} />
+              <h2 className="font-mono text-xs uppercase tracking-widest">Import via link</h2>
+            </div>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-4">
+              YouTube (videos/playlists), Vimeo, or any web page. Multi-image campaigns import all images.
+            </p>
+            <form onSubmit={handleScrape} className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  type="url"
+                  required
+                  placeholder="https://..."
+                  value={scrapeUrl}
+                  onChange={(e) => setScrapeUrl(e.target.value)}
+                  className="bg-secondary border-0 font-mono pl-9"
+                  disabled={scraping}
+                />
+              </div>
+              <Button type="submit" disabled={scraping} className="font-mono text-xs uppercase tracking-widest">
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                {scraping ? "Scraping…" : "Scrape & draft"}
+              </Button>
+            </form>
+          </div>
 
           {/* Source filter */}
           {sources.length > 0 && (
