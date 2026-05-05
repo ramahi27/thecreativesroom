@@ -154,6 +154,15 @@ const AddReference = () => {
     setExistingMedia((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  function reorderExisting(from: number, to: number) {
+    setExistingMedia((prev) => {
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }
   function moveExisting(idx: number, dir: -1 | 1) {
     setExistingMedia((prev) => {
       const next = [...prev];
@@ -361,11 +370,30 @@ const AddReference = () => {
           {existingMedia.length > 0 && (
             <div className="space-y-2">
               <Label className={labelCls}>
-                Current media{existingMedia.length > 1 ? " · drag-free reorder with arrows" : ""}
+                Current media{existingMedia.length > 1 ? " · drag to reorder" : ""}
               </Label>
               <ul className="space-y-1">
                 {existingMedia.map((m, i) => (
-                  <li key={`${m.url}-${i}`} className="flex items-center justify-between gap-3 bg-secondary px-3 py-2">
+                  <li
+                    key={`${m.url}-${i}`}
+                    draggable={existingMedia.length > 1}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/plain", String(i));
+                      e.dataTransfer.effectAllowed = "move";
+                    }}
+                    onDragOver={(e) => {
+                      if (existingMedia.length > 1) {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const from = Number(e.dataTransfer.getData("text/plain"));
+                      if (!Number.isNaN(from)) reorderExisting(from, i);
+                    }}
+                    className={`flex items-center justify-between gap-3 bg-secondary px-3 py-2 ${existingMedia.length > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
+                  >
                     <div className="flex items-center gap-3 min-w-0">
                       {m.kind === "image" ? (
                         <img src={m.url} alt="" className="h-10 w-10 object-cover shrink-0" />
