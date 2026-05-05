@@ -206,16 +206,9 @@ function collectImages(html: string, baseUrl: string, primary: string | null): s
     out.push(u);
   };
 
-  // 1. og:image first — site's designated hero image
-  push(primary);
-  const ogRe = /<meta[^>]+(?:property|name)=["']og:image(?::(?:url|secure_url))?["'][^>]+content=["']([^"']+)["']/gi;
-  let m: RegExpExecArray | null;
-  while ((m = ogRe.exec(html)) !== null) push(m[1]);
-  const ogRe2 = /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']og:image(?::(?:url|secure_url))?["']/gi;
-  while ((m = ogRe2.exec(html)) !== null) push(m[1]);
-  // twitter:image as another designated hero
-  const twRe = /<meta[^>]+(?:property|name)=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/gi;
-  while ((m = twRe.exec(html)) !== null) push(m[1]);
+  // Skip og:image / twitter:image meta tags — those are page share thumbnails,
+  // not campaign hero images. Only use real <img> tags from the page body.
+  void primary;
 
   // 2. <img> tags — only large ones (width attr >= 400, or srcset descriptor >= 600w)
   const imgTagRe = /<img\b[^>]*>/gi;
