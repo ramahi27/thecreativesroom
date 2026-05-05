@@ -12,6 +12,7 @@ import { Check, Trash2, Trash, Copy, Sparkles, Link2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
 const PAGE_SIZE = 24;
 
