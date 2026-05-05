@@ -254,7 +254,7 @@ const Settings = () => {
                     {stats.top_visited.length === 0 ? (
                       <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">No data yet</p>
                     ) : stats.top_visited.map((p, i) => (
-                      <button key={p.id} onClick={() => navigate(`/ref/${p.id}`)} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
+                      <button key={p.id} onClick={() => { rememberModalReturn(); navigate(`/ref/${p.id}`); }} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
                         <span className="font-mono text-[10px] text-muted-foreground w-5">{(i + 1).toString().padStart(2, "0")}</span>
                         <div className="w-12 h-8 bg-secondary shrink-0 overflow-hidden">
                           {p.thumbnail_url && <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />}
@@ -278,7 +278,7 @@ const Settings = () => {
                     {stats.top_bookmarked.length === 0 ? (
                       <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">No bookmarks yet</p>
                     ) : stats.top_bookmarked.map((p, i) => (
-                      <button key={p.id} onClick={() => navigate(`/ref/${p.id}`)} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
+                      <button key={p.id} onClick={() => { rememberModalReturn(); navigate(`/ref/${p.id}`); }} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
                         <span className="font-mono text-[10px] text-muted-foreground w-5">{(i + 1).toString().padStart(2, "0")}</span>
                         <div className="w-12 h-8 bg-secondary shrink-0 overflow-hidden">
                           {p.thumbnail_url && <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />}
