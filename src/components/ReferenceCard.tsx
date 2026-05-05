@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import type { Reference } from "@/lib/references";
 import { detectPlatform } from "@/lib/references";
 import { Play, ImageIcon, Link2 } from "lucide-react";
@@ -7,6 +8,19 @@ import { FolderPickerButton } from "@/components/FolderPickerButton";
 
 interface Props {
   reference: Reference;
+}
+
+// Smart object-position heuristic: faces, headlines, and main subjects in
+// photo references usually sit in the upper-middle of the frame. Bias the
+// crop based on the natural aspect ratio so the focal point stays visible
+// inside the card.
+function smartPosition(w: number, h: number): string {
+  if (!w || !h) return "center";
+  const ratio = w / h;
+  if (ratio < 0.85) return "center 25%"; // portrait — face/copy usually upper
+  if (ratio < 1.2) return "center 30%";  // square-ish
+  if (ratio < 2) return "center 40%";    // standard landscape
+  return "center";                        // ultra-wide / cinematic
 }
 
 export function ReferenceCard({ reference: r }: Props) {
