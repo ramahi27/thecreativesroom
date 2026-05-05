@@ -10,6 +10,7 @@ import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2 } from "lucide-react";
+import { consumeModalReturn, clearModalReturn, peekModalReturn } from "@/lib/modalReturn";
 
 interface Props {
   id: string;
