@@ -154,6 +154,15 @@ const AddReference = () => {
     setExistingMedia((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  function reorderExisting(from: number, to: number) {
+    setExistingMedia((prev) => {
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }
   function moveExisting(idx: number, dir: -1 | 1) {
     setExistingMedia((prev) => {
       const next = [...prev];
