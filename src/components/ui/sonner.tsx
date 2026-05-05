@@ -9,14 +9,26 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
+      position="top-center"
+      offset="50vh"
+      mobileOffset="50vh"
       className="toaster group"
       toastOptions={{
+        unstyled: false,
         classNames: {
           toast:
-            "group toast group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:border-border group-[.toaster]:shadow-lg",
-          description: "group-[.toast]:text-muted-foreground",
-          actionButton: "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
-          cancelButton: "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+            "group toast pointer-events-auto !w-[min(92vw,420px)] !p-5 !rounded-none border hairline bg-background/95 text-foreground backdrop-blur-xl shadow-[0_30px_80px_-20px_hsl(var(--foreground)/0.35)] animate-scale-in",
+          title: "font-mono text-[11px] uppercase tracking-[0.25em]",
+          description: "text-sm text-muted-foreground mt-1.5 font-light leading-relaxed",
+          actionButton:
+            "group-[.toast]:bg-primary group-[.toast]:text-primary-foreground group-[.toast]:font-mono group-[.toast]:text-[11px] group-[.toast]:uppercase group-[.toast]:tracking-widest",
+          cancelButton:
+            "group-[.toast]:bg-muted group-[.toast]:text-muted-foreground group-[.toast]:font-mono group-[.toast]:text-[11px] group-[.toast]:uppercase group-[.toast]:tracking-widest",
+          success: "!border-l-2 !border-l-primary",
+          error: "!border-l-2 !border-l-destructive",
+          info: "!border-l-2 !border-l-foreground",
+          warning: "!border-l-2 !border-l-foreground",
+          icon: "!text-foreground",
         },
       }}
       {...props}
