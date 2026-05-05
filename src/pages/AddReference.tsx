@@ -270,8 +270,7 @@ const AddReference = () => {
               .maybeSingle();
             const existing: string[] = Array.isArray(cur?.tags) ? (cur!.tags as string[]) : [];
             const merged = Array.from(new Set([...existing, ...newTags]));
-            const updates: Record<string, unknown> = { tags: merged };
-            // Only fill fields that are still blank in the DB.
+            const updates: { tags: string[]; brand?: string; agency?: string; year?: number } = { tags: merged };
             if (!cur?.brand && typeof meta.brand === "string" && meta.brand.trim()) {
               updates.brand = meta.brand.trim();
             }
