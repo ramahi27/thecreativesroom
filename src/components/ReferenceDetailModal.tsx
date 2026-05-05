@@ -125,6 +125,8 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (error) return toast.error(error.message);
     setR({ ...r, published: true } as Reference);
     toast.success("Published — now live on the main page");
+    // Backfill missing brand/agency/year using AI in the background.
+    enrichReferenceMetadata(r.id);
     returnToOpener();
   }
 
