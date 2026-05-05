@@ -10,17 +10,12 @@ import { Search, Sparkles, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { rememberModalReturn } from "@/lib/modalReturn";
+import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
-const AI_MARKER = "ai:processed";
-function hasAiMetadata(tags: string[] | null | undefined): boolean {
-  if (!Array.isArray(tags)) return false;
-  return tags.some((t) => t.toLowerCase() === AI_MARKER);
-}
-
-function metadataToTags(m: any): string[] {
-  const out: string[] = [AI_MARKER];
-  if (Array.isArray(m?.tags)) out.push(...m.tags.map((t: string) => String(t).trim().toLowerCase()).filter(Boolean));
-  return out;
+// A reference is considered "AI-complete" only if brand, agency, AND year
+// are all filled. Missing any of those means the AI box should show as unticked.
+function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null }): boolean {
+  return Boolean(r.brand && r.agency && r.year);
 }
 
 type LogRow = {
@@ -28,6 +23,7 @@ type LogRow = {
   title: string;
   thumbnail_url: string | null;
   brand: string | null;
+  agency: string | null;
   type: string;
   year: number | null;
   created_at: string;
@@ -62,10 +58,10 @@ const Logs = () => {
   async function handleBackfillAll() {
     const pending = rows.filter((r) => !r.has_ai_metadata);
     if (pending.length === 0) {
-      toast.info("All references already have AI metadata.");
+      toast.info("All references already have complete metadata.");
       return;
     }
-    if (!confirm(`Generate AI metadata for ${pending.length} reference(s) without metadata?`)) return;
+    if (!confirm(`Generate AI metadata for ${pending.length} reference(s) with missing fields?`)) return;
     setBackfilling(true);
     let ok = 0;
     let failed = 0;
@@ -73,30 +69,31 @@ const Logs = () => {
       const r = pending[i];
       setBackfillProgress(`${i + 1}/${pending.length} · ${r.title}`);
       try {
-        const { data: ref } = await supabase
+        await enrichReferenceMetadata(r.id);
+        // Re-fetch to verify completeness
+        const { data: fresh } = await supabase
           .from("references")
-          .select("tags")
+          .select("brand,agency,year")
           .eq("id", r.id)
           .maybeSingle();
-        const existing: string[] = Array.isArray(ref?.tags) ? (ref!.tags as string[]) : [];
-        const { data, error } = await supabase.functions.invoke("generate-metadata", {
-          body: { title: r.title, brand: r.brand },
-        });
-        const meta = (data as any)?.metadata;
-        if (error || !meta) {
-          failed++;
-          continue;
-        }
-        const newTags = metadataToTags(meta);
-        const merged = Array.from(new Set([...existing, ...newTags]));
-        const { error: upErr } = await supabase
-          .from("references")
-          .update({ tags: merged })
-          .eq("id", r.id);
-        if (upErr) failed++;
-        else {
+        const complete = !!(fresh?.brand && fresh?.agency && fresh?.year);
+        if (complete) {
           ok++;
-          setRows((prev) => prev.map((x) => (x.id === r.id ? { ...x, has_ai_metadata: true } : x)));
+          setRows((prev) =>
+            prev.map((x) =>
+              x.id === r.id
+                ? {
+                    ...x,
+                    brand: fresh?.brand ?? x.brand,
+                    agency: fresh?.agency ?? x.agency,
+                    year: fresh?.year ?? x.year,
+                    has_ai_metadata: true,
+                  }
+                : x,
+            ),
+          );
+        } else {
+          failed++;
         }
       } catch {
         failed++;
@@ -105,7 +102,7 @@ const Logs = () => {
     }
     setBackfilling(false);
     setBackfillProgress("");
-    toast.success(`Backfill done · ${ok} updated, ${failed} failed`);
+    toast.success(`Backfill done · ${ok} updated, ${failed} incomplete`);
   }
 
   useEffect(() => {
@@ -124,20 +121,23 @@ const Logs = () => {
         return;
       }
       const baseRows = (data as LogRow[]) || [];
-      // Fetch tags for all rows to determine AI metadata state
+      // The RPC doesn't include `agency`; fetch it to determine completeness.
       const ids = baseRows.map((r) => r.id);
-      let infoMap = new Map<string, { tags: string[] }>();
+      const infoMap = new Map<string, { agency: string | null }>();
       if (ids.length) {
-        const { data: tagRows } = await supabase
+        const { data: extra } = await supabase
           .from("references")
-          .select("id,tags")
+          .select("id,agency")
           .in("id", ids);
-        (tagRows || []).forEach((t: any) => infoMap.set(t.id, { tags: t.tags || [] }));
+        (extra || []).forEach((t: any) => infoMap.set(t.id, { agency: t.agency ?? null }));
       }
-      setRows(baseRows.map((r) => {
-        const info = infoMap.get(r.id);
-        return { ...r, has_ai_metadata: hasAiMetadata(info?.tags) };
-      }));
+      setRows(
+        baseRows.map((r) => {
+          const agency = infoMap.get(r.id)?.agency ?? r.agency ?? null;
+          const merged = { ...r, agency };
+          return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
+        }),
+      );
       setLoading(false);
     })();
   }, [isAdmin]);
