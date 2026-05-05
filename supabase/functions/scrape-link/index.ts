@@ -325,17 +325,20 @@ async function scrapeAndInsert(
   }
 
   const meta = await inferMetadata(scraped, categories);
+  const allImages = (scraped.images || []).filter(Boolean);
   const mediaItems =
-    scraped.type === "image" && scraped.thumbnail_url
-      ? [{ url: scraped.thumbnail_url, kind: "image" }]
+    scraped.type === "image"
+      ? (allImages.length > 0
+          ? allImages.map((u) => ({ url: u, kind: "image" as const }))
+          : (scraped.thumbnail_url ? [{ url: scraped.thumbnail_url, kind: "image" as const }] : []))
       : [];
 
   const insertRow = {
     title: meta.clean_title || scraped.title,
     type: scraped.type,
     source_url: scraped.source_url,
-    thumbnail_url: scraped.thumbnail_url,
-    media_url: scraped.type === "image" ? scraped.thumbnail_url : null,
+    thumbnail_url: scraped.thumbnail_url || (mediaItems[0]?.url ?? null),
+    media_url: scraped.type === "image" ? (mediaItems[0]?.url ?? scraped.thumbnail_url) : null,
     media_items: mediaItems,
     brand: meta.brand,
     year: meta.year,
