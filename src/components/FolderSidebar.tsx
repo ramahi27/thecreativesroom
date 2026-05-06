@@ -243,6 +243,15 @@ export function FolderSidebar({
                         })}
                       </div>
                       <DropdownMenuSeparator />
+                      <div className="px-2 py-1.5">
+                        <FolderVisibilityToggle
+                          isPublic={f.is_public}
+                          onToggle={() => setVisibility(f.id, !f.is_public)}
+                          username={username || null}
+                          folderId={f.id}
+                        />
+                      </div>
+                      <DropdownMenuSeparator />
                       <DropdownMenuItem
                         onClick={() => {
                           setRenameValue(f.name);
