@@ -70,7 +70,8 @@ const Bookmarks = () => {
   } = useFolders();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useMyProfile();
   const { folders: followed, loading: followedLoading } = useFollowedFolders();
-  const [tab, setTab] = useState<"mine" | "following">("mine");
+  const [tab, setTab] = useState<"mine" | "following" | "submitted">("mine");
+  const [submissions, setSubmissions] = useState<Reference[]>([]);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
 
   // Selection
