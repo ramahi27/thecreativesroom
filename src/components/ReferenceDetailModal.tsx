@@ -12,6 +12,7 @@ import { BookmarkButton } from "@/components/BookmarkButton";
 import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2 } from "lucide-react";
 import { consumeModalReturn, clearModalReturn, peekModalReturn } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
+import { ZoomableImage } from "@/components/ZoomableImage";
 
 interface Props {
   id: string;
@@ -254,12 +255,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                         className="w-full bg-black object-contain max-h-[calc(95vh-16rem)]"
                       />
                     ) : (
-                      <img
-                        src={current.url}
-                        alt={r.title}
-                        className="w-full bg-black object-contain max-h-[calc(95vh-16rem)] mx-auto"
-                        style={{ objectFit: "contain" }}
-                      />
+                      <ZoomableImage src={current.url} alt={r.title} />
                     )
                   ) : (
                     <div className="aspect-video flex items-center justify-center bg-secondary">
