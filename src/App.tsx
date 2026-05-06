@@ -20,6 +20,7 @@ import Terms from "./pages/Terms.tsx";
 import Profile from "./pages/Profile.tsx";
 import PublicFolder from "./pages/PublicFolder.tsx";
 import Welcome from "./pages/Welcome.tsx";
+import ProfileSettings from "./pages/ProfileSettings.tsx";
 import { CookieConsent } from "@/components/CookieConsent";
 
 const queryClient = new QueryClient();
