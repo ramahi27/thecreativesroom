@@ -253,7 +253,7 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={handleAvatarUpload}
+                  onChange={handlePickAvatar}
                 />
                 <Button
                   type="button"
