@@ -82,17 +82,6 @@ const Welcome = () => {
               className="bg-secondary border-0 font-mono"
             />
           </div>
-          <div className="space-y-2">
-            <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Display name (optional)
-            </Label>
-            <Input
-              value={displayName}
-              maxLength={60}
-              onChange={(e) => setDisplayName(e.target.value)}
-              className="bg-secondary border-0 font-mono"
-            />
-          </div>
           <Button type="submit" disabled={saving} className="w-full font-mono text-xs uppercase tracking-widest h-12">
             {saving ? "..." : "Continue"}
           </Button>

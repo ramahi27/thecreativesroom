@@ -86,7 +86,7 @@ const Profile = () => {
   }, [profile]);
 
   const initials = useMemo(() => {
-    const src = profile?.display_name || profile?.username || "";
+    const src = profile?.username || "";
     return src.slice(0, 2).toUpperCase();
   }, [profile]);
 
@@ -160,9 +160,8 @@ const Profile = () => {
             <div className="min-w-0 flex-1">
               <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-2">⏵ Profile</p>
               <h1 className="font-display text-4xl md:text-6xl font-black tracking-tighter leading-[0.95]">
-                {profile.display_name || profile.username}
+                @{profile.username}
               </h1>
-              <p className="mt-2 font-mono text-sm text-muted-foreground">@{profile.username}</p>
               {profile.bio && (
                 <p className="mt-4 max-w-2xl font-body text-base md:text-lg text-foreground/90 leading-relaxed">
                   {profile.bio}
