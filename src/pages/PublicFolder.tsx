@@ -9,6 +9,7 @@ import type { Reference } from "@/lib/references";
 import { Share2 } from "lucide-react";
 import { folderShareUrl } from "@/lib/username";
 import { toast } from "sonner";
+import { FollowButton } from "@/components/FollowButton";
 
 const PublicFolder = () => {
   const { handle, folderId } = useParams();
@@ -128,6 +129,7 @@ const PublicFolder = () => {
             <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
               {refs.length} {refs.length === 1 ? "reference" : "references"}
             </span>
+            <FollowButton folderId={folder.id} ownerUserId={profile.user_id} size="sm" />
             <button
               onClick={handleShare}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 border hairline font-mono text-[10px] uppercase tracking-widest hover:bg-secondary"

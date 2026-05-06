@@ -225,11 +225,14 @@ const Profile = () => {
                         <Globe className="h-2.5 w-2.5" strokeWidth={2} /> Public
                       </span>
                     </div>
-                    <div className="p-4 flex items-baseline justify-between gap-3">
-                      <h3 className="font-display text-xl font-bold tracking-tight truncate">{f.name}</h3>
-                      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
-                        {f.refs.length} {f.refs.length === 1 ? "ref" : "refs"}
-                      </span>
+                    <div className="p-4 flex flex-col gap-2.5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h3 className="font-display text-xl font-bold tracking-tight truncate">{f.name}</h3>
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
+                          {f.refs.length} {f.refs.length === 1 ? "ref" : "refs"}
+                        </span>
+                      </div>
+                      <FollowButton folderId={f.id} ownerUserId={f.user_id} size="sm" />
                     </div>
                   </Link>
                 );
