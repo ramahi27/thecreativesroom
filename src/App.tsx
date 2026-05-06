@@ -20,6 +20,7 @@ import Terms from "./pages/Terms.tsx";
 import Profile from "./pages/Profile.tsx";
 import PublicFolder from "./pages/PublicFolder.tsx";
 import Welcome from "./pages/Welcome.tsx";
+import ProfileSettings from "./pages/ProfileSettings.tsx";
 import { CookieConsent } from "@/components/CookieConsent";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/welcome" element={<Welcome />} />
+          <Route path="/profile" element={<ProfileSettings />} />
           <Route path="/:handle" element={<Profile />} />
           <Route path="/:handle/c/:folderId" element={<PublicFolder />} />
           <Route path="*" element={<NotFound />} />
