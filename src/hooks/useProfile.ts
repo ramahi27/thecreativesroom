@@ -10,6 +10,7 @@ export type Profile = {
   created_at?: string;
   public_folders_count?: number;
   submitted_count?: number;
+  submissions_public?: boolean;
 };
 
 export function useProfileByUsername(username: string | undefined) {
@@ -56,7 +57,7 @@ export function useMyProfile() {
     setLoading(true);
     const { data } = await supabase
       .from("profiles")
-      .select("user_id,username,bio,avatar_url")
+      .select("user_id,username,bio,avatar_url,submissions_public")
       .eq("user_id", user.id)
       .maybeSingle();
     setProfile((data as unknown as Profile) ?? null);

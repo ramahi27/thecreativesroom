@@ -62,13 +62,17 @@ const Profile = () => {
         refs: (itemsByFolder[row.id] || []).map((rid) => refsById[rid]).filter(Boolean) as Reference[],
       }));
 
-      // submissions
-      const { data: subs } = await supabase
-        .from("references")
-        .select("id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,categories,published,media_items,created_at")
-        .eq("created_by", profile.user_id)
-        .eq("published", true)
-        .order("created_at", { ascending: false });
+      // submissions (only if user opted in)
+      let subs: any[] | null = null;
+      if (profile.submissions_public !== false) {
+        const { data } = await supabase
+          .from("references")
+          .select("id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,categories,published,media_items,created_at")
+          .eq("created_by", profile.user_id)
+          .eq("published", true)
+          .order("created_at", { ascending: false });
+        subs = data;
+      }
 
       if (!cancelled) {
         setFolders(withRefs);
