@@ -247,6 +247,7 @@ const Bookmarks = () => {
         <div className="container py-3 flex gap-1">
           {([
             { k: "mine", label: `My collection · ${refs.length}` },
+            { k: "submitted", label: `Submitted · ${submissions.length}` },
             { k: "following", label: `Following · ${followed.length}` },
           ] as const).map((t) => (
             <button
