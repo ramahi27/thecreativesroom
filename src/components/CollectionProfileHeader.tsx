@@ -50,6 +50,9 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
   const [confirm, setConfirm] = useState("");
   const [savingPw, setSavingPw] = useState(false);
 
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropOpen, setCropOpen] = useState(false);
+
   useEffect(() => {
     if (profile && editOpen) {
       setUsername(profile.username);
@@ -58,17 +61,26 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
     }
   }, [editOpen, profile]);
 
-  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!user) return;
+  function handlePickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) return toast.error("Image too large (max 5MB).");
+    if (file.size > 10 * 1024 * 1024) return toast.error("Image too large (max 10MB).");
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropSrc(reader.result as string);
+      setCropOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  async function handleCroppedUpload(blob: Blob) {
+    if (!user) return;
     setUploadingAvatar(true);
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `avatars/${user.id}/${Date.now()}.${ext}`;
+    const path = `avatars/${user.id}/${Date.now()}.jpg`;
     const { error: upErr } = await supabase.storage
       .from("references")
-      .upload(path, file, { upsert: true, contentType: file.type });
+      .upload(path, blob, { upsert: true, contentType: "image/jpeg" });
     if (upErr) {
       setUploadingAvatar(false);
       return toast.error(upErr.message);
