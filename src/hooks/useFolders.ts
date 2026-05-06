@@ -197,6 +197,7 @@ export function useFolders() {
     createFolder,
     renameFolder,
     updateColor,
+    setVisibility,
     deleteFolder,
     addToFolder,
     removeFromFolder,
