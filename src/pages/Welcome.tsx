@@ -38,7 +38,7 @@ const Welcome = () => {
     e.preventDefault();
     if (!user) return;
     const v = validateUsername(username);
-    if (!v.ok) {
+    if (v.ok === false) {
       toast.error(v.error);
       return;
     }
