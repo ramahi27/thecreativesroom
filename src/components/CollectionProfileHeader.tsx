@@ -183,18 +183,6 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
                 >
                   <Pencil className="h-3 w-3" strokeWidth={1.8} /> Edit profile
                 </Button>
-                {profile?.username && (
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="ghost"
-                    className="font-mono text-[10px] uppercase tracking-widest h-8 gap-1.5"
-                  >
-                    <Link to={`/@${profile.username}`}>
-                      View public page <ExternalLink className="h-3 w-3" />
-                    </Link>
-                  </Button>
-                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button

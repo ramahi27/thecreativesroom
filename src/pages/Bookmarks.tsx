@@ -10,6 +10,7 @@ import { useMyProfile } from "@/hooks/useProfile";
 import { useFollowedFolders } from "@/hooks/useFollows";
 import { CollectionProfileHeader } from "@/components/CollectionProfileHeader";
 import { CollectionCard } from "@/components/CollectionCard";
+import { ReferenceCard } from "@/components/ReferenceCard";
 import { Globe } from "lucide-react";
 
 import { FolderGridCard, NewFolderCard } from "@/components/FolderGridCard";
@@ -69,7 +70,8 @@ const Bookmarks = () => {
   } = useFolders();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useMyProfile();
   const { folders: followed, loading: followedLoading } = useFollowedFolders();
-  const [tab, setTab] = useState<"mine" | "following">("mine");
+  const [tab, setTab] = useState<"mine" | "following" | "submitted">("mine");
+  const [submissions, setSubmissions] = useState<Reference[]>([]);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
 
   // Selection
@@ -125,6 +127,20 @@ const Bookmarks = () => {
       cancelled = true;
       window.removeEventListener("bookmarks:refresh", handler);
     };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("references")
+        .select("*")
+        .eq("created_by", user.id)
+        .order("created_at", { ascending: false });
+      if (!cancelled) setSubmissions((data as unknown as Reference[]) || []);
+    })();
+    return () => { cancelled = true; };
   }, [user]);
 
   const availableCategories = useMemo(() => {
@@ -231,6 +247,7 @@ const Bookmarks = () => {
         <div className="container py-3 flex gap-1">
           {([
             { k: "mine", label: `My collection · ${refs.length}` },
+            { k: "submitted", label: `Submitted · ${submissions.length}` },
             { k: "following", label: `Following · ${followed.length}` },
           ] as const).map((t) => (
             <button
@@ -319,7 +336,27 @@ const Bookmarks = () => {
       )}
 
       <main className="container py-12">
-        {tab === "following" ? (
+        {tab === "submitted" ? (
+          submissions.length === 0 ? (
+            <div className="py-20 text-center">
+              <p className="font-display text-3xl text-muted-foreground italic">
+                You haven't submitted any references yet.
+              </p>
+              <Link
+                to="/add"
+                className="inline-block mt-8 px-6 py-3 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:opacity-90"
+              >
+                + Add reference
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {submissions.map((r) => (
+                <ReferenceCard key={r.id} reference={r} />
+              ))}
+            </div>
+          )
+        ) : tab === "following" ? (
           followedLoading ? (
             <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
               Loading…
