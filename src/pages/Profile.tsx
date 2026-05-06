@@ -10,6 +10,7 @@ import type { Folder } from "@/hooks/useFolders";
 import { Globe, Share2 } from "lucide-react";
 import { profileUrl } from "@/lib/username";
 import { toast } from "sonner";
+import { FollowButton } from "@/components/FollowButton";
 
 type FolderWithRefs = Folder & { user_id: string; refs: Reference[] };
 
