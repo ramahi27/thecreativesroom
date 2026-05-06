@@ -52,13 +52,8 @@ export function ZoomableImage({ src, alt, className, scale = 2.25 }: Props) {
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
-      if (!zoomed) return;
-      // Mouse-only follow (don't interfere with touch panning).
-      if (e.nativeEvent instanceof MouseEvent && e.pointerType === undefined) {
-        setOriginFromPoint(e.clientX, e.clientY);
-      } else {
-        setOriginFromPoint(e.clientX, e.clientY);
-      }
+      if (!zoomed || isTouchRef.current) return;
+      setOriginFromPoint(e.clientX, e.clientY);
     },
     [zoomed, setOriginFromPoint],
   );
