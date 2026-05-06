@@ -62,13 +62,8 @@ export function SiteHeader() {
                 </Button>
               </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="font-mono text-xs uppercase tracking-widest">
-                {profile?.username && (
-                  <DropdownMenuItem onClick={() => navigate(`/@${profile.username}`)}>
-                    My profile
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => navigate("/mycollection")}>
-                  My collection
+                <DropdownMenuItem onClick={() => navigate("/profile")}>
+                  My profile
                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
