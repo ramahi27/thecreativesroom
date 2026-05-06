@@ -7,7 +7,10 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { useCategories } from "@/hooks/useCategories";
 import { useFolders } from "@/hooks/useFolders";
 import { useMyProfile } from "@/hooks/useProfile";
+import { useFollowedFolders } from "@/hooks/useFollows";
+import { CollectionProfileHeader } from "@/components/CollectionProfileHeader";
 import { CollectionCard } from "@/components/CollectionCard";
+import { Globe } from "lucide-react";
 
 import { FolderGridCard, NewFolderCard } from "@/components/FolderGridCard";
 import {
@@ -64,7 +67,9 @@ const Bookmarks = () => {
     removeFromFolder,
     setVisibility,
   } = useFolders();
-  const { profile } = useMyProfile();
+  const { profile, loading: profileLoading, refresh: refreshProfile } = useMyProfile();
+  const { folders: followed, loading: followedLoading } = useFollowedFolders();
+  const [tab, setTab] = useState<"mine" | "following">("mine");
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
 
   // Selection
@@ -217,16 +222,33 @@ const Bookmarks = () => {
   return (
     <div className="min-h-screen grain">
       <SiteHeader />
+      <CollectionProfileHeader
+        profile={profile}
+        loading={profileLoading}
+        onSaved={refreshProfile}
+      />
       <section className="border-b hairline">
-        <div className="container py-12 md:py-16">
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">⏵ Saved</p>
-          <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter uppercase leading-[0.9]">
-            My <span className="italic font-light">Collection</span>.
-          </h1>
-          <p className="mt-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-            {refs.length} {refs.length === 1 ? "reference" : "references"} saved · {folders.length}{" "}
-            {folders.length === 1 ? "folder" : "folders"}
-          </p>
+        <div className="container py-3 flex gap-1">
+          {([
+            { k: "mine", label: `My collection · ${refs.length}` },
+            { k: "following", label: `Following · ${followed.length}` },
+          ] as const).map((t) => (
+            <button
+              key={t.k}
+              type="button"
+              onClick={() => {
+                setTab(t.k);
+                setActiveFolder(null);
+              }}
+              className={`px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors ${
+                tab === t.k
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </section>
 
