@@ -26,10 +26,9 @@ export function BackToTop() {
         }
       }}
       aria-label="Back to top"
-      className="fixed bottom-6 right-6 z-50 group flex items-center gap-2 border hairline bg-background/95 backdrop-blur-xl px-4 py-3 font-mono text-[10px] uppercase tracking-[0.25em] text-foreground shadow-lg hover:bg-secondary transition-colors animate-fade-in"
+      className="fixed bottom-6 right-6 z-50 flex items-center justify-center border hairline bg-background/95 backdrop-blur-xl h-11 w-11 text-foreground shadow-lg hover:bg-secondary transition-colors animate-fade-in"
     >
-      <ArrowUp className="h-3.5 w-3.5" strokeWidth={1.5} />
-      Back to top
+      <ArrowUp className="h-4 w-4" strokeWidth={1.5} />
     </button>
   );
 }

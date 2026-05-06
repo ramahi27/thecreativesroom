@@ -364,10 +364,11 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
                 {(() => {
                   const isFilmTv = (r.categories || []).includes("Film and TV scenes");
+                  const isMagazine = (r.categories || []).includes("Magazine Covers");
                   return (
                     <dl className="space-y-3 border-t hairline pt-6">
                       {r.brand && <Row label={isFilmTv ? "Title" : "Brand"} value={r.brand} />}
-                      {r.agency && <Row label={isFilmTv ? "Director" : "Agency"} value={r.agency} />}
+                      {r.agency && !isMagazine && <Row label={isFilmTv ? "Director" : "Agency"} value={r.agency} />}
                       {r.year && <Row label="Year" value={String(r.year)} />}
                     </dl>
                   );
