@@ -253,7 +253,7 @@ const Bookmarks = () => {
       </section>
 
       {/* Filter bar */}
-      {refs.length > 0 && (
+      {tab === "mine" && refs.length > 0 && (
         <section className="border-b hairline bg-background/80 backdrop-blur-xl">
           <div className="container py-4 flex flex-wrap items-center gap-4">
             <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
@@ -319,7 +319,74 @@ const Bookmarks = () => {
       )}
 
       <main className="container py-12">
-        {loading ? (
+        {tab === "following" ? (
+          followedLoading ? (
+            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+              Loading…
+            </p>
+          ) : followed.length === 0 ? (
+            <div className="py-20 text-center">
+              <p className="font-display text-3xl text-muted-foreground italic">
+                You're not following any collections yet.
+              </p>
+              <p className="mt-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                Tap the heart on any public collection to follow it.
+              </p>
+              <Link
+                to="/"
+                className="inline-block mt-8 px-6 py-3 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:opacity-90"
+              >
+                Browse archive
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {followed.map((f) => {
+                const t = f.refs.slice(0, 4).map((r) => r.thumbnail_url || r.media_url).filter(Boolean);
+                return (
+                  <Link
+                    key={f.id}
+                    to={`/@${f.owner_username}/c/${f.id}`}
+                    className="group block border hairline bg-card hover:border-foreground transition-all hover:-translate-y-0.5"
+                  >
+                    <div className="relative aspect-[4/3] grid grid-cols-2 grid-rows-2 gap-0.5 bg-muted overflow-hidden">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="bg-secondary overflow-hidden">
+                          {t[i] ? (
+                            <img
+                              src={t[i] as string}
+                              alt=""
+                              loading="lazy"
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="h-full w-full bg-muted" />
+                          )}
+                        </div>
+                      ))}
+                      <span className="absolute top-2 left-2 inline-flex items-center gap-1 px-1.5 py-0.5 bg-background/80 backdrop-blur-md font-mono text-[9px] uppercase tracking-widest">
+                        <Globe className="h-2.5 w-2.5" strokeWidth={2} /> Public
+                      </span>
+                    </div>
+                    <div className="p-4 flex flex-col gap-1">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h3 className="font-display text-xl font-bold tracking-tight truncate">
+                          {f.name}
+                        </h3>
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
+                          {f.refs.length} {f.refs.length === 1 ? "ref" : "refs"}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                        by @{f.owner_username}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )
+        ) : loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
             Loading…
           </p>
