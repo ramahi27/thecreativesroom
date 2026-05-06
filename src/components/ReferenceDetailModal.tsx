@@ -31,22 +31,36 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!id) return;
     setLoading(true);
     setActiveMedia(0);
-    (async () => {
-      const cols =
-        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,notes,created_at,updated_at,media_items,categories,published,source";
-      const [{ data: one }, { data: list }] = await Promise.all([
-        supabase.from("references").select(cols).eq("id", id).maybeSingle(),
-        supabase
-          .from("references")
-          .select(cols)
-          .eq("published", true)
-          .order("created_at", { ascending: false }),
-      ]);
-      setR(one ? (one as unknown as Reference) : null);
-      setAllRefs((list as unknown as Reference[]) || []);
-      if (one) document.title = `${(one as any).title} — The Creatives Room`;
-      setLoading(false);
-    })();
+    let cancelled = false;
+    const cols =
+      "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,notes,created_at,updated_at,media_items,categories,published,source";
+    // 1) Fetch the single reference first so the modal opens immediately.
+    supabase
+      .from("references")
+      .select(cols)
+      .eq("id", id)
+      .maybeSingle()
+      .then(({ data: one }) => {
+        if (cancelled) return;
+        setR(one ? (one as unknown as Reference) : null);
+        if (one) document.title = `${(one as any).title} — The Creatives Room`;
+        setLoading(false);
+      });
+    // 2) Fetch the lighter list in parallel for prev/next + related (no notes/media_items).
+    const listCols =
+      "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,categories,published,source,created_at,updated_at";
+    supabase
+      .from("references")
+      .select(listCols)
+      .eq("published", true)
+      .order("created_at", { ascending: false })
+      .then(({ data: list }) => {
+        if (cancelled) return;
+        setAllRefs((list as unknown as Reference[]) || []);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   const { prev, next } = useMemo(() => {
