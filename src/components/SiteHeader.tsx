@@ -15,17 +15,17 @@ import { User as UserIcon } from "lucide-react";
 
 export function SiteHeader() {
   const { user, isAdmin } = useAuth();
-  const { profile } = useMyProfile();
+  const { profile, loading: profileLoading } = useMyProfile();
   const navigate = useNavigate();
   const location = useLocation();
 
   // First-time OAuth users land without a profile row — send them to /welcome.
   useEffect(() => {
-    if (!user) return;
+    if (!user || profileLoading) return;
     if (profile === null && location.pathname !== "/welcome" && location.pathname !== "/auth") {
       navigate("/welcome");
     }
-  }, [user, profile, navigate, location.pathname]);
+  }, [user, profile, profileLoading, navigate, location.pathname]);
 
   return (
     <header className="sticky top-0 z-50 border-b hairline bg-background/70 backdrop-blur-xl">
