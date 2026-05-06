@@ -160,6 +160,16 @@ export function FolderGridCard({
           )}
         </div>
       </button>
+      {onToggleVisibility && (
+        <div className="px-4 pb-3 -mt-1">
+          <FolderVisibilityToggle
+            isPublic={folder.is_public}
+            onToggle={onToggleVisibility}
+            username={username || null}
+            folderId={folder.id}
+          />
+        </div>
+      )}
     </div>
   );
 }
