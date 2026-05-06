@@ -16,7 +16,15 @@ export function BackToTop() {
   return (
     <button
       type="button"
-      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+      onClick={() => {
+        const el = document.getElementById("brief-filters");
+        if (el) {
+          const top = el.getBoundingClientRect().top + window.scrollY;
+          window.scrollTo({ top, behavior: "smooth" });
+        } else {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+      }}
       aria-label="Back to top"
       className="fixed bottom-6 right-6 z-50 group flex items-center gap-2 border hairline bg-background/95 backdrop-blur-xl px-4 py-3 font-mono text-[10px] uppercase tracking-[0.25em] text-foreground shadow-lg hover:bg-secondary transition-colors animate-fade-in"
     >
