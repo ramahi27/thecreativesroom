@@ -15,7 +15,8 @@ type FolderWithRefs = Folder & { user_id: string; refs: Reference[] };
 
 const Profile = () => {
   const { handle } = useParams();
-  const username = handle?.startsWith("@") ? handle.slice(1) : undefined;
+  const isHandle = !!handle && handle.startsWith("@");
+  const username = isHandle ? handle!.slice(1) : undefined;
   const { profile, loading, notFound } = useProfileByUsername(username);
   const [folders, setFolders] = useState<FolderWithRefs[]>([]);
   const [submissions, setSubmissions] = useState<Reference[]>([]);
