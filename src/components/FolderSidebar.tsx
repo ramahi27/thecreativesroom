@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { Folder } from "@/hooks/useFolders";
 import { useFolders } from "@/hooks/useFolders";
+import { FolderVisibilityToggle } from "@/components/FolderVisibilityToggle";
 
 interface Props {
   folders: Folder[];
@@ -25,6 +26,7 @@ interface Props {
   onDelete: (id: string) => void;
   onDropOnFolder: (folderId: string, e: React.DragEvent) => void;
   draggingActive: boolean;
+  username?: string | null;
 }
 
 const COLORS = [
@@ -50,8 +52,9 @@ export function FolderSidebar({
   onDelete,
   onDropOnFolder,
   draggingActive,
+  username,
 }: Props) {
-  const { updateColor } = useFolders();
+  const { updateColor, setVisibility } = useFolders();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -238,6 +241,15 @@ export function FolderSidebar({
                             </button>
                           );
                         })}
+                      </div>
+                      <DropdownMenuSeparator />
+                      <div className="px-2 py-1.5">
+                        <FolderVisibilityToggle
+                          isPublic={f.is_public}
+                          onToggle={() => setVisibility(f.id, !f.is_public)}
+                          username={username || null}
+                          folderId={f.id}
+                        />
                       </div>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

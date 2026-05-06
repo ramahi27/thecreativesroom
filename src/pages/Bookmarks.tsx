@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useCategories } from "@/hooks/useCategories";
 import { useFolders } from "@/hooks/useFolders";
+import { useMyProfile } from "@/hooks/useProfile";
 import { CollectionCard } from "@/components/CollectionCard";
 
 import { FolderGridCard, NewFolderCard } from "@/components/FolderGridCard";
@@ -61,7 +62,9 @@ const Bookmarks = () => {
     deleteFolder,
     addToFolder,
     removeFromFolder,
+    setVisibility,
   } = useFolders();
+  const { profile } = useMyProfile();
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
 
   // Selection
@@ -341,6 +344,8 @@ const Bookmarks = () => {
                           onDelete={() => deleteFolder(f.id)}
                           onDropReference={(e) => handleDropOnFolder(f.id, e)}
                           draggingActive={dragging}
+                          username={profile?.username}
+                          onToggleVisibility={() => setVisibility(f.id, !f.is_public)}
                         />
                       );
                     })}

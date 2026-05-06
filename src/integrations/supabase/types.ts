@@ -98,6 +98,7 @@ export type Database = {
           color: string | null
           created_at: string
           id: string
+          is_public: boolean
           name: string
           position: number
           updated_at: string
@@ -107,6 +108,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          is_public?: boolean
           name: string
           position?: number
           updated_at?: string
@@ -116,6 +118,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          is_public?: boolean
           name?: string
           position?: number
           updated_at?: string
@@ -150,6 +153,36 @@ export type Database = {
           reference_id?: string | null
           user_id?: string | null
           visitor_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          updated_at: string
+          user_id: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          updated_at?: string
+          user_id: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          updated_at?: string
+          user_id?: string
+          username?: string
         }
         Relationships: []
       }
@@ -249,6 +282,7 @@ export type Database = {
     }
     Functions: {
       get_admin_stats: { Args: never; Returns: Json }
+      get_profile_by_username: { Args: { _username: string }; Returns: Json }
       get_reference_logs: {
         Args: never
         Returns: {
@@ -286,6 +320,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_folder_public: { Args: { _folder_id: string }; Returns: boolean }
       list_admins: {
         Args: never
         Returns: {
@@ -294,6 +329,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      username_available: { Args: { _username: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "user"

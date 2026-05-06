@@ -1,5 +1,7 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { useMyProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,7 +15,17 @@ import { User as UserIcon } from "lucide-react";
 
 export function SiteHeader() {
   const { user, isAdmin } = useAuth();
+  const { profile } = useMyProfile();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // First-time OAuth users land without a profile row — send them to /welcome.
+  useEffect(() => {
+    if (!user) return;
+    if (profile === null && location.pathname !== "/welcome" && location.pathname !== "/auth") {
+      navigate("/welcome");
+    }
+  }, [user, profile, navigate, location.pathname]);
 
   return (
     <header className="sticky top-0 z-50 border-b hairline bg-background/70 backdrop-blur-xl">
@@ -49,7 +61,12 @@ export function SiteHeader() {
                   Account
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="font-mono text-xs uppercase tracking-widest">
+                <DropdownMenuContent align="end" className="font-mono text-xs uppercase tracking-widest">
+                {profile?.username && (
+                  <DropdownMenuItem onClick={() => navigate(`/@${profile.username}`)}>
+                    My profile
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => navigate("/account")}>
                   Account & password
                 </DropdownMenuItem>

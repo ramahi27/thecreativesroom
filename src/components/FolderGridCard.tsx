@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import type { Folder } from "@/hooks/useFolders";
 import type { Reference } from "@/lib/references";
+import { FolderVisibilityToggle } from "@/components/FolderVisibilityToggle";
 
 interface Props {
   folder: Folder;
@@ -11,6 +12,8 @@ interface Props {
   onDelete?: () => void;
   onDropReference?: (e: React.DragEvent) => void;
   draggingActive?: boolean;
+  username?: string | null;
+  onToggleVisibility?: () => void;
 }
 
 function thumbOf(r: Reference): string | null {
@@ -48,6 +51,8 @@ export function FolderGridCard({
   onDelete,
   onDropReference,
   draggingActive,
+  username,
+  onToggleVisibility,
 }: Props) {
   const [isOver, setIsOver] = useState(false);
   const thumbs = references.map(thumbOf);
@@ -155,6 +160,16 @@ export function FolderGridCard({
           )}
         </div>
       </button>
+      {onToggleVisibility && (
+        <div className="px-4 pb-3 -mt-1">
+          <FolderVisibilityToggle
+            isPublic={folder.is_public}
+            onToggle={onToggleVisibility}
+            username={username || null}
+            folderId={folder.id}
+          />
+        </div>
+      )}
     </div>
   );
 }

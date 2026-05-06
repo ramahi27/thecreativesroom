@@ -7,6 +7,7 @@ export type Folder = {
   name: string;
   color: string | null;
   position: number;
+  is_public: boolean;
 };
 
 export type FolderItem = {
@@ -31,7 +32,7 @@ export function useFolders() {
     const [{ data: f }, { data: i }] = await Promise.all([
       supabase
         .from("folders")
-        .select("id,name,color,position")
+        .select("id,name,color,position,is_public")
         .eq("user_id", user.id)
         .order("position", { ascending: true })
         .order("created_at", { ascending: true }),
@@ -63,8 +64,8 @@ export function useFolders() {
       const position = folders.length;
       const { data, error } = await supabase
         .from("folders")
-        .insert({ user_id: user.id, name: name.trim(), color: color || null, position })
-        .select("id,name,color,position")
+        .insert({ user_id: user.id, name: name.trim(), color: color || null, position, is_public: true })
+        .select("id,name,color,position,is_public")
         .single();
       if (error) return null;
       setFolders((prev) => [...prev, data as Folder]);
@@ -73,6 +74,14 @@ export function useFolders() {
     },
     [user, folders.length],
   );
+
+  const setVisibility = useCallback(async (id: string, is_public: boolean) => {
+    const prev = folders;
+    setFolders((p) => p.map((f) => (f.id === id ? { ...f, is_public } : f)));
+    const { error } = await supabase.from("folders").update({ is_public }).eq("id", id);
+    if (error) setFolders(prev);
+    else broadcast();
+  }, [folders]);
 
   const renameFolder = useCallback(
     async (id: string, name: string) => {
@@ -188,6 +197,7 @@ export function useFolders() {
     createFolder,
     renameFolder,
     updateColor,
+    setVisibility,
     deleteFolder,
     addToFolder,
     removeFromFolder,

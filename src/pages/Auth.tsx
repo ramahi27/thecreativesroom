@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import { validateUsername } from "@/lib/username";
 
 type Mode = "signin" | "signup" | "forgot";
 
@@ -15,6 +16,7 @@ const Auth = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
   const [mode, setMode] = useState<Mode>("signin");
   const [loading, setLoading] = useState(false);
   const [signedUpEmail, setSignedUpEmail] = useState<string | null>(null);
@@ -37,12 +39,33 @@ const Auth = () => {
           setLoading(false);
           return;
         }
-        const { error } = await supabase.auth.signUp({
+        const v = validateUsername(username);
+        if (v.ok === false) {
+          toast.error(v.error);
+          setLoading(false);
+          return;
+        }
+        const { data: avail } = await supabase.rpc("username_available", { _username: v.value });
+        if (!avail) {
+          toast.error("That username is taken.");
+          setLoading(false);
+          return;
+        }
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/` },
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: { username: v.value },
+          },
         });
         if (error) throw error;
+        // If we already have a session (auto-confirm enabled), create the profile now.
+        if (data.session?.user) {
+          await supabase
+            .from("profiles")
+            .insert({ user_id: data.session.user.id, username: v.value });
+        }
         setSignedUpEmail(email);
       } else if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -106,6 +129,25 @@ const Auth = () => {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {mode === "signup" && (
+            <div className="space-y-2">
+              <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Username
+              </Label>
+              <Input
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                placeholder="yourname"
+                pattern="^[a-z0-9_-]{3,24}$"
+                title="3–24 chars: lowercase letters, numbers, _ or -"
+                className="bg-secondary border-0 font-mono"
+              />
+              <p className="font-mono text-[10px] text-muted-foreground">
+                Your public profile: thecreativesroom.com/@{username || "you"}
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Email</Label>
             <Input
