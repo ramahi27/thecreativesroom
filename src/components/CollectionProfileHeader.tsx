@@ -83,7 +83,8 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
       .upload(path, blob, { upsert: true, contentType: "image/jpeg" });
     if (upErr) {
       setUploadingAvatar(false);
-      return toast.error(upErr.message);
+      toast.error(upErr.message);
+      return;
     }
     const { data } = supabase.storage.from("references").getPublicUrl(path);
     setAvatarUrl(data.publicUrl);
