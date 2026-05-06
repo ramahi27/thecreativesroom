@@ -16,6 +16,7 @@ export function ZoomableImage({ src, alt, className, scale = 2.25 }: Props) {
   const [zoomed, setZoomed] = useState(false);
   const [origin, setOrigin] = useState("50% 50%");
   const isTouchRef = useRef(false);
+  const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
   const panRef = useRef<{
     startX: number;
     startY: number;
@@ -107,14 +108,27 @@ export function ZoomableImage({ src, alt, className, scale = 2.25 }: Props) {
       panRef.current = null;
       const t = e.changedTouches[0];
       if (!t) return;
-      // If it was a tap (no significant movement), toggle zoom.
-      if (!pan || !pan.moved) {
+      // If user was actively panning, don't treat as tap.
+      if (pan && pan.moved) return;
+
+      const now = Date.now();
+      const last = lastTapRef.current;
+      const isDoubleTap =
+        !!last &&
+        now - last.time < 300 &&
+        Math.abs(t.clientX - last.x) < 30 &&
+        Math.abs(t.clientY - last.y) < 30;
+
+      if (isDoubleTap) {
+        lastTapRef.current = null;
         if (zoomed) {
           setZoomed(false);
         } else {
           setOriginFromPoint(t.clientX, t.clientY);
           setZoomed(true);
         }
+      } else {
+        lastTapRef.current = { time: now, x: t.clientX, y: t.clientY };
       }
     },
     [zoomed, setOriginFromPoint],
@@ -141,7 +155,7 @@ export function ZoomableImage({ src, alt, className, scale = 2.25 }: Props) {
         src={src}
         alt={alt}
         draggable={false}
-        className="w-full bg-black object-contain max-h-[calc(95vh-16rem)] mx-auto select-none"
+        className="w-full bg-black object-contain max-h-[70vh] md:max-h-[calc(95vh-16rem)] mx-auto select-none"
         style={{
           objectFit: "contain",
           transform: zoomed ? `scale(${scale})` : "scale(1)",
