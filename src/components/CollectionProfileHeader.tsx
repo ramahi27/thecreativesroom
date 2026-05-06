@@ -21,7 +21,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ExternalLink, MoreHorizontal, Pencil } from "lucide-react";
+import { ExternalLink, MoreHorizontal, Pencil, Share2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { profileUrl, validateUsername } from "@/lib/username";
 import { useNavigate } from "react-router-dom";
@@ -183,6 +184,36 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
                 >
                   <Pencil className="h-3 w-3" strokeWidth={1.8} /> Edit profile
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    if (!profile?.username) return;
+                    const url = profileUrl(profile.username);
+                    try {
+                      if (navigator.share) {
+                        await navigator.share({ url, title: `@${profile.username}` });
+                        return;
+                      }
+                    } catch {}
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      toast.success("Profile link copied");
+                    } catch {}
+                  }}
+                  disabled={!profile?.username}
+                  className="font-mono text-[10px] uppercase tracking-widest h-8 gap-1.5"
+                >
+                  <Share2 className="h-3 w-3" strokeWidth={1.8} /> Share
+                </Button>
+                {profile?.username && (
+                  <Link
+                    to={`/@${profile.username}`}
+                    className="inline-flex items-center gap-1.5 px-3 h-8 border hairline font-mono text-[10px] uppercase tracking-widest hover:bg-secondary"
+                  >
+                    <ExternalLink className="h-3 w-3" strokeWidth={1.8} /> View public
+                  </Link>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -216,6 +247,32 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+              {profile && (
+                <div className="mt-4 flex items-center gap-3 border hairline px-3 py-2 w-fit">
+                  <Switch
+                    id="subs-public"
+                    checked={profile.submissions_public !== false}
+                    onCheckedChange={async (v) => {
+                      if (!user) return;
+                      const { error } = await supabase
+                        .from("profiles")
+                        .update({ submissions_public: v })
+                        .eq("user_id", user.id);
+                      if (error) toast.error(error.message);
+                      else {
+                        toast.success(v ? "Submissions are public" : "Submissions are private");
+                        await onSaved();
+                      }
+                    }}
+                  />
+                  <label
+                    htmlFor="subs-public"
+                    className="font-mono text-[10px] uppercase tracking-widest cursor-pointer"
+                  >
+                    Show submissions on public profile
+                  </label>
+                </div>
+              )}
             </div>
           </div>
         </div>
