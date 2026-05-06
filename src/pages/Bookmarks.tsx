@@ -7,7 +7,10 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { useCategories } from "@/hooks/useCategories";
 import { useFolders } from "@/hooks/useFolders";
 import { useMyProfile } from "@/hooks/useProfile";
+import { useFollowedFolders } from "@/hooks/useFollows";
+import { CollectionProfileHeader } from "@/components/CollectionProfileHeader";
 import { CollectionCard } from "@/components/CollectionCard";
+import { Globe } from "lucide-react";
 
 import { FolderGridCard, NewFolderCard } from "@/components/FolderGridCard";
 import {
@@ -64,7 +67,9 @@ const Bookmarks = () => {
     removeFromFolder,
     setVisibility,
   } = useFolders();
-  const { profile } = useMyProfile();
+  const { profile, loading: profileLoading, refresh: refreshProfile } = useMyProfile();
+  const { folders: followed, loading: followedLoading } = useFollowedFolders();
+  const [tab, setTab] = useState<"mine" | "following">("mine");
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
 
   // Selection
@@ -217,21 +222,38 @@ const Bookmarks = () => {
   return (
     <div className="min-h-screen grain">
       <SiteHeader />
+      <CollectionProfileHeader
+        profile={profile}
+        loading={profileLoading}
+        onSaved={refreshProfile}
+      />
       <section className="border-b hairline">
-        <div className="container py-12 md:py-16">
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">⏵ Saved</p>
-          <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter uppercase leading-[0.9]">
-            My <span className="italic font-light">Collection</span>.
-          </h1>
-          <p className="mt-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-            {refs.length} {refs.length === 1 ? "reference" : "references"} saved · {folders.length}{" "}
-            {folders.length === 1 ? "folder" : "folders"}
-          </p>
+        <div className="container py-3 flex gap-1">
+          {([
+            { k: "mine", label: `My collection · ${refs.length}` },
+            { k: "following", label: `Following · ${followed.length}` },
+          ] as const).map((t) => (
+            <button
+              key={t.k}
+              type="button"
+              onClick={() => {
+                setTab(t.k);
+                setActiveFolder(null);
+              }}
+              className={`px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors ${
+                tab === t.k
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </section>
 
       {/* Filter bar */}
-      {refs.length > 0 && (
+      {tab === "mine" && refs.length > 0 && (
         <section className="border-b hairline bg-background/80 backdrop-blur-xl">
           <div className="container py-4 flex flex-wrap items-center gap-4">
             <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
@@ -297,7 +319,74 @@ const Bookmarks = () => {
       )}
 
       <main className="container py-12">
-        {loading ? (
+        {tab === "following" ? (
+          followedLoading ? (
+            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+              Loading…
+            </p>
+          ) : followed.length === 0 ? (
+            <div className="py-20 text-center">
+              <p className="font-display text-3xl text-muted-foreground italic">
+                You're not following any collections yet.
+              </p>
+              <p className="mt-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                Tap the heart on any public collection to follow it.
+              </p>
+              <Link
+                to="/"
+                className="inline-block mt-8 px-6 py-3 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:opacity-90"
+              >
+                Browse archive
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {followed.map((f) => {
+                const t = f.refs.slice(0, 4).map((r) => r.thumbnail_url || r.media_url).filter(Boolean);
+                return (
+                  <Link
+                    key={f.id}
+                    to={`/@${f.owner_username}/c/${f.id}`}
+                    className="group block border hairline bg-card hover:border-foreground transition-all hover:-translate-y-0.5"
+                  >
+                    <div className="relative aspect-[4/3] grid grid-cols-2 grid-rows-2 gap-0.5 bg-muted overflow-hidden">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="bg-secondary overflow-hidden">
+                          {t[i] ? (
+                            <img
+                              src={t[i] as string}
+                              alt=""
+                              loading="lazy"
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="h-full w-full bg-muted" />
+                          )}
+                        </div>
+                      ))}
+                      <span className="absolute top-2 left-2 inline-flex items-center gap-1 px-1.5 py-0.5 bg-background/80 backdrop-blur-md font-mono text-[9px] uppercase tracking-widest">
+                        <Globe className="h-2.5 w-2.5" strokeWidth={2} /> Public
+                      </span>
+                    </div>
+                    <div className="p-4 flex flex-col gap-1">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h3 className="font-display text-xl font-bold tracking-tight truncate">
+                          {f.name}
+                        </h3>
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
+                          {f.refs.length} {f.refs.length === 1 ? "ref" : "refs"}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                        by @{f.owner_username}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )
+        ) : loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
             Loading…
           </p>

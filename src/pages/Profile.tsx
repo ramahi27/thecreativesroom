@@ -10,6 +10,7 @@ import type { Folder } from "@/hooks/useFolders";
 import { Globe, Share2 } from "lucide-react";
 import { profileUrl } from "@/lib/username";
 import { toast } from "sonner";
+import { FollowButton } from "@/components/FollowButton";
 
 type FolderWithRefs = Folder & { user_id: string; refs: Reference[] };
 
@@ -86,7 +87,7 @@ const Profile = () => {
   }, [profile]);
 
   const initials = useMemo(() => {
-    const src = profile?.display_name || profile?.username || "";
+    const src = profile?.username || "";
     return src.slice(0, 2).toUpperCase();
   }, [profile]);
 
@@ -160,9 +161,8 @@ const Profile = () => {
             <div className="min-w-0 flex-1">
               <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-2">⏵ Profile</p>
               <h1 className="font-display text-4xl md:text-6xl font-black tracking-tighter leading-[0.95]">
-                {profile.display_name || profile.username}
+                @{profile.username}
               </h1>
-              <p className="mt-2 font-mono text-sm text-muted-foreground">@{profile.username}</p>
               {profile.bio && (
                 <p className="mt-4 max-w-2xl font-body text-base md:text-lg text-foreground/90 leading-relaxed">
                   {profile.bio}
@@ -225,11 +225,14 @@ const Profile = () => {
                         <Globe className="h-2.5 w-2.5" strokeWidth={2} /> Public
                       </span>
                     </div>
-                    <div className="p-4 flex items-baseline justify-between gap-3">
-                      <h3 className="font-display text-xl font-bold tracking-tight truncate">{f.name}</h3>
-                      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
-                        {f.refs.length} {f.refs.length === 1 ? "ref" : "refs"}
-                      </span>
+                    <div className="p-4 flex flex-col gap-2.5">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h3 className="font-display text-xl font-bold tracking-tight truncate">{f.name}</h3>
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
+                          {f.refs.length} {f.refs.length === 1 ? "ref" : "refs"}
+                        </span>
+                      </div>
+                      <FollowButton folderId={f.id} ownerUserId={f.user_id} size="sm" />
                     </div>
                   </Link>
                 );

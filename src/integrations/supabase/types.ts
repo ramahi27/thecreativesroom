@@ -61,6 +61,27 @@ export type Database = {
           },
         ]
       }
+      folder_follows: {
+        Row: {
+          created_at: string
+          folder_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          folder_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          folder_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       folder_items: {
         Row: {
           created_at: string
@@ -161,7 +182,6 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
-          display_name: string | null
           updated_at: string
           user_id: string
           username: string
@@ -170,7 +190,6 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
-          display_name?: string | null
           updated_at?: string
           user_id: string
           username: string
@@ -179,7 +198,6 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
-          display_name?: string | null
           updated_at?: string
           user_id?: string
           username?: string

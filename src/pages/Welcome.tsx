@@ -13,7 +13,6 @@ const Welcome = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -23,7 +22,6 @@ const Welcome = () => {
       navigate("/auth");
       return;
     }
-    // If profile already exists, skip.
     supabase
       .from("profiles")
       .select("username")
@@ -50,11 +48,10 @@ const Welcome = () => {
     }
     const { error } = await supabase
       .from("profiles")
-      .insert({
-        user_id: user.id,
-        username: v.value,
-        display_name: displayName.trim() || null,
-      });
+      .upsert(
+        { user_id: user.id, username: v.value },
+        { onConflict: "user_id" },
+      );
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Welcome!");
@@ -82,17 +79,6 @@ const Welcome = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}
               placeholder="yourname"
-              className="bg-secondary border-0 font-mono"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              Display name (optional)
-            </Label>
-            <Input
-              value={displayName}
-              maxLength={60}
-              onChange={(e) => setDisplayName(e.target.value)}
               className="bg-secondary border-0 font-mono"
             />
           </div>

@@ -5,7 +5,6 @@ import { useAuth } from "@/hooks/useAuth";
 export type Profile = {
   user_id: string;
   username: string;
-  display_name: string | null;
   bio: string | null;
   avatar_url: string | null;
   created_at?: string;
@@ -13,7 +12,6 @@ export type Profile = {
   submitted_count?: number;
 };
 
-/** Public lookup by username (anyone can call, uses RPC). */
 export function useProfileByUsername(username: string | undefined) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -44,7 +42,6 @@ export function useProfileByUsername(username: string | undefined) {
   return { profile, loading, notFound };
 }
 
-/** Current logged-in user's own profile row (or null if not yet created). */
 export function useMyProfile() {
   const { user, loading: authLoading } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -59,7 +56,7 @@ export function useMyProfile() {
     setLoading(true);
     const { data } = await supabase
       .from("profiles")
-      .select("user_id,username,display_name,bio,avatar_url")
+      .select("user_id,username,bio,avatar_url")
       .eq("user_id", user.id)
       .maybeSingle();
     setProfile((data as unknown as Profile) ?? null);

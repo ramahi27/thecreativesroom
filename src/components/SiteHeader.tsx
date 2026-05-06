@@ -67,8 +67,8 @@ export function SiteHeader() {
                     My profile
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => navigate("/account")}>
-                  Account & password
+                <DropdownMenuItem onClick={() => navigate("/mycollection")}>
+                  My collection
                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
