@@ -245,25 +245,27 @@ const Profile = () => {
           )}
         </section>
 
-        <section>
-          <div className="flex items-baseline justify-between mb-5">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-              Submissions
-            </h2>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              {submissions.length} {submissions.length === 1 ? "ref" : "refs"}
-            </span>
-          </div>
-          {submissions.length === 0 ? (
-            <p className="font-display text-2xl italic text-muted-foreground">No published submissions yet.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {submissions.map((r) => (
-                <ReferenceCard key={r.id} reference={r} />
-              ))}
+        {profile.submissions_public !== false && (
+          <section>
+            <div className="flex items-baseline justify-between mb-5">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                Submissions
+              </h2>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                {submissions.length} {submissions.length === 1 ? "ref" : "refs"}
+              </span>
             </div>
-          )}
-        </section>
+            {submissions.length === 0 ? (
+              <p className="font-display text-2xl italic text-muted-foreground">No published submissions yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {submissions.map((r) => (
+                  <ReferenceCard key={r.id} reference={r} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </main>
 
       <SiteFooter />
