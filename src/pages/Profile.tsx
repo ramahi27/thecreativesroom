@@ -62,13 +62,17 @@ const Profile = () => {
         refs: (itemsByFolder[row.id] || []).map((rid) => refsById[rid]).filter(Boolean) as Reference[],
       }));
 
-      // submissions
-      const { data: subs } = await supabase
-        .from("references")
-        .select("id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,categories,published,media_items,created_at")
-        .eq("created_by", profile.user_id)
-        .eq("published", true)
-        .order("created_at", { ascending: false });
+      // submissions (only if user opted in)
+      let subs: any[] | null = null;
+      if (profile.submissions_public !== false) {
+        const { data } = await supabase
+          .from("references")
+          .select("id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,categories,published,media_items,created_at")
+          .eq("created_by", profile.user_id)
+          .eq("published", true)
+          .order("created_at", { ascending: false });
+        subs = data;
+      }
 
       if (!cancelled) {
         setFolders(withRefs);
@@ -241,25 +245,27 @@ const Profile = () => {
           )}
         </section>
 
-        <section>
-          <div className="flex items-baseline justify-between mb-5">
-            <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-              Submissions
-            </h2>
-            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              {submissions.length} {submissions.length === 1 ? "ref" : "refs"}
-            </span>
-          </div>
-          {submissions.length === 0 ? (
-            <p className="font-display text-2xl italic text-muted-foreground">No published submissions yet.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {submissions.map((r) => (
-                <ReferenceCard key={r.id} reference={r} />
-              ))}
+        {profile.submissions_public !== false && (
+          <section>
+            <div className="flex items-baseline justify-between mb-5">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                Submissions
+              </h2>
+              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                {submissions.length} {submissions.length === 1 ? "ref" : "refs"}
+              </span>
             </div>
-          )}
-        </section>
+            {submissions.length === 0 ? (
+              <p className="font-display text-2xl italic text-muted-foreground">No published submissions yet.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                {submissions.map((r) => (
+                  <ReferenceCard key={r.id} reference={r} />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </main>
 
       <SiteFooter />
