@@ -336,7 +336,27 @@ const Bookmarks = () => {
       )}
 
       <main className="container py-12">
-        {tab === "following" ? (
+        {tab === "submitted" ? (
+          submissions.length === 0 ? (
+            <div className="py-20 text-center">
+              <p className="font-display text-3xl text-muted-foreground italic">
+                You haven't submitted any references yet.
+              </p>
+              <Link
+                to="/add"
+                className="inline-block mt-8 px-6 py-3 bg-primary text-primary-foreground font-mono text-xs uppercase tracking-widest hover:opacity-90"
+              >
+                + Add reference
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {submissions.map((r) => (
+                <ReferenceCard key={r.id} reference={r} />
+              ))}
+            </div>
+          )
+        ) : tab === "following" ? (
           followedLoading ? (
             <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
               Loading…
