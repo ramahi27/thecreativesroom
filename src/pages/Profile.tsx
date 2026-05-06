@@ -14,7 +14,9 @@ import { toast } from "sonner";
 type FolderWithRefs = Folder & { user_id: string; refs: Reference[] };
 
 const Profile = () => {
-  const { username } = useParams();
+  const { handle } = useParams();
+  const isHandle = !!handle && handle.startsWith("@");
+  const username = isHandle ? handle!.slice(1) : undefined;
   const { profile, loading, notFound } = useProfileByUsername(username);
   const [folders, setFolders] = useState<FolderWithRefs[]>([]);
   const [submissions, setSubmissions] = useState<Reference[]>([]);
@@ -87,6 +89,19 @@ const Profile = () => {
     const src = profile?.display_name || profile?.username || "";
     return src.slice(0, 2).toUpperCase();
   }, [profile]);
+
+  if (!isHandle) {
+    return (
+      <div className="min-h-screen grain">
+        <SiteHeader />
+        <main className="container py-32 text-center">
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">⏵ 404</p>
+          <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter mb-6">Page not found.</h1>
+          <Link to="/" className="font-mono text-xs uppercase tracking-widest underline">Back to archive</Link>
+        </main>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

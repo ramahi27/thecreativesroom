@@ -48,8 +48,8 @@ const App = () => (
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/welcome" element={<Welcome />} />
-          <Route path="/@:username" element={<Profile />} />
-          <Route path="/@:username/c/:folderId" element={<PublicFolder />} />
+          <Route path="/:handle" element={<Profile />} />
+          <Route path="/:handle/c/:folderId" element={<PublicFolder />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <CookieConsent />

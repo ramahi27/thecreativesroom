@@ -11,7 +11,9 @@ import { folderShareUrl } from "@/lib/username";
 import { toast } from "sonner";
 
 const PublicFolder = () => {
-  const { username, folderId } = useParams();
+  const { handle, folderId } = useParams();
+  const isHandle = !!handle && handle.startsWith("@");
+  const username = isHandle ? handle!.slice(1) : undefined;
   const { profile, loading: pLoading, notFound } = useProfileByUsername(username);
   const [folder, setFolder] = useState<{ id: string; name: string; is_public: boolean } | null>(null);
   const [refs, setRefs] = useState<Reference[]>([]);
