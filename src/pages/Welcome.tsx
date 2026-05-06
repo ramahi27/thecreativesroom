@@ -38,7 +38,10 @@ const Welcome = () => {
     e.preventDefault();
     if (!user) return;
     const v = validateUsername(username);
-    if (!v.ok) return toast.error(v.error);
+    if (!v.ok) {
+      toast.error(v.error);
+      return;
+    }
     setSaving(true);
     const { data: avail } = await supabase.rpc("username_available", { _username: v.value });
     if (!avail) {
