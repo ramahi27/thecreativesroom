@@ -101,13 +101,19 @@ export function ReferenceCard({ reference: r }: Props) {
           )}
         </div>
 
-        {(r.brand || r.agency) && (
-          <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-            {r.brand}
-            {r.brand && r.agency && <span className="mx-1.5 opacity-50">/</span>}
-            {r.agency}
-          </p>
-        )}
+        {(() => {
+          const isMagazine = (r.categories || []).includes("Magazine Covers");
+          const showAgency = !isMagazine && r.agency;
+          if (!r.brand && !showAgency) return null;
+          return (
+            <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+              {r.brand}
+              {r.brand && showAgency && <span className="mx-1.5 opacity-50">/</span>}
+              {showAgency && r.agency}
+            </p>
+          );
+        })()}
+
 
       </div>
     </Link>
