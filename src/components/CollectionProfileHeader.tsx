@@ -381,6 +381,13 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
           </form>
         </DialogContent>
       </Dialog>
+
+      <AvatarCropDialog
+        src={cropSrc}
+        open={cropOpen}
+        onOpenChange={setCropOpen}
+        onCropped={handleCroppedUpload}
+      />
     </>
   );
 }
