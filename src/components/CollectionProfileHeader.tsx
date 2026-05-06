@@ -25,6 +25,7 @@ import { ExternalLink, MoreHorizontal, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { profileUrl, validateUsername } from "@/lib/username";
 import { useNavigate } from "react-router-dom";
+import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 
 interface Props {
   profile: Profile | null;
