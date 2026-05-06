@@ -14,7 +14,8 @@ import { toast } from "sonner";
 type FolderWithRefs = Folder & { user_id: string; refs: Reference[] };
 
 const Profile = () => {
-  const { username } = useParams();
+  const { handle } = useParams();
+  const username = handle?.startsWith("@") ? handle.slice(1) : undefined;
   const { profile, loading, notFound } = useProfileByUsername(username);
   const [folders, setFolders] = useState<FolderWithRefs[]>([]);
   const [submissions, setSubmissions] = useState<Reference[]>([]);
