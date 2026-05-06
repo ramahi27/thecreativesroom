@@ -10,6 +10,7 @@ import { useMyProfile } from "@/hooks/useProfile";
 import { useFollowedFolders } from "@/hooks/useFollows";
 import { CollectionProfileHeader } from "@/components/CollectionProfileHeader";
 import { CollectionCard } from "@/components/CollectionCard";
+import { ReferenceCard } from "@/components/ReferenceCard";
 import { Globe } from "lucide-react";
 
 import { FolderGridCard, NewFolderCard } from "@/components/FolderGridCard";
