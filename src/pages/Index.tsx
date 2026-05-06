@@ -230,7 +230,7 @@ const Index = () => {
 
       {/* Hero */}
       <section className="relative overflow-hidden border-b hairline">
-        <div className="container py-20 md:py-32 relative">
+        <div className="container pt-20 md:pt-32 pb-8 md:pb-12 relative">
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-6">⏵ ARCHIVE</p>
           <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black leading-[0.85] tracking-tighter max-w-5xl uppercase whitespace-pre-line">
             THE REFERENCE{"\n"}

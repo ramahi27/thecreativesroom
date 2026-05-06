@@ -109,11 +109,6 @@ export function ReferenceCard({ reference: r }: Props) {
           </p>
         )}
 
-        {platform && (
-          <p className="font-mono text-[10px] uppercase tracking-widest text-primary/80 pt-1">
-            ↗ {platform}
-          </p>
-        )}
       </div>
     </Link>
   );
