@@ -129,6 +129,25 @@ const Auth = () => {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {mode === "signup" && (
+            <div className="space-y-2">
+              <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                Username
+              </Label>
+              <Input
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                placeholder="yourname"
+                pattern="^[a-z0-9_-]{3,24}$"
+                title="3–24 chars: lowercase letters, numbers, _ or -"
+                className="bg-secondary border-0 font-mono"
+              />
+              <p className="font-mono text-[10px] text-muted-foreground">
+                Your public profile: thecreativesroom.com/@{username || "you"}
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Email</Label>
             <Input
