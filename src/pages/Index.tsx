@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { BackToTop } from "@/components/BackToTop";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { ReferenceDetailModal } from "@/components/ReferenceDetailModal";
 import { type Reference } from "@/lib/references";
@@ -526,6 +527,8 @@ const Index = () => {
       </main>
 
       {openId && <ReferenceDetailModal id={openId} onClose={() => navigate("/")} />}
+
+      <BackToTop />
 
       <SiteFooter />
       <div className="border-t hairline">
