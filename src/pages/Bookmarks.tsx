@@ -129,6 +129,20 @@ const Bookmarks = () => {
     };
   }, [user]);
 
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("references")
+        .select("*")
+        .eq("created_by", user.id)
+        .order("created_at", { ascending: false });
+      if (!cancelled) setSubmissions((data as unknown as Reference[]) || []);
+    })();
+    return () => { cancelled = true; };
+  }, [user]);
+
   const availableCategories = useMemo(() => {
     if (mediaFilter === "videos") return VIDEO_CATEGORIES;
     if (mediaFilter === "photos") return PHOTO_CATEGORIES;
