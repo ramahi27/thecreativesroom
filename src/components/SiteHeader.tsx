@@ -21,8 +21,8 @@ export function SiteHeader() {
 
   // First-time OAuth users land without a profile row — send them to /welcome.
   useEffect(() => {
-    if (!user || !profile === undefined) return;
-    if (user && profile === null && location.pathname !== "/welcome" && location.pathname !== "/auth") {
+    if (!user) return;
+    if (profile === null && location.pathname !== "/welcome" && location.pathname !== "/auth") {
       navigate("/welcome");
     }
   }, [user, profile, navigate, location.pathname]);
