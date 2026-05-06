@@ -57,7 +57,7 @@ export function AvatarCropDialog({ src, open, onOpenChange, onCropped }: Props) 
     if (!src || !areaPx) return;
     setBusy(true);
     try {
-      const blob = await getCroppedBlob(src, areaPx);
+      const blob = await getCroppedBlob(src, areaPx, rotation);
       await onCropped(blob);
       onOpenChange(false);
       setZoom(1);
