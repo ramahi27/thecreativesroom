@@ -429,6 +429,22 @@ const Index = () => {
             </SelectContent>
           </Select>
 
+          {(mediaFilter !== "all" || categoryFilter !== "all" || sortBy !== "default" || search.trim() !== "" || brief.trim() !== "") && (
+            <button
+              type="button"
+              onClick={() => {
+                setMediaFilter("all");
+                setCategoryFilter("all");
+                setSortBy("default");
+                setSearch("");
+                clearMatches();
+              }}
+              className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors"
+            >
+              <X className="h-3 w-3" strokeWidth={1.5} /> Clear filters
+            </button>
+          )}
+
           <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
@@ -452,21 +468,6 @@ const Index = () => {
             )}
           </div>
 
-          {(mediaFilter !== "all" || categoryFilter !== "all" || sortBy !== "default" || search.trim() !== "" || brief.trim() !== "") && (
-            <button
-              type="button"
-              onClick={() => {
-                setMediaFilter("all");
-                setCategoryFilter("all");
-                setSortBy("default");
-                setSearch("");
-                clearMatches();
-              }}
-              className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors"
-            >
-              <X className="h-3 w-3" strokeWidth={1.5} /> Clear all filters
-            </button>
-          )}
         </div>
       </section>
 
