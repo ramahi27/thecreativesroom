@@ -327,7 +327,7 @@ const Index = () => {
       </section>
 
       {/* Filter bar */}
-      <section className="border-b hairline bg-background/80 backdrop-blur-xl">
+      <section id="brief-filters" className="border-b hairline bg-background/80 backdrop-blur-xl scroll-mt-0">
         <div className="container pt-4 pb-2">
           <form
             onSubmit={(e) => {
@@ -451,6 +451,22 @@ const Index = () => {
               </button>
             )}
           </div>
+
+          {(mediaFilter !== "all" || categoryFilter !== "all" || sortBy !== "default" || search.trim() !== "" || brief.trim() !== "") && (
+            <button
+              type="button"
+              onClick={() => {
+                setMediaFilter("all");
+                setCategoryFilter("all");
+                setSortBy("default");
+                setSearch("");
+                clearMatches();
+              }}
+              className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors"
+            >
+              <X className="h-3 w-3" strokeWidth={1.5} /> Clear all filters
+            </button>
+          )}
         </div>
       </section>
 
