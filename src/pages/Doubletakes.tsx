@@ -102,15 +102,27 @@ const Doubletakes = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [resolved, setResolved] = useState<Set<string>>(new Set());
+  const [dismissedPairs, setDismissedPairs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     document.title = "Doubletakes — The Creatives Room";
   }, []);
 
+  const orderedPairKey = (x: string, y: string) => (x < y ? `${x}|${y}` : `${y}|${x}`);
+
   useEffect(() => {
     if (!isAdmin) return;
     (async () => {
       setLoading(true);
+      // Load previously dismissed ("keep both") pairs
+      const { data: dismissals } = await supabase
+        .from("duplicate_dismissals")
+        .select("ref_a_id, ref_b_id");
+      if (dismissals) {
+        setDismissedPairs(
+          new Set(dismissals.map((d: any) => orderedPairKey(d.ref_a_id, d.ref_b_id)))
+        );
+      }
       // Scan BOTH drafts and published references. Pull in pages to avoid
       // the 1000-row default limit.
       const all: Reference[] = [];
