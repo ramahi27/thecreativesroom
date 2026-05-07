@@ -38,9 +38,9 @@ export function SiteHeader() {
         </Link>
 
         <nav className="flex items-center gap-1 sm:gap-2">
-          {user && (
+          {user && profile?.username && (
             <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
-              <Link to="/mycollection">My Collection</Link>
+              <Link to={`/u/${profile.username}`}>My Collection</Link>
             </Button>
           )}
           {user && (
@@ -62,8 +62,8 @@ export function SiteHeader() {
                 </Button>
               </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="font-mono text-xs uppercase tracking-widest">
-                <DropdownMenuItem onClick={() => navigate("/profile")}>
-                  My profile
+                <DropdownMenuItem onClick={() => navigate("/account/edit")}>
+                  Edit profile
                 </DropdownMenuItem>
                 {isAdmin && (
                   <DropdownMenuItem onClick={() => navigate("/settings")}>
