@@ -171,21 +171,28 @@ const Doubletakes = () => {
     toast.success("Published");
   }
 
-  function keepBoth(a: string, b: string) {
+  async function keepBoth(a: string, b: string) {
+    const [first, second] = a < b ? [a, b] : [b, a];
+    const key = orderedPairKey(a, b);
+    setDismissedPairs((s) => new Set(s).add(key));
     setResolved((s) => {
       const next = new Set(s);
       next.add(`pair:${a}:${b}`);
-      // Mark both so the pair disappears from the list
-      next.add(a + "::keep");
-      next.add(b + "::keep");
       return next;
     });
+    const { error } = await supabase
+      .from("duplicate_dismissals")
+      .insert({ ref_a_id: first, ref_b_id: second });
+    if (error && !error.message.includes("duplicate")) {
+      toast.error(error.message);
+    }
   }
 
   // Adjust visible filter to honor "keep both"
   const finalPairs = pairs.filter((p) => {
     if (resolved.has(p.a.id) || resolved.has(p.b.id)) return false;
     if (resolved.has(`pair:${p.a.id}:${p.b.id}`)) return false;
+    if (dismissedPairs.has(orderedPairKey(p.a.id, p.b.id))) return false;
     return true;
   });
 
