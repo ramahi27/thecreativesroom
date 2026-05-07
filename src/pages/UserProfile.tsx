@@ -24,13 +24,10 @@ const UserProfile = () => {
   const { profile, loading, notFound } = useProfileByUsername(username);
   const navigate = useNavigate();
 
-  const isOwner = !!user && !!profile && user.id === profile.user_id;
-
-  // Owner view = full collection management UI (Bookmarks page already has SiteHeader/Footer + everything)
-  if (isOwner) return <Bookmarks />;
-
   const [folders, setFolders] = useState<FolderWithRefs[]>([]);
   const [submissions, setSubmissions] = useState<Reference[]>([]);
+
+  const isOwner = !!user && !!profile && user.id === profile.user_id;
 
   useEffect(() => {
     if (profile) document.title = `@${profile.username} — The Creatives Room`;
