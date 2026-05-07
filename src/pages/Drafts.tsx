@@ -150,6 +150,10 @@ const Drafts = () => {
         toast.success(`Playlist imported — ${data.count} drafts created`, {
           description: data.failed_count ? `${data.failed_count} video(s) failed` : "All videos saved as drafts",
         });
+      } else if (data.split) {
+        toast.success(`Split into ${data.count} projects`, {
+          description: "AI detected multiple projects on the page",
+        });
       } else {
         toast.success("Added to drafts", { description: data.draft.title });
       }
