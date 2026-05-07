@@ -249,6 +249,7 @@ export function FolderSidebar({
                           onToggle={() => setVisibility(f.id, !f.is_public)}
                           username={username || null}
                           folderId={f.id}
+                          folderName={f.name}
                         />
                       </div>
                       <DropdownMenuSeparator />

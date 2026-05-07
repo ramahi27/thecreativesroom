@@ -167,6 +167,7 @@ export function FolderGridCard({
             onToggle={onToggleVisibility}
             username={username || null}
             folderId={folder.id}
+            folderName={folder.name}
           />
         </div>
       )}
