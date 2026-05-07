@@ -144,7 +144,7 @@ const Auth = () => {
                 className="bg-secondary border-0 font-mono"
               />
               <p className="font-mono text-[10px] text-muted-foreground">
-                Your public profile: thecreativesroom.com/@{username || "you"}
+                Your public profile: thecreativesroom.com/u/{username || "you"}
               </p>
             </div>
           )}
