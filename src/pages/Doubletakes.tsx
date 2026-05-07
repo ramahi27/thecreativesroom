@@ -102,15 +102,27 @@ const Doubletakes = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [resolved, setResolved] = useState<Set<string>>(new Set());
+  const [dismissedPairs, setDismissedPairs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     document.title = "Doubletakes — The Creatives Room";
   }, []);
 
+  const orderedPairKey = (x: string, y: string) => (x < y ? `${x}|${y}` : `${y}|${x}`);
+
   useEffect(() => {
     if (!isAdmin) return;
     (async () => {
       setLoading(true);
+      // Load previously dismissed ("keep both") pairs
+      const { data: dismissals } = await supabase
+        .from("duplicate_dismissals")
+        .select("ref_a_id, ref_b_id");
+      if (dismissals) {
+        setDismissedPairs(
+          new Set(dismissals.map((d: any) => orderedPairKey(d.ref_a_id, d.ref_b_id)))
+        );
+      }
       // Scan BOTH drafts and published references. Pull in pages to avoid
       // the 1000-row default limit.
       const all: Reference[] = [];
@@ -159,21 +171,28 @@ const Doubletakes = () => {
     toast.success("Published");
   }
 
-  function keepBoth(a: string, b: string) {
+  async function keepBoth(a: string, b: string) {
+    const [first, second] = a < b ? [a, b] : [b, a];
+    const key = orderedPairKey(a, b);
+    setDismissedPairs((s) => new Set(s).add(key));
     setResolved((s) => {
       const next = new Set(s);
       next.add(`pair:${a}:${b}`);
-      // Mark both so the pair disappears from the list
-      next.add(a + "::keep");
-      next.add(b + "::keep");
       return next;
     });
+    const { error } = await supabase
+      .from("duplicate_dismissals")
+      .insert({ ref_a_id: first, ref_b_id: second });
+    if (error && !error.message.includes("duplicate")) {
+      toast.error(error.message);
+    }
   }
 
   // Adjust visible filter to honor "keep both"
   const finalPairs = pairs.filter((p) => {
     if (resolved.has(p.a.id) || resolved.has(p.b.id)) return false;
     if (resolved.has(`pair:${p.a.id}:${p.b.id}`)) return false;
+    if (dismissedPairs.has(orderedPairKey(p.a.id, p.b.id))) return false;
     return true;
   });
 
