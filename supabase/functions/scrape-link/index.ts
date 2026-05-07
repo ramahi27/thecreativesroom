@@ -335,6 +335,120 @@ async function inferMetadata(
   }
 }
 
+/**
+ * Use AI vision to group page images into distinct creative projects.
+ * Returns one cluster per project, each with the indices of its images
+ * plus an optional project title. Falls back to a single cluster.
+ */
+async function groupImagesIntoProjects(
+  images: string[],
+  pageTitle: string,
+  pageUrl: string,
+): Promise<{ title?: string | null; image_indices: number[] }[]> {
+  const single = [{ title: null, image_indices: images.map((_, i) => i) }];
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!apiKey || images.length < 2) return single;
+
+  const sys =
+    `You are analyzing images scraped from a single web page that may showcase ` +
+    `multiple distinct creative/photo projects (e.g. a portfolio or news article ` +
+    `featuring several campaigns). Decide how many DISTINCT projects are present ` +
+    `and assign each image to exactly one project. Group images that clearly ` +
+    `belong to the same campaign/series (same subject, art direction, brand). ` +
+    `If everything is one project, return a single group. Be conservative — ` +
+    `do not over-split. Use the original 0-based image indices.`;
+
+  // Cap to keep token usage reasonable
+  const capped = images.slice(0, 12);
+  const userContent: any[] = [
+    {
+      type: "text",
+      text:
+        `Page title: ${pageTitle}\nPage URL: ${pageUrl}\n` +
+        `Images (in order, 0-indexed):`,
+    },
+    ...capped.map((url) => ({ type: "image_url", image_url: { url } })),
+  ];
+
+  try {
+    const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: sys },
+          { role: "user", content: userContent },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "set_projects",
+              parameters: {
+                type: "object",
+                properties: {
+                  projects: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: ["string", "null"] },
+                        image_indices: {
+                          type: "array",
+                          items: { type: "integer" },
+                        },
+                      },
+                      required: ["title", "image_indices"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["projects"],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "set_projects" } },
+      }),
+    });
+    if (!r.ok) {
+      console.error("group images AI error", r.status, await r.text());
+      return single;
+    }
+    const data = await r.json();
+    const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    if (!args) return single;
+    const parsed = JSON.parse(args);
+    const projects = (parsed.projects || []) as {
+      title: string | null;
+      image_indices: number[];
+    }[];
+    // Sanitize: keep valid indices, drop empty groups
+    const cleaned = projects
+      .map((p) => ({
+        title: p.title || null,
+        image_indices: (p.image_indices || []).filter(
+          (i) => Number.isInteger(i) && i >= 0 && i < images.length,
+        ),
+      }))
+      .filter((p) => p.image_indices.length > 0);
+    // Ensure every image is assigned somewhere; unassigned go to first group
+    const seen = new Set<number>();
+    cleaned.forEach((p) => p.image_indices.forEach((i) => seen.add(i)));
+    const missing = images.map((_, i) => i).filter((i) => !seen.has(i));
+    if (missing.length > 0) {
+      if (cleaned.length === 0) return single;
+      cleaned[0].image_indices.push(...missing);
+    }
+    return cleaned.length > 0 ? cleaned : single;
+  } catch (e) {
+    console.error("groupImagesIntoProjects failed", e);
+    return single;
+  }
+}
+
 async function scrapeAndInsert(
   rawUrl: string,
   supabase: any,
@@ -354,6 +468,52 @@ async function scrapeAndInsert(
 
   const meta = await inferMetadata(scraped, categories);
   const allImages = (scraped.images || []).filter(Boolean);
+
+  // ===== Image page with multiple potential projects =====
+  if (scraped.type === "image" && allImages.length >= 2) {
+    const groups = await groupImagesIntoProjects(allImages, scraped.title, scraped.source_url);
+    if (groups.length > 1) {
+      const drafts: any[] = [];
+      for (let i = 0; i < groups.length; i++) {
+        const g = groups[i];
+        const items = g.image_indices.map((idx) => ({
+          url: allImages[idx],
+          kind: "image" as const,
+        }));
+        if (items.length === 0) continue;
+        const titleBase = (g.title && g.title.trim()) || meta.clean_title || scraped.title;
+        const title = groups.length > 1 && !g.title
+          ? `${titleBase} (${i + 1})`
+          : titleBase;
+        const row = {
+          title,
+          type: "image",
+          source_url: scraped.source_url,
+          thumbnail_url: items[0].url,
+          media_url: items[0].url,
+          media_items: items,
+          brand: meta.brand,
+          year: meta.year,
+          categories: meta.categories,
+          tags: meta.tags,
+          created_by: userId,
+          published: false,
+          source: "ai_scrape",
+        };
+        const { data: inserted, error: insErr } = await supabase
+          .from("references")
+          .insert(row)
+          .select("id, title, thumbnail_url, brand, categories, tags, type")
+          .single();
+        if (!insErr && inserted) drafts.push(inserted);
+        else if (insErr) console.error("insert split draft failed", insErr.message);
+      }
+      if (drafts.length > 0) {
+        return { ok: true, draft: drafts[0], drafts, split: true };
+      }
+    }
+  }
+
   const mediaItems =
     scraped.type === "image"
       ? (allImages.length > 0
@@ -468,6 +628,10 @@ Deno.serve(async (req) => {
     // ===== Single URL =====
     const result = await scrapeAndInsert(rawUrl, supabase, userId, categories);
     if (!result.ok) return json({ error: result.error }, 500);
+    if ((result as any).split && Array.isArray((result as any).drafts)) {
+      const drafts = (result as any).drafts;
+      return json({ success: true, split: true, count: drafts.length, drafts, draft: drafts[0] });
+    }
     return json({ success: true, draft: result.draft });
   } catch (e) {
     console.error("scrape-link error", e);
