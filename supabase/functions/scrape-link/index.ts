@@ -628,6 +628,10 @@ Deno.serve(async (req) => {
     // ===== Single URL =====
     const result = await scrapeAndInsert(rawUrl, supabase, userId, categories);
     if (!result.ok) return json({ error: result.error }, 500);
+    if ((result as any).split && Array.isArray((result as any).drafts)) {
+      const drafts = (result as any).drafts;
+      return json({ success: true, split: true, count: drafts.length, drafts, draft: drafts[0] });
+    }
     return json({ success: true, draft: result.draft });
   } catch (e) {
     console.error("scrape-link error", e);
