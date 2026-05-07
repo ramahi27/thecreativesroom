@@ -8,15 +8,8 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { FollowButton } from "@/components/FollowButton";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Globe, MoreHorizontal, Pencil, Share2 } from "lucide-react";
-import { profileUrl, folderShareUrl } from "@/lib/username";
+import { Globe, Share2 } from "lucide-react";
+import { profileUrl } from "@/lib/username";
 import { slugify } from "@/lib/slug";
 import { toast } from "sonner";
 import Bookmarks from "@/pages/Bookmarks";
