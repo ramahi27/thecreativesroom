@@ -28,7 +28,7 @@ const Welcome = () => {
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.username) navigate(`/@${data.username}`);
+        if (data?.username) navigate(`/u/${data.username}`);
       });
   }, [authLoading, user, navigate]);
 
@@ -55,7 +55,7 @@ const Welcome = () => {
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Welcome!");
-    navigate(`/@${v.value}`);
+    navigate(`/u/${v.value}`);
   }
 
   if (authLoading || !user) return null;
@@ -67,7 +67,7 @@ const Welcome = () => {
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">⏵ One last step</p>
         <h1 className="font-display text-5xl font-black tracking-tighter mb-4">Pick a username.</h1>
         <p className="font-body text-muted-foreground mb-8">
-          This becomes your public page at thecreativesroom.com/@you.
+          This becomes your public page at thecreativesroom.com/u/you.
         </p>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">

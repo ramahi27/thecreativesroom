@@ -1,37 +1,39 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { useProfileByUsername } from "@/hooks/useProfile";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ReferenceCard } from "@/components/ReferenceCard";
-import type { Reference } from "@/lib/references";
+import { FollowButton } from "@/components/FollowButton";
 import { Share2 } from "lucide-react";
 import { folderShareUrl } from "@/lib/username";
+import { slugify } from "@/lib/slug";
 import { toast } from "sonner";
-import { FollowButton } from "@/components/FollowButton";
+import type { Reference } from "@/lib/references";
 
-const PublicFolder = () => {
-  const { handle, folderId } = useParams();
-  const isHandle = !!handle && handle.startsWith("@");
-  const username = isHandle ? handle!.slice(1) : undefined;
+const UserFolder = () => {
+  const { username, folderSlug } = useParams();
+  const { user } = useAuth();
   const { profile, loading: pLoading, notFound } = useProfileByUsername(username);
-  const [folder, setFolder] = useState<{ id: string; name: string; is_public: boolean } | null>(null);
+  const [folder, setFolder] = useState<{ id: string; name: string; is_public: boolean; user_id: string } | null>(null);
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
   const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
-    if (!folderId || !profile) return;
+    if (!folderSlug || !profile) return;
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const { data: f } = await supabase
+      const { data: list } = await supabase
         .from("folders")
         .select("id,name,is_public,user_id")
-        .eq("id", folderId)
-        .maybeSingle();
-      if (!f || (f as any).user_id !== profile.user_id || !(f as any).is_public) {
+        .eq("user_id", profile.user_id);
+      const match = (list || []).find((f: any) => slugify(f.name) === folderSlug) as any;
+      const isOwner = !!user && user.id === profile.user_id;
+      if (!match || (!match.is_public && !isOwner)) {
         if (!cancelled) {
           setAccessDenied(true);
           setLoading(false);
@@ -41,27 +43,25 @@ const PublicFolder = () => {
       const { data: items } = await supabase
         .from("folder_items")
         .select("reference_id")
-        .eq("folder_id", folderId);
+        .eq("folder_id", match.id);
       const ids = (items || []).map((i: any) => i.reference_id);
-      let list: Reference[] = [];
+      let entries: Reference[] = [];
       if (ids.length) {
-        const { data: rs } = await supabase
+        const q = supabase
           .from("references")
           .select("id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,categories,published,media_items,created_at")
-          .in("id", ids)
-          .eq("published", true);
-        list = (rs as unknown as Reference[]) || [];
+          .in("id", ids);
+        const { data: rs } = isOwner ? await q : await q.eq("published", true);
+        entries = (rs as unknown as Reference[]) || [];
       }
       if (!cancelled) {
-        setFolder(f as any);
-        setRefs(list);
+        setFolder(match);
+        setRefs(entries);
         setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, [folderId, profile]);
+    return () => { cancelled = true; };
+  }, [folderSlug, profile, user]);
 
   useEffect(() => {
     if (folder && profile) document.title = `${folder.name} · @${profile.username} — The Creatives Room`;
@@ -88,7 +88,7 @@ const PublicFolder = () => {
             This collection is private.
           </h1>
           {profile && (
-            <Link to={`/@${profile.username}`} className="font-mono text-xs uppercase tracking-widest underline">
+            <Link to={`/u/${profile.username}`} className="font-mono text-xs uppercase tracking-widest underline">
               ← Back to @{profile.username}
             </Link>
           )}
@@ -98,7 +98,7 @@ const PublicFolder = () => {
   }
 
   const handleShare = async () => {
-    const url = folderShareUrl(profile.username, folder.id);
+    const url = folderShareUrl(profile.username, slugify(folder.name));
     try {
       if (navigator.share) {
         await navigator.share({ url, title: folder.name });
@@ -117,7 +117,7 @@ const PublicFolder = () => {
       <section className="border-b hairline">
         <div className="container py-12 md:py-16">
           <Link
-            to={`/@${profile.username}`}
+            to={`/u/${profile.username}`}
             className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
           >
             ← @{profile.username}
@@ -129,7 +129,7 @@ const PublicFolder = () => {
             <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
               {refs.length} {refs.length === 1 ? "reference" : "references"}
             </span>
-            <FollowButton folderId={folder.id} ownerUserId={profile.user_id} size="sm" />
+            <FollowButton folderId={folder.id} ownerUserId={folder.user_id} size="sm" />
             <button
               onClick={handleShare}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 border hairline font-mono text-[10px] uppercase tracking-widest hover:bg-secondary"
@@ -157,4 +157,4 @@ const PublicFolder = () => {
   );
 };
 
-export default PublicFolder;
+export default UserFolder;

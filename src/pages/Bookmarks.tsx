@@ -383,7 +383,7 @@ const Bookmarks = () => {
                 return (
                   <Link
                     key={f.id}
-                    to={`/@${f.owner_username}/c/${f.id}`}
+                    to={`/u/${f.owner_username}/${(f.name || "").toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}`}
                     className="group block border hairline bg-card hover:border-foreground transition-all hover:-translate-y-0.5"
                   >
                     <div className="relative aspect-[4/3] grid grid-cols-2 grid-rows-2 gap-0.5 bg-muted overflow-hidden">

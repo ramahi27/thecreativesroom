@@ -1,16 +1,18 @@
 import { Globe, Lock, Share2 } from "lucide-react";
 import { toast } from "sonner";
 import { folderShareUrl } from "@/lib/username";
+import { slugify } from "@/lib/slug";
 
 interface Props {
   isPublic: boolean;
   onToggle: () => void;
   username?: string | null;
   folderId: string;
+  folderName?: string;
   size?: "sm" | "md";
 }
 
-export function FolderVisibilityToggle({ isPublic, onToggle, username, folderId, size = "sm" }: Props) {
+export function FolderVisibilityToggle({ isPublic, onToggle, username, folderId, folderName, size = "sm" }: Props) {
   const px = size === "sm" ? "px-2 py-1" : "px-2.5 py-1.5";
   const handleShare = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -23,7 +25,7 @@ export function FolderVisibilityToggle({ isPublic, onToggle, username, folderId,
       toast.error("Make this folder public to share it.");
       return;
     }
-    const url = folderShareUrl(username, folderId);
+    const url = folderShareUrl(username, slugify(folderName || folderId));
     try {
       if (navigator.share) {
         await navigator.share({ url, title: "Collection — The Creatives Room" });

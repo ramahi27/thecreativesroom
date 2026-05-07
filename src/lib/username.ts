@@ -8,6 +8,7 @@ export const RESERVED_USERNAMES = new Set([
   "drafts",
   "bookmarks",
   "mycollection",
+  "collection",
   "settings",
   "logs",
   "users",
@@ -17,6 +18,7 @@ export const RESERVED_USERNAMES = new Set([
   "terms",
   "welcome",
   "api",
+  "u",
   "reset-password",
   "the-creatives-room",
   "thecreativesroom",
@@ -27,6 +29,7 @@ export const RESERVED_USERNAMES = new Set([
   "signup",
   "signin",
   "logout",
+  "profile",
 ]);
 
 export function validateUsername(raw: string): { ok: true; value: string } | { ok: false; error: string } {
@@ -38,16 +41,17 @@ export function validateUsername(raw: string): { ok: true; value: string } | { o
   return { ok: true, value };
 }
 
-export function profileUrl(username: string): string {
-  const origin =
-    typeof window !== "undefined" && window.location.hostname.includes("thecreativesroom.com")
-      ? "https://thecreativesroom.com"
-      : typeof window !== "undefined"
-        ? window.location.origin
-        : "";
-  return `${origin}/@${username}`;
+function origin(): string {
+  if (typeof window === "undefined") return "";
+  if (window.location.hostname.includes("thecreativesroom.com"))
+    return "https://thecreativesroom.com";
+  return window.location.origin;
 }
 
-export function folderShareUrl(username: string, folderId: string): string {
-  return `${profileUrl(username)}/c/${folderId}`;
+export function profileUrl(username: string): string {
+  return `${origin()}/u/${username}`;
+}
+
+export function folderShareUrl(username: string, folderSlug: string): string {
+  return `${profileUrl(username)}/${folderSlug}`;
 }
