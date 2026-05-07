@@ -95,6 +95,8 @@ const UserProfile = () => {
     [profile],
   );
 
+  if (isOwner) return <Bookmarks />;
+
   if (loading || authLoading) {
     return (
       <div className="min-h-screen grain">
