@@ -205,7 +205,9 @@ const Settings = () => {
     );
     if (ok) {
       kind === "video" ? setVideoCats(next) : setPhotoCats(next);
-      toast.success("Renamed");
+      const { data: affected, error } = await supabase.rpc("rename_category", { _old: oldName, _new: newName });
+      if (error) toast.error(`Renamed, but failed to update projects: ${error.message}`);
+      else toast.success(`Renamed · ${affected ?? 0} project${affected === 1 ? "" : "s"} updated`);
     }
   }
 

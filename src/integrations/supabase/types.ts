@@ -350,6 +350,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      rename_category: { Args: { _new: string; _old: string }; Returns: number }
       username_available: { Args: { _username: string }; Returns: boolean }
     }
     Enums: {
