@@ -61,6 +61,30 @@ export type Database = {
           },
         ]
       }
+      duplicate_dismissals: {
+        Row: {
+          created_at: string
+          dismissed_by: string | null
+          id: string
+          ref_a_id: string
+          ref_b_id: string
+        }
+        Insert: {
+          created_at?: string
+          dismissed_by?: string | null
+          id?: string
+          ref_a_id: string
+          ref_b_id: string
+        }
+        Update: {
+          created_at?: string
+          dismissed_by?: string | null
+          id?: string
+          ref_a_id?: string
+          ref_b_id?: string
+        }
+        Relationships: []
+      }
       folder_follows: {
         Row: {
           created_at: string
