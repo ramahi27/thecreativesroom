@@ -20,7 +20,7 @@ export async function enrichReferenceMetadata(referenceId: string) {
   try {
     const { data: cur } = await supabase
       .from("references")
-      .select("title,brand,agency,year,source_url,notes,tags,tag_synonyms")
+      .select("title,type,brand,agency,year,source_url,notes,tags,tag_synonyms,editing_style")
       .eq("id", referenceId)
       .maybeSingle();
     if (!cur?.title) return;
@@ -30,6 +30,7 @@ export async function enrichReferenceMetadata(referenceId: string) {
       {
         body: {
           title: cur.title,
+          type: (cur as any).type || null,
           brand: cur.brand || null,
           agency: cur.agency || null,
           year: cur.year || null,
@@ -64,6 +65,7 @@ export async function enrichReferenceMetadata(referenceId: string) {
       brand?: string;
       agency?: string;
       year?: number;
+      editing_style?: string;
     } = {
       tags: merged,
       tag_synonyms: mergedSyns,
@@ -76,6 +78,14 @@ export async function enrichReferenceMetadata(referenceId: string) {
     }
     if (!cur.year && Number.isInteger(meta.year)) {
       updates.year = meta.year;
+    }
+    if (
+      (cur as any).type === "video" &&
+      !(cur as any).editing_style &&
+      typeof meta.editing_style === "string" &&
+      meta.editing_style.trim()
+    ) {
+      updates.editing_style = meta.editing_style.trim();
     }
     await supabase.from("references").update(updates).eq("id", referenceId);
   } catch {

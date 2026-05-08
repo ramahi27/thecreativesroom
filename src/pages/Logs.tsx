@@ -13,9 +13,11 @@ import { rememberModalReturn } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
 // A reference is considered "AI-complete" only if brand, agency, AND year
-// are all filled. Missing any of those means the AI box should show as unticked.
-function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null }): boolean {
-  return Boolean(r.brand && r.agency && r.year);
+// are all filled. For video references, editing_style must also be present.
+function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null; type?: string; editing_style?: string | null }): boolean {
+  if (!(r.brand && r.agency && r.year)) return false;
+  if (r.type === "video" && !r.editing_style) return false;
+  return true;
 }
 
 type LogRow = {
@@ -32,6 +34,7 @@ type LogRow = {
   approved_by: string | null;
   created_by_email: string | null;
   approved_by_email: string | null;
+  editing_style?: string | null;
   has_ai_metadata?: boolean;
 };
 
@@ -73,10 +76,16 @@ const Logs = () => {
         // Re-fetch to verify completeness
         const { data: fresh } = await supabase
           .from("references")
-          .select("brand,agency,year")
+          .select("brand,agency,year,editing_style")
           .eq("id", r.id)
           .maybeSingle();
-        const complete = !!(fresh?.brand && fresh?.agency && fresh?.year);
+        const complete = hasCompleteMetadata({
+          brand: fresh?.brand ?? null,
+          agency: fresh?.agency ?? null,
+          year: fresh?.year ?? null,
+          type: r.type,
+          editing_style: (fresh as any)?.editing_style ?? null,
+        });
         if (complete) {
           ok++;
           setRows((prev) =>
@@ -87,6 +96,7 @@ const Logs = () => {
                     brand: fresh?.brand ?? x.brand,
                     agency: fresh?.agency ?? x.agency,
                     year: fresh?.year ?? x.year,
+                    editing_style: (fresh as any)?.editing_style ?? x.editing_style,
                     has_ai_metadata: true,
                   }
                 : x,
@@ -121,21 +131,23 @@ const Logs = () => {
         return;
       }
       const baseRows = (data as LogRow[]) || [];
-      // The RPC doesn't include `agency`; fetch it to determine completeness.
+      // The RPC doesn't include `agency` or `editing_style`; fetch to determine completeness.
       const ids = baseRows.map((r) => r.id);
-      const infoMap = new Map<string, { agency: string | null }>();
+      const infoMap = new Map<string, { agency: string | null; editing_style: string | null }>();
       if (ids.length) {
         const { data: extra } = await supabase
           .from("references")
-          .select("id,agency")
+          .select("id,agency,editing_style")
           .in("id", ids);
-        (extra || []).forEach((t: any) => infoMap.set(t.id, { agency: t.agency ?? null }));
+        (extra || []).forEach((t: any) =>
+          infoMap.set(t.id, { agency: t.agency ?? null, editing_style: t.editing_style ?? null }),
+        );
       }
       setRows(
         baseRows.map((r) => {
-          const agency = infoMap.get(r.id)?.agency ?? r.agency ?? null;
-          const merged = { ...r, agency };
-          return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
+          const info = infoMap.get(r.id);
+          const merged = { ...r, agency: info?.agency ?? r.agency ?? null, editing_style: info?.editing_style ?? null };
+          return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) } as LogRow;
         }),
       );
       setLoading(false);

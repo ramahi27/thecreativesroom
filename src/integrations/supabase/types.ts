@@ -240,6 +240,7 @@ export type Database = {
           categories: string[]
           created_at: string
           created_by: string | null
+          editing_style: string | null
           id: string
           media_items: Json
           media_url: string | null
@@ -263,6 +264,7 @@ export type Database = {
           categories?: string[]
           created_at?: string
           created_by?: string | null
+          editing_style?: string | null
           id?: string
           media_items?: Json
           media_url?: string | null
@@ -286,6 +288,7 @@ export type Database = {
           categories?: string[]
           created_at?: string
           created_by?: string | null
+          editing_style?: string | null
           id?: string
           media_items?: Json
           media_url?: string | null
