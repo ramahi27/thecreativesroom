@@ -227,7 +227,36 @@ const Index = () => {
         break;
     }
     return sorted;
-  }, [refs, mediaFilter, categoryFilter, search, sortBy]);
+  }, [refs, mediaFilter, categoryFilter, search, sortBy, expandedTerms]);
+
+  // Debounced AI synonym expansion for the search query
+  useEffect(() => {
+    const q = search.trim().toLowerCase();
+    if (q.length < 2) {
+      setExpandedTerms([]);
+      return;
+    }
+    const cached = expandCacheRef.current.get(q);
+    if (cached) {
+      setExpandedTerms(cached);
+      return;
+    }
+    const handle = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke("expand-query", {
+          body: { query: q },
+        });
+        if (error) return;
+        const terms = Array.isArray(data?.terms) ? (data.terms as string[]) : [];
+        expandCacheRef.current.set(q, terms);
+        // Only apply if the user hasn't moved on
+        if (q === search.trim().toLowerCase()) setExpandedTerms(terms);
+      } catch (_) {
+        // ignore — fall back to literal search
+      }
+    }, 350);
+    return () => clearTimeout(handle);
+  }, [search]);
 
 
   return (
