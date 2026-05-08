@@ -27,6 +27,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const [allRefs, setAllRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeMedia, setActiveMedia] = useState(0);
+  const [tagInput, setTagInput] = useState("");
 
   useEffect(() => {
     if (!id) return;
