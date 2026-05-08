@@ -65,6 +65,7 @@ export async function enrichReferenceMetadata(referenceId: string) {
       brand?: string;
       agency?: string;
       year?: number;
+      editing_style?: string;
     } = {
       tags: merged,
       tag_synonyms: mergedSyns,
@@ -77,6 +78,14 @@ export async function enrichReferenceMetadata(referenceId: string) {
     }
     if (!cur.year && Number.isInteger(meta.year)) {
       updates.year = meta.year;
+    }
+    if (
+      (cur as any).type === "video" &&
+      !(cur as any).editing_style &&
+      typeof meta.editing_style === "string" &&
+      meta.editing_style.trim()
+    ) {
+      updates.editing_style = meta.editing_style.trim();
     }
     await supabase.from("references").update(updates).eq("id", referenceId);
   } catch {
