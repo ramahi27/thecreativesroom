@@ -177,6 +177,7 @@ const Bookmarks = () => {
           r.notes,
           r.year ? String(r.year) : "",
           ...(r.tags || []),
+          ...((r as any).tag_synonyms || []),
           ...(r.categories || []),
         ]
           .filter(Boolean)
