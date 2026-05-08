@@ -118,10 +118,19 @@ Return ONLY via the tool call.`;
                     items: {
                       type: "object",
                       properties: {
-                        id: { type: "string" },
-                        reason: { type: "string", description: "One short line on why it fits." },
+                       id: { type: "string" },
+                        match_score: { type: "number", description: "0-100 strength of fit." },
+                        match_dimensions: {
+                          type: "array",
+                          items: { type: "string" },
+                          description: "2-3 strongest matching dimensions (e.g. colour, mood, lighting).",
+                        },
+                        reason: {
+                          type: "string",
+                          description: "One precise sentence on the specific visual/mood/stylistic element that connects this ref to the brief. Never generic.",
+                        },
                       },
-                      required: ["id", "reason"],
+                      required: ["id", "match_score", "match_dimensions", "reason"],
                       additionalProperties: false,
                     },
                   },
