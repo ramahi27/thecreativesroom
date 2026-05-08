@@ -76,10 +76,16 @@ const Logs = () => {
         // Re-fetch to verify completeness
         const { data: fresh } = await supabase
           .from("references")
-          .select("brand,agency,year")
+          .select("brand,agency,year,editing_style")
           .eq("id", r.id)
           .maybeSingle();
-        const complete = !!(fresh?.brand && fresh?.agency && fresh?.year);
+        const complete = hasCompleteMetadata({
+          brand: fresh?.brand ?? null,
+          agency: fresh?.agency ?? null,
+          year: fresh?.year ?? null,
+          type: r.type,
+          editing_style: (fresh as any)?.editing_style ?? null,
+        });
         if (complete) {
           ok++;
           setRows((prev) =>
@@ -90,6 +96,7 @@ const Logs = () => {
                     brand: fresh?.brand ?? x.brand,
                     agency: fresh?.agency ?? x.agency,
                     year: fresh?.year ?? x.year,
+                    editing_style: (fresh as any)?.editing_style ?? x.editing_style,
                     has_ai_metadata: true,
                   }
                 : x,
