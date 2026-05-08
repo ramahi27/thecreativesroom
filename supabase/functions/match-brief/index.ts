@@ -168,7 +168,7 @@ Return ONLY via the tool call.`;
 
     const aiJson = await aiResp.json();
     const toolCall = aiJson.choices?.[0]?.message?.tool_calls?.[0];
-    let matches: Array<{ id: string; reason: string }> = [];
+    let matches: Array<{ id: string; reason: string; match_score?: number; match_dimensions?: string[] }> = [];
     if (toolCall?.function?.arguments) {
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
