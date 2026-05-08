@@ -247,6 +247,7 @@ export type Database = {
           published: boolean
           source: string | null
           source_url: string | null
+          tag_synonyms: string[]
           tags: string[] | null
           thumbnail_url: string | null
           title: string
@@ -269,6 +270,7 @@ export type Database = {
           published?: boolean
           source?: string | null
           source_url?: string | null
+          tag_synonyms?: string[]
           tags?: string[] | null
           thumbnail_url?: string | null
           title: string
@@ -291,6 +293,7 @@ export type Database = {
           published?: boolean
           source?: string | null
           source_url?: string | null
+          tag_synonyms?: string[]
           tags?: string[] | null
           thumbnail_url?: string | null
           title?: string
