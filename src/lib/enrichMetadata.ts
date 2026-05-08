@@ -20,7 +20,7 @@ export async function enrichReferenceMetadata(referenceId: string) {
   try {
     const { data: cur } = await supabase
       .from("references")
-      .select("title,brand,agency,year,source_url,notes,tags,tag_synonyms")
+      .select("title,type,brand,agency,year,source_url,notes,tags,tag_synonyms,editing_style")
       .eq("id", referenceId)
       .maybeSingle();
     if (!cur?.title) return;
@@ -30,6 +30,7 @@ export async function enrichReferenceMetadata(referenceId: string) {
       {
         body: {
           title: cur.title,
+          type: (cur as any).type || null,
           brand: cur.brand || null,
           agency: cur.agency || null,
           year: cur.year || null,
