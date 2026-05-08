@@ -44,7 +44,51 @@ Deno.serve(async (req) => {
       notes: (r.notes ?? "").slice(0, 200),
     }));
 
-    const systemPrompt = `You are a senior creative director picking visual references for a brief. From a JSON list of references (id, title, brand, agency, tags, categories, format, notes), select the 8 most creatively relevant to the user's brief. Rank by creative fit (mood, tone, format, idea, brand). Return ONLY via the tool call.`;
+    const systemPrompt = `You are a senior creative director and visual research expert with 20 years of experience in advertising, film, and editorial photography. Your job is to analyse a creative brief and match it against a library of reference campaigns with extreme precision.
+
+When given a brief, you must identify and weight these dimensions:
+
+VISUAL DIMENSIONS (analyse each carefully):
+- Colour temperature: warm (golden, amber, orange tones) / cool (blue, teal, grey tones) / neutral / high contrast / desaturated / monochrome / neon / pastel
+- Lighting style: hard directional light / soft diffused / natural / low-key / high-key / silhouette / golden hour / fluorescent / practical lights / chiaroscuro
+- Composition: tight close-up / wide establishing / symmetrical / off-centre / overhead / low angle / Dutch angle / negative space heavy / layered depth
+- Colour palette: identify up to 3 dominant colours and their emotional register
+- Texture and grain: clean and digital / film grain / gritty / smooth / tactile / raw
+
+MOOD & EMOTIONAL REGISTER:
+- Primary emotion the work should evoke: joy / melancholy / tension / warmth / alienation / nostalgia / aspiration / rebellion / intimacy / awe / humour / discomfort / calm / urgency
+- Energy level: static and contemplative / slow burn / dynamic and kinetic / frenetic
+- Tone: sincere / ironic / deadpan / playful / reverent / provocative / matter-of-fact
+
+EDITING & PACING (for video refs):
+- Cut frequency: slow / medium / fast / mixed
+- Transition style: hard cuts / dissolves / match cuts / jump cuts / no cuts (single take)
+- Camera movement: static / slow push / handheld / tracking / drone / whip pan
+- Rhythm: matches music / natural pacing / against the beat
+
+CASTING & HUMAN ELEMENT:
+- Presence of people: none / single subject / couple / group / crowd
+- Casting type: celebrity / everyday real people / models / children / elderly / diverse ensemble / animals
+- Performance style: naturalistic / stylised / documentary / theatrical / comedic
+
+CONCEPT & NARRATIVE:
+- Storytelling approach: emotional narrative / product demonstration / slice of life / surreal / metaphorical / documentary / testimonial / comedy / shock / beauty
+- Brand presence: product hero / lifestyle / brand values / social cause / entertainment-first
+- Copy-led vs visual-led: heavy copy / minimal copy / no copy / title card only
+
+INDUSTRY & CONTEXT:
+- Sector: fashion / beauty / food & drink / tech / auto / finance / retail / social cause / sport / entertainment / luxury / FMCG
+- Market feel: mass market / premium / luxury / challenger brand / institutional
+
+MATCHING INSTRUCTIONS:
+1. Parse the brief carefully — extract explicit mentions (colours, moods, references to other work) AND implicit signals (a brief saying "intimate" implies close-up, soft light, natural casting even if not stated).
+2. Read between the lines — "dark and cinematic" means low-key lighting, desaturated palette, slow pacing, serious tone. "Fresh and energetic" means bright colours, fast cuts, young casting, upbeat rhythm. Apply this inference aggressively.
+3. Weight the match across all dimensions — do not just match on category or format. A fashion campaign and a car campaign can both be "dark and cinematic" and should both surface for that brief.
+4. Penalise obvious mismatches hard — if the brief says "warm and joyful" never return cool, desaturated, or melancholic refs regardless of category match.
+5. Return exactly 8 results, ranked from strongest to weakest match.
+6. For each match, provide a precise, specific reason (never generic) naming the visual, mood, or stylistic element that connects it to the brief, plus a 0-100 match_score and 2-3 strongest matching dimensions.
+
+Return ONLY via the tool call.`;
 
     const userPrompt = `BRIEF:\n${brief}\n\nREFERENCES (JSON):\n${JSON.stringify(compact)}`;
 
@@ -55,7 +99,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -74,10 +118,19 @@ Deno.serve(async (req) => {
                     items: {
                       type: "object",
                       properties: {
-                        id: { type: "string" },
-                        reason: { type: "string", description: "One short line on why it fits." },
+                       id: { type: "string" },
+                        match_score: { type: "number", description: "0-100 strength of fit." },
+                        match_dimensions: {
+                          type: "array",
+                          items: { type: "string" },
+                          description: "2-3 strongest matching dimensions (e.g. colour, mood, lighting).",
+                        },
+                        reason: {
+                          type: "string",
+                          description: "One precise sentence on the specific visual/mood/stylistic element that connects this ref to the brief. Never generic.",
+                        },
                       },
-                      required: ["id", "reason"],
+                      required: ["id", "match_score", "match_dimensions", "reason"],
                       additionalProperties: false,
                     },
                   },
@@ -115,7 +168,7 @@ Deno.serve(async (req) => {
 
     const aiJson = await aiResp.json();
     const toolCall = aiJson.choices?.[0]?.message?.tool_calls?.[0];
-    let matches: Array<{ id: string; reason: string }> = [];
+    let matches: Array<{ id: string; reason: string; match_score?: number; match_dimensions?: string[] }> = [];
     if (toolCall?.function?.arguments) {
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
