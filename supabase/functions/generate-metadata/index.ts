@@ -83,6 +83,7 @@ Deno.serve(async (req) => {
       year = null,
       source_url = null,
       notes = null,
+      type = null,
     } = body || {};
     if (!title || typeof title !== "string") {
       return new Response(JSON.stringify({ error: "title is required" }), {
@@ -96,6 +97,7 @@ Deno.serve(async (req) => {
 
     const userContext = [
       `title: ${title}`,
+      `type: ${type || "(unknown)"}`,
       `brand: ${brand || "(missing — please infer if possible)"}`,
       `agency: ${agency || "(missing — please infer if possible)"}`,
       `year: ${year || "(missing — please infer if possible)"}`,
