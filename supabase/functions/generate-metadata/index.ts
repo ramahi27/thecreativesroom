@@ -57,6 +57,11 @@ const TOOL = {
           description:
             "Inferred year (4-digit) the campaign was released if missing. Null if unknown or already provided.",
         },
+        editing_style: {
+          type: ["string", "null"],
+          description:
+            "For video references only: 1-3 sentence description of the editing style (pacing, transitions, rhythm, structural devices). Null for non-video.",
+        },
       },
       required: ["tags"],
       additionalProperties: false,
