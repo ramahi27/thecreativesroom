@@ -1,0 +1,1 @@
+ALTER TABLE public."references" ADD COLUMN IF NOT EXISTS tag_synonyms text[] NOT NULL DEFAULT '{}';

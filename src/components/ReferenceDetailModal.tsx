@@ -35,7 +35,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     setActiveMedia(0);
     let cancelled = false;
     const cols =
-      "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,notes,created_at,updated_at,media_items,categories,published,source";
+      "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,media_items,categories,published,source";
     // 1) Fetch the single reference first so the modal opens immediately.
     supabase
       .from("references")

@@ -20,7 +20,7 @@ export async function enrichReferenceMetadata(referenceId: string) {
   try {
     const { data: cur } = await supabase
       .from("references")
-      .select("title,brand,agency,year,source_url,notes,tags")
+      .select("title,brand,agency,year,source_url,notes,tags,tag_synonyms")
       .eq("id", referenceId)
       .maybeSingle();
     if (!cur?.title) return;
@@ -45,8 +45,28 @@ export async function enrichReferenceMetadata(referenceId: string) {
     const existing: string[] = Array.isArray(cur.tags) ? (cur.tags as string[]) : [];
     const merged = Array.from(new Set([...existing, ...newTags]));
 
-    const updates: { tags: string[]; brand?: string; agency?: string; year?: number } = {
+    const newSyns: string[] = Array.isArray(meta.tag_synonyms)
+      ? meta.tag_synonyms
+          .map((t: string) => String(t).trim().toLowerCase())
+          .filter(Boolean)
+      : [];
+    const existingSyns: string[] = Array.isArray((cur as any).tag_synonyms)
+      ? ((cur as any).tag_synonyms as string[])
+      : [];
+    const tagSet = new Set(merged.map((t) => t.toLowerCase()));
+    const mergedSyns = Array.from(
+      new Set([...existingSyns, ...newSyns].filter((s) => !tagSet.has(s))),
+    );
+
+    const updates: {
+      tags: string[];
+      tag_synonyms: string[];
+      brand?: string;
+      agency?: string;
+      year?: number;
+    } = {
       tags: merged,
+      tag_synonyms: mergedSyns,
     };
     if (!cur.brand && typeof meta.brand === "string" && meta.brand.trim()) {
       updates.brand = meta.brand.trim();

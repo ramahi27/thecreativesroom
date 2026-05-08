@@ -14,7 +14,8 @@ const SYSTEM_PROMPT = `You are a creative reference librarian and advertising/ph
 
 You will receive a reference describing an advertising or photography project (title, possibly brand, agency, year, source URL, notes). Your job:
 1. Produce 15-30 short, descriptive, lowercase tag phrases (1-3 words each) covering themes, industry, audience, style cues, emotional tone, cultural context, and creative angles. No duplicates, no hashtags, no explanations.
-2. If brand, agency, or year are missing or empty, only fill them in when you are 100% certain based on verifiable knowledge of the actual campaign (matching title + source URL + known credits). If there is ANY doubt, ambiguity, or you are merely guessing/inferring from patterns, leave the field null. Do NOT speculate. Do NOT fill a plausible-sounding agency just because it fits the brand. Year must be an integer between 1950 and the current year and must be the verified release year. Do NOT overwrite values that were already supplied — those are sent only as context.
+2. Produce a separate list of 20-60 lowercase synonyms / alternative search terms / plurals / related concepts for the tags. These are HIDDEN search-only metadata. For example, if a tag is "car", include "cars", "vehicles", "automobile", "automobiles", "auto", "driving", "transport", etc. Cover singular/plural forms, common synonyms, broader and narrower terms, and related concepts a user might search for. No duplicates with the visible tags.
+3. If brand, agency, or year are missing or empty, only fill them in when you are 100% certain based on verifiable knowledge of the actual campaign (matching title + source URL + known credits). If there is ANY doubt, ambiguity, or you are merely guessing/inferring from patterns, leave the field null. Do NOT speculate. Do NOT fill a plausible-sounding agency just because it fits the brand. Year must be an integer between 1950 and the current year and must be the verified release year. Do NOT overwrite values that were already supplied — those are sent only as context.
 
 Return only the structured tool call.`;
 
@@ -22,7 +23,7 @@ const TOOL = {
   type: "function",
   function: {
     name: "emit_metadata",
-    description: "Emit tags and inferred missing campaign metadata.",
+    description: "Emit tags, hidden synonyms, and inferred missing campaign metadata.",
     parameters: {
       type: "object",
       properties: {
@@ -31,6 +32,14 @@ const TOOL = {
           items: { type: "string" },
           minItems: 15,
           maxItems: 30,
+        },
+        tag_synonyms: {
+          type: "array",
+          description:
+            "Hidden search-only synonyms / alternatives / plurals / related terms for the tags. Not shown in the UI.",
+          items: { type: "string" },
+          minItems: 0,
+          maxItems: 80,
         },
         brand: {
           type: ["string", "null"],
