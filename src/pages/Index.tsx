@@ -71,7 +71,7 @@ const Index = () => {
       const { data: rows } = await supabase
         .from("references")
         .select(
-          "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,notes,created_at,updated_at,media_items,categories,published,source"
+          "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,media_items,categories,published,source"
         )
         .in("id", ids);
       const byId = new Map((rows as unknown as Reference[] | null)?.map((r) => [r.id, r]) ?? []);
@@ -120,7 +120,7 @@ const Index = () => {
     const { data, count, error } = await supabase
       .from("references")
       .select(
-        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,notes,created_at,updated_at,media_items,categories,published,source",
+        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,media_items,categories,published,source",
         { count: "exact" }
       )
       .eq("published", true)
