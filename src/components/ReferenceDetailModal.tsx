@@ -462,15 +462,51 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   )
                 )}
 
-                {isAdmin && Array.isArray(r.tags) && r.tags.length > 0 && (
+                {isAdmin && (
                   <div className="border-t hairline pt-6">
                     <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Tags (admin)</p>
                     <div className="flex flex-wrap gap-2">
-                      {r.tags.map((t: string) => (
-                        <span key={t} className="font-mono text-[11px] uppercase tracking-widest px-2 py-1 bg-muted text-muted-foreground">
+                      {(r.tags || []).map((t: string) => (
+                        <span
+                          key={t}
+                          className="group inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest px-2 py-1 bg-muted text-muted-foreground"
+                        >
                           {t}
+                          <button
+                            onClick={() => removeTag(t)}
+                            aria-label={`Remove ${t}`}
+                            className="opacity-50 hover:opacity-100 hover:text-destructive"
+                          >
+                            ×
+                          </button>
                         </span>
                       ))}
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <input
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === ",") {
+                            e.preventDefault();
+                            addTag(tagInput);
+                            setTagInput("");
+                          }
+                        }}
+                        placeholder="Add tag(s), comma-separated"
+                        className="flex-1 h-8 px-2 bg-background border hairline font-mono text-[11px] uppercase tracking-widest placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          addTag(tagInput);
+                          setTagInput("");
+                        }}
+                        className="h-8 font-mono text-[10px] uppercase tracking-widest"
+                      >
+                        Add
+                      </Button>
                     </div>
                   </div>
                 )}
