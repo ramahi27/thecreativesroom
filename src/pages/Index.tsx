@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -38,8 +38,6 @@ const Index = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortBy>("default");
   const [search, setSearch] = useState("");
-  const [expandedTerms, setExpandedTerms] = useState<string[]>([]);
-  const expandCacheRef = useRef<Map<string, string[]>>(new Map());
 
   // Brief matching
   const [brief, setBrief] = useState("");
@@ -181,9 +179,6 @@ const Index = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const terms = q
-      ? Array.from(new Set([q, ...expandedTerms.filter((t) => t && t.length >= 2)]))
-      : [];
     const list = refs.filter((r) => {
       if (mediaFilter === "videos" && !(r.type === "video" || r.type === "link")) return false;
       if (mediaFilter === "photos" && r.type !== "image") return false;
@@ -201,7 +196,7 @@ const Index = () => {
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        if (!terms.some((t) => hay.includes(t))) return false;
+        if (!hay.includes(q)) return false;
       }
       return true;
     });
@@ -227,36 +222,7 @@ const Index = () => {
         break;
     }
     return sorted;
-  }, [refs, mediaFilter, categoryFilter, search, sortBy, expandedTerms]);
-
-  // Debounced AI synonym expansion for the search query
-  useEffect(() => {
-    const q = search.trim().toLowerCase();
-    if (q.length < 2) {
-      setExpandedTerms([]);
-      return;
-    }
-    const cached = expandCacheRef.current.get(q);
-    if (cached) {
-      setExpandedTerms(cached);
-      return;
-    }
-    const handle = setTimeout(async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke("expand-query", {
-          body: { query: q },
-        });
-        if (error) return;
-        const terms = Array.isArray(data?.terms) ? (data.terms as string[]) : [];
-        expandCacheRef.current.set(q, terms);
-        // Only apply if the user hasn't moved on
-        if (q === search.trim().toLowerCase()) setExpandedTerms(terms);
-      } catch (_) {
-        // ignore — fall back to literal search
-      }
-    }, 350);
-    return () => clearTimeout(handle);
-  }, [search]);
+  }, [refs, mediaFilter, categoryFilter, search, sortBy]);
 
 
   return (
