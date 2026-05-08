@@ -1,0 +1,1 @@
+ALTER TABLE public."references" ADD COLUMN IF NOT EXISTS editing_style text;
