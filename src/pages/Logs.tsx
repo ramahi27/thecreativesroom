@@ -13,9 +13,11 @@ import { rememberModalReturn } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
 // A reference is considered "AI-complete" only if brand, agency, AND year
-// are all filled. Missing any of those means the AI box should show as unticked.
-function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null }): boolean {
-  return Boolean(r.brand && r.agency && r.year);
+// are all filled. For video references, editing_style must also be present.
+function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null; type?: string; editing_style?: string | null }): boolean {
+  if (!(r.brand && r.agency && r.year)) return false;
+  if (r.type === "video" && !r.editing_style) return false;
+  return true;
 }
 
 type LogRow = {
