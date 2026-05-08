@@ -123,21 +123,23 @@ const Logs = () => {
         return;
       }
       const baseRows = (data as LogRow[]) || [];
-      // The RPC doesn't include `agency`; fetch it to determine completeness.
+      // The RPC doesn't include `agency` or `editing_style`; fetch to determine completeness.
       const ids = baseRows.map((r) => r.id);
-      const infoMap = new Map<string, { agency: string | null }>();
+      const infoMap = new Map<string, { agency: string | null; editing_style: string | null }>();
       if (ids.length) {
         const { data: extra } = await supabase
           .from("references")
-          .select("id,agency")
+          .select("id,agency,editing_style")
           .in("id", ids);
-        (extra || []).forEach((t: any) => infoMap.set(t.id, { agency: t.agency ?? null }));
+        (extra || []).forEach((t: any) =>
+          infoMap.set(t.id, { agency: t.agency ?? null, editing_style: t.editing_style ?? null }),
+        );
       }
       setRows(
         baseRows.map((r) => {
-          const agency = infoMap.get(r.id)?.agency ?? r.agency ?? null;
-          const merged = { ...r, agency };
-          return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
+          const info = infoMap.get(r.id);
+          const merged = { ...r, agency: info?.agency ?? r.agency ?? null, editing_style: info?.editing_style ?? null };
+          return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) } as LogRow;
         }),
       );
       setLoading(false);
