@@ -181,6 +181,9 @@ const Index = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const terms = q
+      ? Array.from(new Set([q, ...expandedTerms.filter((t) => t && t.length >= 2)]))
+      : [];
     const list = refs.filter((r) => {
       if (mediaFilter === "videos" && !(r.type === "video" || r.type === "link")) return false;
       if (mediaFilter === "photos" && r.type !== "image") return false;
@@ -198,7 +201,7 @@ const Index = () => {
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        if (!hay.includes(q)) return false;
+        if (!terms.some((t) => hay.includes(t))) return false;
       }
       return true;
     });
