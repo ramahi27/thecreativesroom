@@ -169,6 +169,38 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     }
   }
 
+  async function addTag(raw: string) {
+    if (!r) return;
+    const parts = raw
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    if (parts.length === 0) return;
+    const current = Array.isArray(r.tags) ? r.tags : [];
+    const lower = new Set(current.map((t) => t.toLowerCase()));
+    const additions = parts.filter((t) => !lower.has(t.toLowerCase()));
+    if (additions.length === 0) return;
+    const nextTags = [...current, ...additions];
+    setR({ ...r, tags: nextTags } as Reference);
+    const { error } = await supabase.from("references").update({ tags: nextTags }).eq("id", r.id);
+    if (error) {
+      setR({ ...r, tags: current } as Reference);
+      toast.error(error.message);
+    }
+  }
+
+  async function removeTag(tag: string) {
+    if (!r) return;
+    const current = Array.isArray(r.tags) ? r.tags : [];
+    const nextTags = current.filter((t) => t !== tag);
+    setR({ ...r, tags: nextTags } as Reference);
+    const { error } = await supabase.from("references").update({ tags: nextTags }).eq("id", r.id);
+    if (error) {
+      setR({ ...r, tags: current } as Reference);
+      toast.error(error.message);
+    }
+  }
+
   async function toggleCategory(cat: string) {
     if (!r) return;
     const current = r.categories || [];
