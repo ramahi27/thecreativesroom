@@ -34,6 +34,7 @@ type LogRow = {
   approved_by: string | null;
   created_by_email: string | null;
   approved_by_email: string | null;
+  editing_style?: string | null;
   has_ai_metadata?: boolean;
 };
 
