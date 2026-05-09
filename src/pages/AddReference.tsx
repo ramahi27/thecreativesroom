@@ -17,6 +17,7 @@ import {
   type MediaItem,
 } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
+import { Checkbox } from "@/components/ui/checkbox";
 import { X, ArrowUp, ArrowDown } from "lucide-react";
 
 const AI_MARKER = "ai:processed";
@@ -33,7 +34,8 @@ const AddReference = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const { video: VIDEO_CATEGORIES, photo: PHOTO_CATEGORIES } = useCategories();
 
-  const [type, setType] = useState<RefType>(isAdmin ? "video" : "image");
+  const [type, setType] = useState<RefType>("video");
+  const [allowMainPage, setAllowMainPage] = useState(true);
   const [title, setTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [thumbnailUrl] = useState("");
@@ -268,12 +270,15 @@ const AddReference = () => {
         brand: brand || null,
         agency: agency || null,
         year: year ? parseInt(year) : null,
-        tags: tags
-          ? tags
-              .split(",")
-              .map((t) => t.trim())
-              .filter(Boolean)
-          : [],
+        tags: (() => {
+          const base = tags
+            ? tags.split(",").map((t) => t.trim()).filter(Boolean)
+            : [];
+          if (!isAdmin && !isEdit) {
+            base.push(allowMainPage ? "submit-for-review" : "private-only");
+          }
+          return base;
+        })(),
         categories,
         notes: notes || null,
       };
@@ -373,29 +378,27 @@ const AddReference = () => {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {isAdmin && (
-            <div>
-              <Label className={labelCls}>Type</Label>
-              <div className="mt-2 flex gap-2">
-                {(["video", "image"] as RefType[]).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                      setType(t);
-                      const allowed = t === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES;
-                      setCategories((prev) => prev.filter((c) => (allowed as readonly string[]).includes(c)));
-                    }}
-                    className={`px-4 py-2 font-mono text-xs uppercase tracking-widest border hairline transition-colors ${
-                      type === t ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+          <div>
+            <Label className={labelCls}>Type</Label>
+            <div className="mt-2 flex gap-2">
+              {(["video", "image"] as RefType[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    setType(t);
+                    const allowed = t === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES;
+                    setCategories((prev) => prev.filter((c) => (allowed as readonly string[]).includes(c)));
+                  }}
+                  className={`px-4 py-2 font-mono text-xs uppercase tracking-widest border hairline transition-colors ${
+                    type === t ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           <div>
             <Label className={labelCls}>Categories (multi-select)</Label>
@@ -646,6 +649,19 @@ const AddReference = () => {
             />
           </div>
 
+
+          {!isAdmin && !isEdit && (
+            <label className="flex items-start gap-3 pt-2 cursor-pointer select-none">
+              <Checkbox
+                checked={allowMainPage}
+                onCheckedChange={(v) => setAllowMainPage(v === true)}
+                className="mt-0.5"
+              />
+              <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground leading-relaxed">
+                It's OK for admins to consider adding this project to the main archive.
+              </span>
+            </label>
+          )}
 
           <div className="flex items-center gap-3 pt-4">
             <Button
