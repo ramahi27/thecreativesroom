@@ -27,6 +27,7 @@ interface Props {
   onCreateFolder: () => void;
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
+  orderedIds?: string[];
 }
 
 export function CollectionCard({
