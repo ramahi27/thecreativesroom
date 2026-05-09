@@ -352,9 +352,12 @@ const Bookmarks = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {submissions.map((r) => (
-                <ReferenceCard key={r.id} reference={r} />
-              ))}
+              {(() => {
+                const order = submissions.map((x) => x.id);
+                return submissions.map((r) => (
+                  <ReferenceCard key={r.id} reference={r} orderedIds={order} />
+                ));
+              })()}
             </div>
           )
         ) : tab === "following" ? (
