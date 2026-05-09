@@ -152,6 +152,58 @@ const AddReference = () => {
     setFiles((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  function addImageUrls(urls: string[]) {
+    const clean = urls
+      .map((u) => u.trim())
+      .filter((u) => /^https?:\/\//i.test(u));
+    if (!clean.length) return false;
+    setExistingMedia((prev) => {
+      const have = new Set(prev.map((m) => m.url));
+      const additions = clean
+        .filter((u) => !have.has(u))
+        .map((u) => ({ url: u, kind: "image" as const }));
+      return [...prev, ...additions];
+    });
+    return true;
+  }
+
+  async function handleExternalDrop(e: React.DragEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    // 1) Real files dropped from the OS
+    if (dt.files && dt.files.length > 0) {
+      addFiles(dt.files);
+      return;
+    }
+    // 2) URI list (most browsers when dragging an image from a tab)
+    const uriList = dt.getData("text/uri-list");
+    if (uriList) {
+      const urls = uriList.split(/\r?\n/).filter((l) => l && !l.startsWith("#"));
+      if (addImageUrls(urls)) {
+        toast.success(`Added ${urls.length} image${urls.length > 1 ? "s" : ""} from drop`);
+        return;
+      }
+    }
+    // 3) HTML fragment containing <img src="…">
+    const html = dt.getData("text/html");
+    if (html) {
+      const matches = Array.from(html.matchAll(/<img[^>]+src=["']([^"']+)["']/gi)).map((m) => m[1]);
+      if (matches.length && addImageUrls(matches)) {
+        toast.success(`Added ${matches.length} image${matches.length > 1 ? "s" : ""} from drop`);
+        return;
+      }
+    }
+    // 4) Plain text URL
+    const text = dt.getData("text/plain");
+    if (text && addImageUrls([text])) {
+      toast.success("Added image from drop");
+      return;
+    }
+    toast.error("Could not read a dropped image. Try right-click → Copy image address, then paste below.");
+  }
+
   function removeExisting(idx: number) {
     setExistingMedia((prev) => prev.filter((_, i) => i !== idx));
   }
@@ -472,10 +524,12 @@ const AddReference = () => {
               </Label>
               <label
                 htmlFor="reference-files"
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+                onDrop={handleExternalDrop}
                 className="relative flex flex-col items-center justify-center gap-2 cursor-pointer bg-secondary hairline border border-dashed border-muted-foreground/40 hover:border-muted-foreground/70 hover:bg-secondary/70 transition-colors px-6 py-12 text-center"
               >
                 <span className="font-mono text-xs uppercase tracking-widest text-foreground">
-                  Click here or drag and drop to add a photo.
+                  Click, drop a file, or drag an image from another website.
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                   Photos only · multiple allowed
