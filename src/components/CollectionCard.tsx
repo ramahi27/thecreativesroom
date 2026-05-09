@@ -42,6 +42,7 @@ export function CollectionCard({
   onCreateFolder,
   onDragStart,
   onDragEnd,
+  orderedIds,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
