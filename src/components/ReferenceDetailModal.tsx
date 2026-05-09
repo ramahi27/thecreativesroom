@@ -66,26 +66,16 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     };
   }, [id]);
 
-  const { prev, next } = useMemo(() => {
-    if (!r || allRefs.length === 0) return { prev: null, next: null };
-    const idx = allRefs.findIndex((x) => x.id === r.id);
-    if (idx === -1) return { prev: null, next: null };
-    return {
-      prev: allRefs[(idx - 1 + allRefs.length) % allRefs.length],
-      next: allRefs[(idx + 1) % allRefs.length],
-    };
-  }, [r, allRefs]);
-
-  const goPrev = useCallback(() => prev && navigate(`/ref/${prev.id}`), [prev, navigate]);
-  const goNext = useCallback(() => next && navigate(`/ref/${next.id}`), [next, navigate]);
-
-  const related = useMemo(() => {
+  // Build a similarity-scored ordering across all refs. Used as a fallback
+  // for prev/next when the user didn't open the modal from a known list,
+  // and as the source for the related-projects strip below.
+  const similarityOrdered = useMemo(() => {
     if (!r || allRefs.length === 0) return [] as Reference[];
     const myTags = new Set((r.tags || []).map((t) => t.toLowerCase()));
     const myCats = new Set((r.categories || []).map((c) => c.toLowerCase()));
     const myBrand = (r.brand || "").toLowerCase().trim();
     const myAgency = (r.agency || "").toLowerCase().trim();
-    const scored = allRefs
+    return allRefs
       .filter((x) => x.id !== r.id)
       .map((x) => {
         let score = 0;
@@ -104,12 +94,54 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         if (x.type === r.type) score += 1;
         return { x, score };
       })
-      .filter((s) => s.score > 0)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 6)
       .map((s) => s.x);
-    return scored;
   }, [r, allRefs]);
+
+  const related = useMemo(
+    () => similarityOrdered.filter((x) => {
+      // Keep the related strip meaningful — only show items with at least
+      // some overlap. We re-score quickly here using tag/cat overlap.
+      const myTags = new Set((r?.tags || []).map((t) => t.toLowerCase()));
+      const myCats = new Set((r?.categories || []).map((c) => c.toLowerCase()));
+      const tagOverlap = (x.tags || []).some((t) => myTags.has(t.toLowerCase()));
+      const catOverlap = (x.categories || []).some((c) => myCats.has(c.toLowerCase()));
+      return tagOverlap || catOverlap;
+    }).slice(0, 6),
+    [similarityOrdered, r],
+  );
+
+  const { prev, next } = useMemo(() => {
+    if (!r) return { prev: null as Reference | null, next: null as Reference | null };
+    const byId = new Map(allRefs.map((x) => [x.id, x] as const));
+    // 1) Prefer the order captured from the page that opened the modal.
+    if (navOrder.length > 0) {
+      const idx = navOrder.indexOf(r.id);
+      if (idx !== -1 && navOrder.length > 1) {
+        const prevId = navOrder[(idx - 1 + navOrder.length) % navOrder.length];
+        const nextId = navOrder[(idx + 1) % navOrder.length];
+        return {
+          prev: byId.get(prevId) || null,
+          next: byId.get(nextId) || null,
+        };
+      }
+    }
+    // 2) Fallback: walk through similar projects.
+    if (similarityOrdered.length > 0) {
+      return {
+        prev: similarityOrdered[similarityOrdered.length - 1] || null,
+        next: similarityOrdered[0] || null,
+      };
+    }
+    // 3) Last resort: chronological order from allRefs.
+    if (allRefs.length === 0) return { prev: null, next: null };
+    const idx = allRefs.findIndex((x) => x.id === r.id);
+    if (idx === -1) return { prev: null, next: null };
+    return {
+      prev: allRefs[(idx - 1 + allRefs.length) % allRefs.length],
+      next: allRefs[(idx + 1) % allRefs.length],
+    };
+  }, [r, allRefs, navOrder, similarityOrdered]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
