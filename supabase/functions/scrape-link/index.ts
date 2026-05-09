@@ -577,6 +577,7 @@ async function inferMetadata(
     `URL: ${scraped.source_url}\n` +
     `Site/Author: ${scraped.brand_guess || ""}\n` +
     `Type: ${scraped.type}\n` +
+    `Hints (verify against body, may be wrong): brand=${scraped.brand_guess || "?"}, agency=${scraped.agency_guess || "?"}, year=${scraped.year_guess ?? "?"}\n` +
     (body ? `Article body:\n${body}\n` : "");
   try {
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
