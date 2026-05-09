@@ -650,6 +650,19 @@ const AddReference = () => {
           </div>
 
 
+          {!isAdmin && !isEdit && (
+            <label className="flex items-start gap-3 pt-2 cursor-pointer select-none">
+              <Checkbox
+                checked={allowMainPage}
+                onCheckedChange={(v) => setAllowMainPage(v === true)}
+                className="mt-0.5"
+              />
+              <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground leading-relaxed">
+                It's OK for admins to consider adding this project to the main archive.
+              </span>
+            </label>
+          )}
+
           <div className="flex items-center gap-3 pt-4">
             <Button
               type="submit"
