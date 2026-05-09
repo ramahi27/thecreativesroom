@@ -847,7 +847,7 @@ async function scrapeAndInsert(
     .select("id, title, thumbnail_url, brand, categories, tags, type")
     .single();
   if (insErr) return { ok: false, url: rawUrl, error: insErr.message };
-  return { ok: true, draft: inserted };
+  return { ok: true, draft: inserted, image_warning: !!scraped.image_warning };
 }
 
 Deno.serve(async (req) => {
