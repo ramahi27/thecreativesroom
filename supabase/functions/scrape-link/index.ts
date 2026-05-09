@@ -146,6 +146,42 @@ async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
   return await fetch(url, { ...init, redirect: "manual" });
 }
 
+/**
+ * Try to isolate the main article body so we don't pull sidebar / "trending"
+ * / related-post images and text. Falls back to whole html.
+ */
+function extractArticleBody(html: string): string {
+  // Strip noisy chunks first (sidebars, related, comments, footer, scripts)
+  let h = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
+
+  // Try common article containers in priority order
+  const patterns: RegExp[] = [
+    /<div[^>]*class=["'][^"']*\bentry\b[^"']*["'][^>]*>([\s\S]*?)<\/div>\s*(?:<div[^>]*class=["'][^"']*(?:postnav|after|sideframe|related)|<\/article)/i,
+    /<article\b[^>]*>([\s\S]*?)<\/article>/i,
+    /<main\b[^>]*>([\s\S]*?)<\/main>/i,
+    /<div[^>]*(?:id|class)=["'][^"']*\b(?:post-content|entry-content|article-body|post-body|content-body)\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/i,
+  ];
+  for (const re of patterns) {
+    const m = h.match(re);
+    if (m && m[1] && m[1].length > 200) return m[1];
+  }
+  return h;
+}
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&#8217;|&rsquo;/g, "'")
+    .replace(/&#8211;|&ndash;/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 async function scrapeGeneric(url: string): Promise<Scraped> {
   const r = await safeFetch(url, {
     headers: {
@@ -163,10 +199,12 @@ async function scrapeGeneric(url: string): Promise<Scraped> {
   const siteName = pickMeta(html, ["og:site_name"]) || "";
   const ogVideo = pickMeta(html, ["og:video", "og:video:url", "og:video:secure_url"]);
 
-  // Collect campaign images from the page body only — skip og:image / twitter:image
-  // meta tags since those are usually the site's promo/share thumbnail, not the
-  // actual campaign hero. Use the first scraped image as the thumbnail instead.
-  const images = collectImages(html, url, null);
+  // Isolate article body so we ignore sidebar / trending / related modules
+  const articleHtml = extractArticleBody(html);
+  const bodyText = htmlToText(articleHtml).slice(0, 3500);
+
+  // Collect campaign images from the article body only
+  const images = collectImages(articleHtml, url, null);
   const thumb = images[0] || null;
 
   return {
@@ -176,6 +214,7 @@ async function scrapeGeneric(url: string): Promise<Scraped> {
     type: ogVideo ? "video" : (images.length > 0 ? "image" : "link"),
     brand_guess: siteName,
     images,
+    body_text: bodyText,
   };
 }
 
