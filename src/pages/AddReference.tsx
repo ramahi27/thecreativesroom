@@ -375,29 +375,27 @@ const AddReference = () => {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {isAdmin && (
-            <div>
-              <Label className={labelCls}>Type</Label>
-              <div className="mt-2 flex gap-2">
-                {(["video", "image"] as RefType[]).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => {
-                      setType(t);
-                      const allowed = t === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES;
-                      setCategories((prev) => prev.filter((c) => (allowed as readonly string[]).includes(c)));
-                    }}
-                    className={`px-4 py-2 font-mono text-xs uppercase tracking-widest border hairline transition-colors ${
-                      type === t ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
-                    }`}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
+          <div>
+            <Label className={labelCls}>Type</Label>
+            <div className="mt-2 flex gap-2">
+              {(["video", "image"] as RefType[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    setType(t);
+                    const allowed = t === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES;
+                    setCategories((prev) => prev.filter((c) => (allowed as readonly string[]).includes(c)));
+                  }}
+                  className={`px-4 py-2 font-mono text-xs uppercase tracking-widest border hairline transition-colors ${
+                    type === t ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           <div>
             <Label className={labelCls}>Categories (multi-select)</Label>
