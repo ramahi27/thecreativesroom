@@ -18,8 +18,39 @@
 import type { NavigateFunction } from "react-router-dom";
 
 const KEY = "modalReturn";
+const NAV_KEY = "modalNavOrder";
 
 type Entry = { url: string; scroll: number };
+
+// Persist the ordered list of reference IDs visible on the page that opened
+// the modal. The modal uses this for prev/next so navigation always follows
+// the user's original browsing context (filtered grid, folder, bookmarks…).
+export function setModalNavOrder(ids: string[]) {
+  try {
+    sessionStorage.setItem(NAV_KEY, JSON.stringify(ids.filter(Boolean)));
+  } catch {
+    /* noop */
+  }
+}
+
+export function getModalNavOrder(): string[] {
+  try {
+    const raw = sessionStorage.getItem(NAV_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((s) => typeof s === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export function clearModalNavOrder() {
+  try {
+    sessionStorage.removeItem(NAV_KEY);
+  } catch {
+    /* noop */
+  }
+}
 
 export function rememberModalReturn() {
   try {
