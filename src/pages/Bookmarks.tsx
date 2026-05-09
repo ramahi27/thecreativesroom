@@ -494,9 +494,10 @@ const Bookmarks = () => {
                       </span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                      {refs
-                        .filter((r) => uncategorizedIds.has(r.id))
-                        .map((r) => (
+                      {(() => {
+                        const subset = refs.filter((r) => uncategorizedIds.has(r.id));
+                        const order = subset.map((x) => x.id);
+                        return subset.map((r) => (
                           <CollectionCard
                             key={r.id}
                             reference={r}
@@ -510,8 +511,10 @@ const Bookmarks = () => {
                             onCreateFolder={() => openCreateFolderDialog([r.id])}
                             onDragStart={() => setDragging(true)}
                             onDragEnd={() => setDragging(false)}
+                            orderedIds={order}
                           />
-                        ))}
+                        ));
+                      })()}
                     </div>
                   </div>
                 )}
