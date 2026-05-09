@@ -21,8 +21,11 @@ interface Scraped {
   thumbnail_url: string | null;
   type: "video" | "image" | "link";
   brand_guess?: string;
+  agency_guess?: string | null;
+  year_guess?: number | null;
   images?: string[];
   body_text?: string;
+  image_warning?: boolean;
 }
 
 function ytId(u: URL): string | null {
@@ -147,29 +150,25 @@ async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
   return await fetch(url, { ...init, redirect: "manual" });
 }
 
-/**
- * Try to isolate the main article body so we don't pull sidebar / "trending"
- * / related-post images and text. Falls back to whole html.
- */
+/* ─────────────────────────── Article body isolation ─────────────────────── */
+
+const ARTICLE_PATTERNS: RegExp[] = [
+  /<article\b[^>]*>([\s\S]*?)<\/article>/i,
+  /<main\b[^>]*>([\s\S]*?)<\/main>/i,
+  /<[^>]+\brole=["']main["'][^>]*>([\s\S]*?)<\/[a-z]+>/i,
+  /<div[^>]*\bclass=["'][^"']*\b(?:post-content|article-body|entry-content|campaign-detail|work-detail|case-study|entry)\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/i,
+];
+
 function extractArticleBody(html: string): string {
-  // Strip noisy chunks first (sidebars, related, comments, footer, scripts)
-  let h = html
+  const stripped = html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
-
-  // Try common article containers in priority order
-  const patterns: RegExp[] = [
-    /<div[^>]*class=["'][^"']*\bentry\b[^"']*["'][^>]*>([\s\S]*?)<\/div>\s*(?:<div[^>]*class=["'][^"']*(?:postnav|after|sideframe|related)|<\/article)/i,
-    /<article\b[^>]*>([\s\S]*?)<\/article>/i,
-    /<main\b[^>]*>([\s\S]*?)<\/main>/i,
-    /<div[^>]*(?:id|class)=["'][^"']*\b(?:post-content|entry-content|article-body|post-body|content-body)\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/i,
-  ];
-  for (const re of patterns) {
-    const m = h.match(re);
+  for (const re of ARTICLE_PATTERNS) {
+    const m = stripped.match(re);
     if (m && m[1] && m[1].length > 200) return m[1];
   }
-  return h;
+  return stripped;
 }
 
 function htmlToText(html: string): string {
@@ -183,107 +182,358 @@ function htmlToText(html: string): string {
     .trim();
 }
 
+/* ─────────────────────────────── Helpers ────────────────────────────────── */
+
+const BAD_IMG_RE =
+  /logo|icon|avatar|author|profile|badge|thumb|widget|sidebar|\bads?\b|banner|placeholder|blank|pixel|sprite|spinner|emoji|favicon/i;
+
+function normalizeUrl(raw: string | null | undefined, baseUrl: string): string | null {
+  if (!raw) return null;
+  let u = raw.trim();
+  if (!u || u.startsWith("data:")) return null;
+  if (u.startsWith("//")) u = "https:" + u;
+  if (!/^https?:\/\//i.test(u)) {
+    try { u = new URL(u, baseUrl).toString(); } catch { return null; }
+  }
+  return u;
+}
+
+function isAcceptableImageUrl(u: string): boolean {
+  if (/\.(svg|gif)(\?|$)/i.test(u)) return false;
+  if (BAD_IMG_RE.test(u)) return false;
+  return true;
+}
+
+/** Famouscampaigns and similar resize via ?w=300 — bump to 1200 for hero quality. */
+function upscaleResizeParam(u: string): string {
+  try {
+    const url = new URL(u);
+    if (url.searchParams.has("w")) {
+      const w = parseInt(url.searchParams.get("w") || "0");
+      if (w && w < 1200) url.searchParams.set("w", "1200");
+      return url.toString();
+    }
+    return u;
+  } catch { return u; }
+}
+
+function parseJsonLd(html: string): any[] {
+  const out: any[] = [];
+  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    try {
+      const parsed = JSON.parse(m[1].trim());
+      if (Array.isArray(parsed)) out.push(...parsed);
+      else out.push(parsed);
+    } catch { /* ignore */ }
+  }
+  return out;
+}
+
+function jsonLdValues(blocks: any[], keys: string[]): any[] {
+  const out: any[] = [];
+  const seen = new WeakSet();
+  const visit = (n: any) => {
+    if (!n || typeof n !== "object" || seen.has(n)) return;
+    seen.add(n);
+    for (const k of keys) if (n[k] !== undefined) out.push(n[k]);
+    for (const v of Object.values(n)) {
+      if (v && typeof v === "object") visit(v);
+    }
+  };
+  blocks.forEach(visit);
+  return out;
+}
+
+function jsonLdImages(blocks: any[]): string[] {
+  const urls: string[] = [];
+  for (const v of jsonLdValues(blocks, ["image"])) {
+    if (typeof v === "string") urls.push(v);
+    else if (Array.isArray(v)) {
+      for (const x of v) {
+        if (typeof x === "string") urls.push(x);
+        else if (x && typeof x === "object" && typeof x.url === "string") urls.push(x.url);
+      }
+    } else if (v && typeof v === "object" && typeof v.url === "string") urls.push(v.url);
+  }
+  return urls;
+}
+
+function pickFromSrcset(srcset: string): string | null {
+  let bestUrl: string | null = null;
+  let bestW = -1;
+  for (const part of srcset.split(",")) {
+    const seg = part.trim().split(/\s+/);
+    const u = seg[0];
+    const desc = parseInt((seg[1] || "0").replace(/[^\d]/g, ""));
+    if (desc >= bestW) { bestW = desc; bestUrl = u; }
+  }
+  return bestUrl;
+}
+
+interface ImgCandidate { url: string; area: number; }
+
+function extractImgTags(html: string, baseUrl: string): ImgCandidate[] {
+  const out: ImgCandidate[] = [];
+  const seen = new Set<string>();
+  const re = /<img\b[^>]*>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const tag = m[0];
+    const w = parseInt(tag.match(/\bwidth=["']?(\d+)/i)?.[1] || "0");
+    const h = parseInt(tag.match(/\bheight=["']?(\d+)/i)?.[1] || "0");
+    // size filter (only if declared)
+    if (w && w < 400) continue;
+    if (h && h < 300) continue;
+
+    const srcset = tag.match(/\bsrcset=["']([^"']+)["']/i)?.[1]
+      || tag.match(/\bdata-srcset=["']([^"']+)["']/i)?.[1];
+    let raw: string | null = null;
+    if (srcset) raw = pickFromSrcset(srcset);
+    if (!raw) {
+      raw =
+        tag.match(/\bdata-src=["']([^"']+)["']/i)?.[1] ||
+        tag.match(/\bdata-lazy-src=["']([^"']+)["']/i)?.[1] ||
+        tag.match(/\bdata-original=["']([^"']+)["']/i)?.[1] ||
+        tag.match(/\bsrc=["']([^"']+)["']/i)?.[1] ||
+        null;
+      // If src looked like a placeholder, prefer data-src
+      if (raw && /placeholder|blank|1x1|\.gif$/i.test(raw)) {
+        const lazy =
+          tag.match(/\bdata-src=["']([^"']+)["']/i)?.[1] ||
+          tag.match(/\bdata-lazy-src=["']([^"']+)["']/i)?.[1] ||
+          tag.match(/\bdata-original=["']([^"']+)["']/i)?.[1];
+        if (lazy) raw = lazy;
+      }
+    }
+    const url = normalizeUrl(raw, baseUrl);
+    if (!url || !isAcceptableImageUrl(url)) continue;
+    if (seen.has(url)) continue;
+    seen.add(url);
+    out.push({ url, area: w * h });
+  }
+  return out;
+}
+
+function extractCssBackgroundImages(html: string, baseUrl: string): string[] {
+  const out: string[] = [];
+  const re = /background(?:-image)?\s*:\s*url\(\s*["']?([^"')]+)["']?\s*\)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const u = normalizeUrl(m[1], baseUrl);
+    if (u && isAcceptableImageUrl(u)) out.push(u);
+  }
+  return out;
+}
+
+async function verifyImageUrl(url: string): Promise<{ ok: boolean; size: number }> {
+  try {
+    const u = new URL(url);
+    if (isBlockedHost(u.hostname)) return { ok: false, size: 0 };
+    const r = await fetch(url, { method: "HEAD", redirect: "follow" });
+    if (!r.ok) {
+      // some CDNs reject HEAD — try a tiny GET
+      const r2 = await fetch(url, { method: "GET", redirect: "follow", headers: { Range: "bytes=0-1024" } });
+      if (!r2.ok) return { ok: false, size: 0 };
+      const ct2 = r2.headers.get("content-type") || "";
+      if (!ct2.toLowerCase().startsWith("image/")) return { ok: false, size: 0 };
+      try { await r2.body?.cancel(); } catch { /* ignore */ }
+      return { ok: true, size: parseInt(r2.headers.get("content-length") || "0") };
+    }
+    const ct = r.headers.get("content-type") || "";
+    if (!ct.toLowerCase().startsWith("image/")) return { ok: false, size: 0 };
+    return { ok: true, size: parseInt(r.headers.get("content-length") || "0") };
+  } catch { return { ok: false, size: 0 }; }
+}
+
+/**
+ * Build an ordered list of image candidates following the priority pipeline:
+ * 1) og:image  2) twitter:image  3) JSON-LD image
+ * 4) largest <img> inside the article body
+ * 5) srcset largest descriptor (from <img> picks)
+ * 6) CSS background-image inside article body
+ * + famouscampaigns.com special selectors
+ */
+function buildImageCandidates(
+  fullHtml: string,
+  articleHtml: string,
+  baseUrl: string,
+): string[] {
+  const out: string[] = [];
+  const push = (raw: string | null | undefined) => {
+    const u = normalizeUrl(raw, baseUrl);
+    if (!u || !isAcceptableImageUrl(u)) return;
+    const upscaled = upscaleResizeParam(u);
+    if (!out.includes(upscaled)) out.push(upscaled);
+  };
+
+  // famouscampaigns.com / ad-archive specific containers — try these first for high signal
+  const host = (() => { try { return new URL(baseUrl).hostname; } catch { return ""; } })();
+  if (host.includes("famouscampaigns")) {
+    const specialSel = [
+      /<[^>]+\bclass=["'][^"']*\b(?:campaign-image|hero-image|featured-image)\b[^"']*["'][^>]*>[\s\S]*?<img\b[^>]*\b(?:data-src|src)=["']([^"']+)["']/i,
+      /<figure\b[^>]*>[\s\S]*?<img\b[^>]*\b(?:data-src|src)=["']([^"']+)["']/i,
+    ];
+    for (const re of specialSel) {
+      const m = articleHtml.match(re) || fullHtml.match(re);
+      if (m) push(m[1]);
+    }
+  }
+
+  // 1 & 2: meta share images
+  push(pickMeta(fullHtml, ["og:image", "og:image:secure_url", "og:image:url"]));
+  push(pickMeta(fullHtml, ["twitter:image", "twitter:image:src"]));
+
+  // 3: JSON-LD
+  const ld = parseJsonLd(fullHtml);
+  for (const u of jsonLdImages(ld)) push(u);
+
+  // 4 + 5: article body <img> tags (sorted by declared area desc)
+  const tagImgs = extractImgTags(articleHtml, baseUrl)
+    .sort((a, b) => b.area - a.area);
+  for (const c of tagImgs) push(c.url);
+
+  // 6: CSS background images inside article body
+  for (const u of extractCssBackgroundImages(articleHtml, baseUrl)) push(u);
+
+  return out;
+}
+
+/** Verify candidates in order; return the first that passes HEAD + image/* check. */
+async function pickFirstValidImage(
+  candidates: string[],
+): Promise<{ url: string | null; verified: string[] }> {
+  const verified: string[] = [];
+  let primary: string | null = null;
+  // Verify up to 12 to avoid runaway fetches
+  for (const c of candidates.slice(0, 12)) {
+    const v = await verifyImageUrl(c);
+    if (v.ok) {
+      verified.push(c);
+      if (!primary) primary = c;
+    }
+  }
+  return { url: primary, verified };
+}
+
+/* ─────────────────────────── Metadata helpers ───────────────────────────── */
+
+function extractYearFromText(text: string): number | null {
+  const re = /\b(19[5-9]\d|20[0-2]\d|2026)\b/g;
+  let best: number | null = null;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const y = parseInt(m[1]);
+    if (y >= 1950 && y <= 2026) {
+      if (best === null || y > best) best = y;
+    }
+  }
+  return best;
+}
+
+function extractLabeled(text: string, labels: string[]): string | null {
+  for (const lab of labels) {
+    const re = new RegExp(`${lab}\\s*[:\\-–]\\s*([A-Z][A-Za-z0-9&.,'+\\-/ ]{1,80})`, "i");
+    const m = text.match(re);
+    if (m) {
+      const v = m[1].trim().replace(/\s{2,}.*$/, "").replace(/[.,;]+$/, "");
+      if (v.length > 1) return v;
+    }
+  }
+  return null;
+}
+
+function cleanTitle(title: string): string {
+  return title.split(/\s+[|–-]\s+/)[0].trim();
+}
+
+/* ─────────────────────────────── scrapeGeneric ──────────────────────────── */
+
 async function scrapeGeneric(url: string): Promise<Scraped> {
   const r = await safeFetch(url, {
     headers: {
       "User-Agent":
         "Mozilla/5.0 (compatible; CreativesRoomBot/1.0; +https://thecreativesroom.com)",
+      "Accept-Language": "en-US,en;q=0.9",
     },
   });
-  // Reject redirects to avoid SSRF via 3xx to internal hosts
   if (r.status >= 300 && r.status < 400) throw new Error("Redirects not allowed");
   const html = await r.text();
-  const title =
-    pickMeta(html, ["og:title", "twitter:title"]) ||
-    html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim() ||
-    new URL(url).hostname;
-  const siteName = pickMeta(html, ["og:site_name"]) || "";
-  const ogVideo = pickMeta(html, ["og:video", "og:video:url", "og:video:secure_url"]);
 
-  // Isolate article body so we ignore sidebar / trending / related modules
   const articleHtml = extractArticleBody(html);
-  const bodyText = htmlToText(articleHtml).slice(0, 3500);
+  const articleText = htmlToText(articleHtml).slice(0, 4000);
+  const ld = parseJsonLd(html);
 
-  // Collect campaign images from the article body only
-  const images = collectImages(articleHtml, url, null);
-  const thumb = images[0] || null;
+  // ---- Title ----
+  let title =
+    pickMeta(html, ["og:title"]) ||
+    pickMeta(html, ["twitter:title"]) ||
+    (jsonLdValues(ld, ["name", "headline"])[0] as string | undefined) ||
+    articleHtml.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ||
+    html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] ||
+    new URL(url).hostname;
+  title = htmlToText(String(title));
+  title = cleanTitle(title);
+
+  // ---- Brand / Client ----
+  const ldBrand =
+    jsonLdValues(ld, ["brand"])
+      .map((v) => (typeof v === "string" ? v : v?.name))
+      .find((v) => typeof v === "string" && v.trim().length > 0) ||
+    jsonLdValues(ld, ["author"])
+      .map((v) => (typeof v === "string" ? v : v?.name))
+      .find((v) => typeof v === "string" && v.trim().length > 0);
+  const labeledBrand =
+    extractLabeled(articleText, ["Client", "Brand", "Advertiser"]);
+  const siteName = pickMeta(html, ["og:site_name"]) || "";
+  const brandGuess =
+    (typeof ldBrand === "string" ? ldBrand : null) ||
+    labeledBrand ||
+    (siteName && !/famouscampaigns|adweek|adage|campaign|lbb|creativity|shots|the drum/i.test(siteName)
+      ? siteName
+      : "");
+
+  // ---- Agency ----
+  const labeledAgency =
+    extractLabeled(articleText, ["Agency", "Created by", "Developed by", "Creative Agency"]);
+  const ldAgency = jsonLdValues(ld, ["creator", "producer"])
+    .map((v) => (typeof v === "string" ? v : v?.name))
+    .find((v) => typeof v === "string" && v.trim().length > 0);
+  const agencyGuess = labeledAgency || (typeof ldAgency === "string" ? ldAgency : null) || null;
+
+  // ---- Year ----
+  const ldDate = jsonLdValues(ld, ["datePublished", "dateCreated"])
+    .find((v) => typeof v === "string");
+  const ogDate = pickMeta(html, ["article:published_time", "og:article:published_time"]);
+  const timeTag = html.match(/<time\b[^>]*\bdatetime=["']([^"']+)["']/i)?.[1];
+  let yearGuess: number | null = null;
+  for (const d of [ldDate, ogDate, timeTag]) {
+    if (typeof d === "string") {
+      const y = parseInt(d.slice(0, 4));
+      if (y >= 1950 && y <= 2026) { yearGuess = y; break; }
+    }
+  }
+  if (!yearGuess) yearGuess = extractYearFromText(articleText);
+
+  // ---- Image candidates → pick first verified ----
+  const ogVideo = pickMeta(html, ["og:video", "og:video:url", "og:video:secure_url"]);
+  const candidates = buildImageCandidates(html, articleHtml, url);
+  const { url: primary, verified } = await pickFirstValidImage(candidates);
+  const image_warning = !primary && !ogVideo;
 
   return {
-    title: title.slice(0, 250),
+    title: title.slice(0, 250) || new URL(url).hostname,
     source_url: url,
-    thumbnail_url: thumb,
-    type: ogVideo ? "video" : (images.length > 0 ? "image" : "link"),
-    brand_guess: siteName,
-    images,
-    body_text: bodyText,
+    thumbnail_url: primary,
+    type: ogVideo ? "video" : (primary ? "image" : "link"),
+    brand_guess: brandGuess || "",
+    agency_guess: agencyGuess,
+    year_guess: yearGuess,
+    images: verified,
+    body_text: articleText.slice(0, 3500),
+    image_warning,
   };
-}
-
-/** Skip patterns for non-campaign images (logos, avatars, ads, etc.) */
-const SKIP_URL_RE = /logo|avatar|icon|thumbnail|thumb[-_]|author|profile|banner|ads?[-_/]|sponsor|widget|favicon|sprite|placeholder|spinner|emoji/i;
-
-/** Pull hero/main campaign image URLs only. Prefers og:image, then large <img> tags. */
-function collectImages(html: string, baseUrl: string, primary: string | null): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  const normalize = (raw: string | null | undefined): string | null => {
-    if (!raw) return null;
-    let u = raw.trim();
-    if (!u) return null;
-    if (u.startsWith("//")) u = "https:" + u;
-    if (u.startsWith("/")) {
-      try { u = new URL(u, baseUrl).toString(); } catch { return null; }
-    }
-    if (!/^https?:\/\//i.test(u)) return null;
-    if (/\.(svg)(\?|$)/i.test(u)) return null;
-    if (SKIP_URL_RE.test(u)) return null;
-    return u;
-  };
-  const push = (raw: string | null | undefined) => {
-    const u = normalize(raw);
-    if (!u || seen.has(u)) return;
-    seen.add(u);
-    out.push(u);
-  };
-
-  // Skip og:image / twitter:image meta tags — those are page share thumbnails,
-  // not campaign hero images. Only use real <img> tags from the page body.
-  void primary;
-
-  // 2. <img> tags inside article body. Since we already scoped to the main
-  // article container, accept most images and only filter by SKIP_URL_RE +
-  // explicit small dimensions. This catches editorial posts (e.g.
-  // famouscampaigns.com) where images don't always declare large widths.
-  const imgTagRe = /<img\b[^>]*>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = imgTagRe.exec(html)) !== null) {
-    const tag = m[0];
-    const wAttr = tag.match(/\bwidth=["']?(\d+)/i)?.[1];
-    const hAttr = tag.match(/\bheight=["']?(\d+)/i)?.[1];
-    const w = wAttr ? parseInt(wAttr) : 0;
-    const h = hAttr ? parseInt(hAttr) : 0;
-    // Drop only if explicitly small
-    if (w && w < 300) continue;
-    if (h && h > 0 && h < 200) continue;
-
-    const srcset = tag.match(/\bsrcset=["']([^"']+)["']/i)?.[1];
-    let chosen: string | null = null;
-    let chosenW = 0;
-    if (srcset) {
-      // Pick largest descriptor
-      for (const part of srcset.split(",")) {
-        const [u, descRaw] = part.trim().split(/\s+/);
-        const desc = parseInt(descRaw || "0");
-        if (desc >= chosenW) { chosenW = desc; chosen = u; }
-      }
-    }
-    if (!chosen) {
-      chosen = tag.match(/\b(?:src|data-src|data-lazy-src|data-original)=["']([^"']+)["']/i)?.[1] || null;
-    }
-    push(chosen);
-  }
-
-  return out.slice(0, 15);
 }
 
 async function inferMetadata(
@@ -300,10 +550,10 @@ async function inferMetadata(
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   const fallback = {
     brand: scraped.brand_guess || null,
-    agency: null as string | null,
+    agency: scraped.agency_guess || null,
     categories: [] as string[],
     tags: [] as string[],
-    year: null,
+    year: scraped.year_guess ?? null,
     clean_title: scraped.title,
   };
   if (!apiKey) return fallback;
@@ -327,6 +577,7 @@ async function inferMetadata(
     `URL: ${scraped.source_url}\n` +
     `Site/Author: ${scraped.brand_guess || ""}\n` +
     `Type: ${scraped.type}\n` +
+    `Hints (verify against body, may be wrong): brand=${scraped.brand_guess || "?"}, agency=${scraped.agency_guess || "?"}, year=${scraped.year_guess ?? "?"}\n` +
     (body ? `Article body:\n${body}\n` : "");
   try {
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -371,12 +622,13 @@ async function inferMetadata(
     if (!args) return fallback;
     const parsed = JSON.parse(args);
     const cleaned = (parsed.clean_title || "").trim();
+    const yr = Number.isInteger(parsed.year) ? parsed.year : null;
     return {
       brand: parsed.brand || scraped.brand_guess || null,
-      agency: parsed.agency || null,
+      agency: parsed.agency || scraped.agency_guess || null,
       categories: (parsed.categories || []).filter((c: string) => allowed.includes(c)),
       tags: (parsed.tags || []).map((t: string) => String(t).toLowerCase()).slice(0, 6),
-      year: parsed.year || null,
+      year: (yr && yr >= 1950 && yr <= 2026) ? yr : (scraped.year_guess ?? null),
       clean_title: cleaned.length > 1 ? cleaned : scraped.title,
     };
   } catch (e) {
@@ -595,7 +847,7 @@ async function scrapeAndInsert(
     .select("id, title, thumbnail_url, brand, categories, tags, type")
     .single();
   if (insErr) return { ok: false, url: rawUrl, error: insErr.message };
-  return { ok: true, draft: inserted };
+  return { ok: true, draft: inserted, image_warning: !!scraped.image_warning };
 }
 
 Deno.serve(async (req) => {
@@ -684,7 +936,7 @@ Deno.serve(async (req) => {
       const drafts = (result as any).drafts;
       return json({ success: true, split: true, count: drafts.length, drafts, draft: drafts[0] });
     }
-    return json({ success: true, draft: result.draft });
+    return json({ success: true, draft: result.draft, image_warning: !!(result as any).image_warning });
   } catch (e) {
     console.error("scrape-link error", e);
     return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
