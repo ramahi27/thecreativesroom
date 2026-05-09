@@ -142,10 +142,21 @@ const Drafts = () => {
     const url = scrapeUrl.trim();
     if (!url) return;
     setScraping(true);
+    const tId = toast.loading("Fetching page…");
+    const steps = ["Extracting metadata…", "Finding main image…", "Verifying image…"];
+    let stepIdx = 0;
+    const stepTimer = setInterval(() => {
+      if (stepIdx < steps.length) {
+        toast.loading(steps[stepIdx], { id: tId });
+        stepIdx++;
+      }
+    }, 1200);
     try {
       const { data, error } = await supabase.functions.invoke("scrape-link", { body: { url } });
+      clearInterval(stepTimer);
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Failed to scrape");
+      toast.dismiss(tId);
       if (data.playlist) {
         toast.success(`Playlist imported — ${data.count} drafts created`, {
           description: data.failed_count ? `${data.failed_count} video(s) failed` : "All videos saved as drafts",
@@ -154,8 +165,14 @@ const Drafts = () => {
         toast.success(`Split into ${data.count} projects`, {
           description: "AI detected multiple projects on the page",
         });
+      } else if (data.image_warning) {
+        toast.warning("Imported — image needs attention", {
+          description:
+            "Could not auto-detect the main image (the site may load images with JavaScript). Open the draft to paste an image URL or upload a file.",
+          duration: 9000,
+        });
       } else {
-        toast.success("Added to drafts", { description: data.draft.title });
+        toast.success("Ready to review", { description: data.draft.title });
       }
       setScrapeUrl("");
       // Refresh drafts list
@@ -169,6 +186,8 @@ const Drafts = () => {
       setDrafts((refreshed as unknown as Reference[]) || []);
       setTotal(count || 0);
     } catch (err: any) {
+      clearInterval(stepTimer);
+      toast.dismiss(tId);
       toast.error(err.message || "Failed to scrape link");
     } finally {
       setScraping(false);
