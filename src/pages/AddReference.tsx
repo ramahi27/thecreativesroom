@@ -49,6 +49,8 @@ const AddReference = () => {
   const [progress, setProgress] = useState<string>("");
   const [loadingRecord, setLoadingRecord] = useState(isEdit);
   const [submittedToCollection, setSubmittedToCollection] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState("");
+  const [imageUrlPreviewOk, setImageUrlPreviewOk] = useState<boolean | null>(null);
 
   useEffect(() => {
     document.title = isEdit ? "Edit reference — The Creatives Room" : "Add reference — The Creatives Room";
