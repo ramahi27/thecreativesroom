@@ -550,10 +550,10 @@ async function inferMetadata(
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   const fallback = {
     brand: scraped.brand_guess || null,
-    agency: null as string | null,
+    agency: scraped.agency_guess || null,
     categories: [] as string[],
     tags: [] as string[],
-    year: null,
+    year: scraped.year_guess ?? null,
     clean_title: scraped.title,
   };
   if (!apiKey) return fallback;
