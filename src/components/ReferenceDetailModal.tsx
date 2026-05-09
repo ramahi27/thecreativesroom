@@ -10,7 +10,7 @@ import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2 } from "lucide-react";
-import { consumeModalReturn, clearModalReturn, peekModalReturn } from "@/lib/modalReturn";
+import { consumeModalReturn, clearModalReturn, peekModalReturn, getModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 import { ZoomableImage } from "@/components/ZoomableImage";
 
