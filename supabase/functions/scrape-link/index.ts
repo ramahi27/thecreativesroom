@@ -22,6 +22,7 @@ interface Scraped {
   type: "video" | "image" | "link";
   brand_guess?: string;
   images?: string[];
+  body_text?: string;
 }
 
 function ytId(u: URL): string | null {
