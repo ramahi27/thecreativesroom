@@ -143,6 +143,9 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     };
   }, [r, allRefs, navOrder, similarityOrdered]);
 
+  const goPrev = useCallback(() => prev && navigate(`/ref/${prev.id}`), [prev, navigate]);
+  const goNext = useCallback(() => next && navigate(`/ref/${next.id}`), [next, navigate]);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "ArrowLeft") goPrev();
