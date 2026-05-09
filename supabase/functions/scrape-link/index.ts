@@ -22,6 +22,7 @@ interface Scraped {
   type: "video" | "image" | "link";
   brand_guess?: string;
   images?: string[];
+  body_text?: string;
 }
 
 function ytId(u: URL): string | null {
@@ -146,6 +147,42 @@ async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
   return await fetch(url, { ...init, redirect: "manual" });
 }
 
+/**
+ * Try to isolate the main article body so we don't pull sidebar / "trending"
+ * / related-post images and text. Falls back to whole html.
+ */
+function extractArticleBody(html: string): string {
+  // Strip noisy chunks first (sidebars, related, comments, footer, scripts)
+  let h = html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, "");
+
+  // Try common article containers in priority order
+  const patterns: RegExp[] = [
+    /<div[^>]*class=["'][^"']*\bentry\b[^"']*["'][^>]*>([\s\S]*?)<\/div>\s*(?:<div[^>]*class=["'][^"']*(?:postnav|after|sideframe|related)|<\/article)/i,
+    /<article\b[^>]*>([\s\S]*?)<\/article>/i,
+    /<main\b[^>]*>([\s\S]*?)<\/main>/i,
+    /<div[^>]*(?:id|class)=["'][^"']*\b(?:post-content|entry-content|article-body|post-body|content-body)\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/i,
+  ];
+  for (const re of patterns) {
+    const m = h.match(re);
+    if (m && m[1] && m[1].length > 200) return m[1];
+  }
+  return h;
+}
+
+function htmlToText(html: string): string {
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&#8217;|&rsquo;/g, "'")
+    .replace(/&#8211;|&ndash;/g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 async function scrapeGeneric(url: string): Promise<Scraped> {
   const r = await safeFetch(url, {
     headers: {
@@ -163,10 +200,12 @@ async function scrapeGeneric(url: string): Promise<Scraped> {
   const siteName = pickMeta(html, ["og:site_name"]) || "";
   const ogVideo = pickMeta(html, ["og:video", "og:video:url", "og:video:secure_url"]);
 
-  // Collect campaign images from the page body only — skip og:image / twitter:image
-  // meta tags since those are usually the site's promo/share thumbnail, not the
-  // actual campaign hero. Use the first scraped image as the thumbnail instead.
-  const images = collectImages(html, url, null);
+  // Isolate article body so we ignore sidebar / trending / related modules
+  const articleHtml = extractArticleBody(html);
+  const bodyText = htmlToText(articleHtml).slice(0, 3500);
+
+  // Collect campaign images from the article body only
+  const images = collectImages(articleHtml, url, null);
   const thumb = images[0] || null;
 
   return {
@@ -176,6 +215,7 @@ async function scrapeGeneric(url: string): Promise<Scraped> {
     type: ogVideo ? "video" : (images.length > 0 ? "image" : "link"),
     brand_guess: siteName,
     images,
+    body_text: bodyText,
   };
 }
 
@@ -210,7 +250,10 @@ function collectImages(html: string, baseUrl: string, primary: string | null): s
   // not campaign hero images. Only use real <img> tags from the page body.
   void primary;
 
-  // 2. <img> tags — only large ones (width attr >= 400, or srcset descriptor >= 600w)
+  // 2. <img> tags inside article body. Since we already scoped to the main
+  // article container, accept most images and only filter by SKIP_URL_RE +
+  // explicit small dimensions. This catches editorial posts (e.g.
+  // famouscampaigns.com) where images don't always declare large widths.
   const imgTagRe = /<img\b[^>]*>/gi;
   let m: RegExpExecArray | null;
   while ((m = imgTagRe.exec(html)) !== null) {
@@ -219,29 +262,24 @@ function collectImages(html: string, baseUrl: string, primary: string | null): s
     const hAttr = tag.match(/\bheight=["']?(\d+)/i)?.[1];
     const w = wAttr ? parseInt(wAttr) : 0;
     const h = hAttr ? parseInt(hAttr) : 0;
-    // If dimensions declared and below threshold, skip
-    if (w && w < 400) continue;
-    if (h && h > 0 && h < 300) continue;
+    // Drop only if explicitly small
+    if (w && w < 300) continue;
+    if (h && h > 0 && h < 200) continue;
 
     const srcset = tag.match(/\bsrcset=["']([^"']+)["']/i)?.[1];
     let chosen: string | null = null;
     let chosenW = 0;
     if (srcset) {
-      // Pick largest descriptor >= 600w
+      // Pick largest descriptor
       for (const part of srcset.split(",")) {
         const [u, descRaw] = part.trim().split(/\s+/);
         const desc = parseInt(descRaw || "0");
         if (desc >= chosenW) { chosenW = desc; chosen = u; }
       }
-      if (chosenW && chosenW < 600) chosen = null;
     }
     if (!chosen) {
       chosen = tag.match(/\b(?:src|data-src|data-lazy-src|data-original)=["']([^"']+)["']/i)?.[1] || null;
     }
-    // Without explicit dimensions, only accept if there was a srcset >= 600w,
-    // OR the width attr explicitly says >= 600
-    const hasGoodSignal = (w >= 600) || (chosenW >= 600);
-    if (!hasGoodSignal) continue;
     push(chosen);
   }
 
@@ -253,6 +291,7 @@ async function inferMetadata(
   categories: { video: string[]; photo: string[] },
 ): Promise<{
   brand: string | null;
+  agency: string | null;
   categories: string[];
   tags: string[];
   year: number | null;
@@ -261,6 +300,7 @@ async function inferMetadata(
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   const fallback = {
     brand: scraped.brand_guess || null,
+    agency: null as string | null,
     categories: [] as string[],
     tags: [] as string[],
     year: null,
@@ -270,16 +310,24 @@ async function inferMetadata(
   const allowed = scraped.type === "video" ? categories.video : categories.photo;
   const sys =
     `You are a metadata extractor for an advertising/creative reference archive.\n` +
-    `Given a raw title, source URL and possible author/site name, return:\n` +
-    `- brand: the advertised brand name (NOT the agency, director or platform). Null if unknown.\n` +
+    `Given a raw title, source URL, site name, and the article body text, return:\n` +
+    `- brand: the advertised brand/client name (NOT the agency, director or platform). Null if unknown.\n` +
+    `- agency: the creative agency that made the work (e.g. "Wieden+Kennedy", "Rethink", "BBH"). Null if not mentioned.\n` +
     `- categories: pick 0-2 from this allowed list ONLY: ${JSON.stringify(allowed)}.\n` +
     `- tags: 2-5 short lowercase keywords (style, medium, mood, theme).\n` +
-    `- year: 4-digit release year if discernible, else null.\n` +
-    `- clean_title: the title with the brand name AND any category-like words removed ` +
-    `(e.g. "Case Study", "Commercial", "Promo", "Trailer", "Campaign", "| Brand", " - Brand", " by Director"). ` +
-    `Keep only the actual creative/spot name. Trim separators. ` +
+    `- year: 4-digit release year if discernible (use article date if present), else null.\n` +
+    `- clean_title: the actual creative/campaign name. Strip the brand, the agency, ` +
+    `category-like words ("Case Study", "Commercial", "Promo", "Campaign"), publication ` +
+    `name suffixes (e.g. "| Famous Campaigns"), and " by <Agency>". Keep only the spot/campaign ` +
+    `name. If the raw title is just a headline ("Brand does X"), distill it into a short campaign title. ` +
     `If nothing meaningful remains, return the original title.`;
-  const user = `Raw title: ${scraped.title}\nURL: ${scraped.source_url}\nSite/Author: ${scraped.brand_guess || ""}\nType: ${scraped.type}`;
+  const body = (scraped.body_text || "").slice(0, 2500);
+  const user =
+    `Raw title: ${scraped.title}\n` +
+    `URL: ${scraped.source_url}\n` +
+    `Site/Author: ${scraped.brand_guess || ""}\n` +
+    `Type: ${scraped.type}\n` +
+    (body ? `Article body:\n${body}\n` : "");
   try {
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -299,12 +347,13 @@ async function inferMetadata(
                 type: "object",
                 properties: {
                   brand: { type: ["string", "null"] },
+                  agency: { type: ["string", "null"] },
                   categories: { type: "array", items: { type: "string" } },
                   tags: { type: "array", items: { type: "string" } },
                   year: { type: ["integer", "null"] },
                   clean_title: { type: "string" },
                 },
-                required: ["brand", "categories", "tags", "year", "clean_title"],
+                required: ["brand", "agency", "categories", "tags", "year", "clean_title"],
                 additionalProperties: false,
               },
             },
@@ -324,6 +373,7 @@ async function inferMetadata(
     const cleaned = (parsed.clean_title || "").trim();
     return {
       brand: parsed.brand || scraped.brand_guess || null,
+      agency: parsed.agency || null,
       categories: (parsed.categories || []).filter((c: string) => allowed.includes(c)),
       tags: (parsed.tags || []).map((t: string) => String(t).toLowerCase()).slice(0, 6),
       year: parsed.year || null,
@@ -493,6 +543,7 @@ async function scrapeAndInsert(
           media_url: items[0].url,
           media_items: items,
           brand: meta.brand,
+          agency: meta.agency,
           year: meta.year,
           categories: meta.categories,
           tags: meta.tags,
@@ -529,6 +580,7 @@ async function scrapeAndInsert(
     media_url: scraped.type === "image" ? (mediaItems[0]?.url ?? scraped.thumbnail_url) : null,
     media_items: mediaItems,
     brand: meta.brand,
+    agency: meta.agency,
     year: meta.year,
     categories: meta.categories,
     tags: meta.tags,
