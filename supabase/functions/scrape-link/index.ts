@@ -448,6 +448,94 @@ function cleanTitle(title: string): string {
   return title.split(/\s+[|–-]\s+/)[0].trim();
 }
 
+/* ─────────────────────────────── scrapeGeneric ──────────────────────────── */
+
+async function scrapeGeneric(url: string): Promise<Scraped> {
+  const r = await safeFetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; CreativesRoomBot/1.0; +https://thecreativesroom.com)",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+  if (r.status >= 300 && r.status < 400) throw new Error("Redirects not allowed");
+  const html = await r.text();
+
+  const articleHtml = extractArticleBody(html);
+  const articleText = htmlToText(articleHtml).slice(0, 4000);
+  const ld = parseJsonLd(html);
+
+  // ---- Title ----
+  let title =
+    pickMeta(html, ["og:title"]) ||
+    pickMeta(html, ["twitter:title"]) ||
+    (jsonLdValues(ld, ["name", "headline"])[0] as string | undefined) ||
+    articleHtml.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] ||
+    html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] ||
+    new URL(url).hostname;
+  title = htmlToText(String(title));
+  title = cleanTitle(title);
+
+  // ---- Brand / Client ----
+  const ldBrand =
+    jsonLdValues(ld, ["brand"])
+      .map((v) => (typeof v === "string" ? v : v?.name))
+      .find((v) => typeof v === "string" && v.trim().length > 0) ||
+    jsonLdValues(ld, ["author"])
+      .map((v) => (typeof v === "string" ? v : v?.name))
+      .find((v) => typeof v === "string" && v.trim().length > 0);
+  const labeledBrand =
+    extractLabeled(articleText, ["Client", "Brand", "Advertiser"]);
+  const siteName = pickMeta(html, ["og:site_name"]) || "";
+  const brandGuess =
+    (typeof ldBrand === "string" ? ldBrand : null) ||
+    labeledBrand ||
+    (siteName && !/famouscampaigns|adweek|adage|campaign|lbb|creativity|shots|the drum/i.test(siteName)
+      ? siteName
+      : "");
+
+  // ---- Agency ----
+  const labeledAgency =
+    extractLabeled(articleText, ["Agency", "Created by", "Developed by", "Creative Agency"]);
+  const ldAgency = jsonLdValues(ld, ["creator", "producer"])
+    .map((v) => (typeof v === "string" ? v : v?.name))
+    .find((v) => typeof v === "string" && v.trim().length > 0);
+  const agencyGuess = labeledAgency || (typeof ldAgency === "string" ? ldAgency : null) || null;
+
+  // ---- Year ----
+  const ldDate = jsonLdValues(ld, ["datePublished", "dateCreated"])
+    .find((v) => typeof v === "string");
+  const ogDate = pickMeta(html, ["article:published_time", "og:article:published_time"]);
+  const timeTag = html.match(/<time\b[^>]*\bdatetime=["']([^"']+)["']/i)?.[1];
+  let yearGuess: number | null = null;
+  for (const d of [ldDate, ogDate, timeTag]) {
+    if (typeof d === "string") {
+      const y = parseInt(d.slice(0, 4));
+      if (y >= 1950 && y <= 2026) { yearGuess = y; break; }
+    }
+  }
+  if (!yearGuess) yearGuess = extractYearFromText(articleText);
+
+  // ---- Image candidates → pick first verified ----
+  const ogVideo = pickMeta(html, ["og:video", "og:video:url", "og:video:secure_url"]);
+  const candidates = buildImageCandidates(html, articleHtml, url);
+  const { url: primary, verified } = await pickFirstValidImage(candidates);
+  const image_warning = !primary && !ogVideo;
+
+  return {
+    title: title.slice(0, 250) || new URL(url).hostname,
+    source_url: url,
+    thumbnail_url: primary,
+    type: ogVideo ? "video" : (primary ? "image" : "link"),
+    brand_guess: brandGuess || "",
+    agency_guess: agencyGuess,
+    year_guess: yearGuess,
+    images: verified,
+    body_text: articleText.slice(0, 3500),
+    image_warning,
+  };
+}
+
 async function inferMetadata(
   scraped: Scraped,
   categories: { video: string[]; photo: string[] },
