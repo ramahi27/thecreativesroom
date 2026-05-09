@@ -524,10 +524,12 @@ const AddReference = () => {
               </Label>
               <label
                 htmlFor="reference-files"
+                onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
+                onDrop={handleExternalDrop}
                 className="relative flex flex-col items-center justify-center gap-2 cursor-pointer bg-secondary hairline border border-dashed border-muted-foreground/40 hover:border-muted-foreground/70 hover:bg-secondary/70 transition-colors px-6 py-12 text-center"
               >
                 <span className="font-mono text-xs uppercase tracking-widest text-foreground">
-                  Click here or drag and drop to add a photo.
+                  Click, drop a file, or drag an image from another website.
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                   Photos only · multiple allowed
