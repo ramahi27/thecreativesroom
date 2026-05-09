@@ -17,6 +17,7 @@ import {
   type MediaItem,
 } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
+import { Checkbox } from "@/components/ui/checkbox";
 import { X, ArrowUp, ArrowDown } from "lucide-react";
 
 const AI_MARKER = "ai:processed";
