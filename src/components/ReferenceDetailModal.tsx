@@ -25,6 +25,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const { all: ALL_CATEGORIES } = useCategories();
   const [r, setR] = useState<Reference | null>(null);
   const [allRefs, setAllRefs] = useState<Reference[]>([]);
+  const [navOrder] = useState<string[]>(() => getModalNavOrder());
   const [loading, setLoading] = useState(true);
   const [activeMedia, setActiveMedia] = useState(0);
   const [tagInput, setTagInput] = useState("");
