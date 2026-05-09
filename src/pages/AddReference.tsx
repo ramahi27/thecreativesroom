@@ -34,7 +34,8 @@ const AddReference = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const { video: VIDEO_CATEGORIES, photo: PHOTO_CATEGORIES } = useCategories();
 
-  const [type, setType] = useState<RefType>(isAdmin ? "video" : "image");
+  const [type, setType] = useState<RefType>("video");
+  const [allowMainPage, setAllowMainPage] = useState(true);
   const [title, setTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [thumbnailUrl] = useState("");
