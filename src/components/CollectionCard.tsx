@@ -126,7 +126,7 @@ export function CollectionCard({
         </DropdownMenu>
       </div>
 
-      <ReferenceCard reference={r} />
+      <ReferenceCard reference={r} orderedIds={orderedIds} />
 
       {inFolderIds.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
