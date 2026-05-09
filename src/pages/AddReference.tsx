@@ -505,6 +505,60 @@ const AddReference = () => {
                   ))}
                 </ul>
               )}
+
+              <div className={`space-y-2 mt-4 ${existingMedia.length === 0 && files.length === 0 ? "p-3 border hairline border-amber-500/50 bg-amber-500/5" : ""}`}>
+                <Label className={labelCls}>
+                  Or paste an image URL
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="url"
+                    placeholder="https://example.com/image.jpg"
+                    value={imageUrlInput}
+                    onChange={(e) => {
+                      setImageUrlInput(e.target.value);
+                      setImageUrlPreviewOk(null);
+                    }}
+                    className={inputCls}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={!imageUrlInput.trim() || imageUrlPreviewOk === false}
+                    onClick={() => {
+                      const u = imageUrlInput.trim();
+                      if (!u) return;
+                      setExistingMedia((prev) => [...prev, { url: u, kind: "image" }]);
+                      setImageUrlInput("");
+                      setImageUrlPreviewOk(null);
+                    }}
+                    className="font-mono text-xs uppercase tracking-widest"
+                  >
+                    Add
+                  </Button>
+                </div>
+                {imageUrlInput.trim() && (
+                  <div className="mt-2">
+                    <img
+                      src={imageUrlInput.trim()}
+                      alt="preview"
+                      onLoad={() => setImageUrlPreviewOk(true)}
+                      onError={() => setImageUrlPreviewOk(false)}
+                      className="max-h-40 object-contain bg-secondary"
+                    />
+                    {imageUrlPreviewOk === false && (
+                      <p className="font-mono text-[10px] uppercase tracking-widest text-destructive mt-1">
+                        Image could not be loaded — check the URL.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {existingMedia.length === 0 && files.length === 0 && (
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                    Could not auto-detect the main image. Paste a URL above or upload a file.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
