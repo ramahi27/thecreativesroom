@@ -493,14 +493,17 @@ const Index = () => {
             </Button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {matches.map(({ ref, reason }) => (
-              <div key={ref.id} className="flex flex-col gap-2">
-                <ReferenceCard reference={ref} orderedIds={matches.map((m) => m.ref.id)} />
-                <p className="font-mono text-[11px] leading-snug text-muted-foreground italic px-1">
-                  ⏵ {reason}
-                </p>
-              </div>
-            ))}
+            {(() => {
+              const order = matches.map((m) => m.ref.id);
+              return matches.map(({ ref, reason }) => (
+                <div key={ref.id} className="flex flex-col gap-2">
+                  <ReferenceCard reference={ref} orderedIds={order} />
+                  <p className="font-mono text-[11px] leading-snug text-muted-foreground italic px-1">
+                    ⏵ {reason}
+                  </p>
+                </div>
+              ));
+            })()}
           </div>
           <div className="mt-12 border-t hairline" />
         </section>
