@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Sparkles, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { rememberModalReturn } from "@/lib/modalReturn";
+import { rememberModalReturn, setModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
 // A reference is considered "AI-complete" only if brand, agency, AND year
