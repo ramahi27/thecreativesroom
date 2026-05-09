@@ -21,8 +21,11 @@ interface Scraped {
   thumbnail_url: string | null;
   type: "video" | "image" | "link";
   brand_guess?: string;
+  agency_guess?: string | null;
+  year_guess?: number | null;
   images?: string[];
   body_text?: string;
+  image_warning?: boolean;
 }
 
 function ytId(u: URL): string | null {
