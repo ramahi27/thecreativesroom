@@ -5,10 +5,13 @@ import { detectPlatform } from "@/lib/references";
 import { Play, ImageIcon, Link2 } from "lucide-react";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { FolderPickerButton } from "@/components/FolderPickerButton";
-import { rememberModalReturn } from "@/lib/modalReturn";
+import { rememberModalReturn, setModalNavOrder, clearModalNavOrder } from "@/lib/modalReturn";
 
 interface Props {
   reference: Reference;
+  /** Ordered list of reference IDs visible on the calling page, used to
+   *  drive prev/next navigation inside the detail modal. */
+  orderedIds?: string[];
 }
 
 // Smart object-position heuristic: faces, headlines, and main subjects in
