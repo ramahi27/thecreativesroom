@@ -250,7 +250,10 @@ function collectImages(html: string, baseUrl: string, primary: string | null): s
   // not campaign hero images. Only use real <img> tags from the page body.
   void primary;
 
-  // 2. <img> tags — only large ones (width attr >= 400, or srcset descriptor >= 600w)
+  // 2. <img> tags inside article body. Since we already scoped to the main
+  // article container, accept most images and only filter by SKIP_URL_RE +
+  // explicit small dimensions. This catches editorial posts (e.g.
+  // famouscampaigns.com) where images don't always declare large widths.
   const imgTagRe = /<img\b[^>]*>/gi;
   let m: RegExpExecArray | null;
   while ((m = imgTagRe.exec(html)) !== null) {
@@ -259,29 +262,24 @@ function collectImages(html: string, baseUrl: string, primary: string | null): s
     const hAttr = tag.match(/\bheight=["']?(\d+)/i)?.[1];
     const w = wAttr ? parseInt(wAttr) : 0;
     const h = hAttr ? parseInt(hAttr) : 0;
-    // If dimensions declared and below threshold, skip
-    if (w && w < 400) continue;
-    if (h && h > 0 && h < 300) continue;
+    // Drop only if explicitly small
+    if (w && w < 300) continue;
+    if (h && h > 0 && h < 200) continue;
 
     const srcset = tag.match(/\bsrcset=["']([^"']+)["']/i)?.[1];
     let chosen: string | null = null;
     let chosenW = 0;
     if (srcset) {
-      // Pick largest descriptor >= 600w
+      // Pick largest descriptor
       for (const part of srcset.split(",")) {
         const [u, descRaw] = part.trim().split(/\s+/);
         const desc = parseInt(descRaw || "0");
         if (desc >= chosenW) { chosenW = desc; chosen = u; }
       }
-      if (chosenW && chosenW < 600) chosen = null;
     }
     if (!chosen) {
       chosen = tag.match(/\b(?:src|data-src|data-lazy-src|data-original)=["']([^"']+)["']/i)?.[1] || null;
     }
-    // Without explicit dimensions, only accept if there was a srcset >= 600w,
-    // OR the width attr explicitly says >= 600
-    const hasGoodSignal = (w >= 600) || (chosenW >= 600);
-    if (!hasGoodSignal) continue;
     push(chosen);
   }
 
