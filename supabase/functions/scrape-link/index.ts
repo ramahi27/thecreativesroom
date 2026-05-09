@@ -291,6 +291,7 @@ async function inferMetadata(
   categories: { video: string[]; photo: string[] },
 ): Promise<{
   brand: string | null;
+  agency: string | null;
   categories: string[];
   tags: string[];
   year: number | null;
@@ -299,6 +300,7 @@ async function inferMetadata(
   const apiKey = Deno.env.get("LOVABLE_API_KEY");
   const fallback = {
     brand: scraped.brand_guess || null,
+    agency: null as string | null,
     categories: [] as string[],
     tags: [] as string[],
     year: null,
@@ -308,16 +310,24 @@ async function inferMetadata(
   const allowed = scraped.type === "video" ? categories.video : categories.photo;
   const sys =
     `You are a metadata extractor for an advertising/creative reference archive.\n` +
-    `Given a raw title, source URL and possible author/site name, return:\n` +
-    `- brand: the advertised brand name (NOT the agency, director or platform). Null if unknown.\n` +
+    `Given a raw title, source URL, site name, and the article body text, return:\n` +
+    `- brand: the advertised brand/client name (NOT the agency, director or platform). Null if unknown.\n` +
+    `- agency: the creative agency that made the work (e.g. "Wieden+Kennedy", "Rethink", "BBH"). Null if not mentioned.\n` +
     `- categories: pick 0-2 from this allowed list ONLY: ${JSON.stringify(allowed)}.\n` +
     `- tags: 2-5 short lowercase keywords (style, medium, mood, theme).\n` +
-    `- year: 4-digit release year if discernible, else null.\n` +
-    `- clean_title: the title with the brand name AND any category-like words removed ` +
-    `(e.g. "Case Study", "Commercial", "Promo", "Trailer", "Campaign", "| Brand", " - Brand", " by Director"). ` +
-    `Keep only the actual creative/spot name. Trim separators. ` +
+    `- year: 4-digit release year if discernible (use article date if present), else null.\n` +
+    `- clean_title: the actual creative/campaign name. Strip the brand, the agency, ` +
+    `category-like words ("Case Study", "Commercial", "Promo", "Campaign"), publication ` +
+    `name suffixes (e.g. "| Famous Campaigns"), and " by <Agency>". Keep only the spot/campaign ` +
+    `name. If the raw title is just a headline ("Brand does X"), distill it into a short campaign title. ` +
     `If nothing meaningful remains, return the original title.`;
-  const user = `Raw title: ${scraped.title}\nURL: ${scraped.source_url}\nSite/Author: ${scraped.brand_guess || ""}\nType: ${scraped.type}`;
+  const body = (scraped.body_text || "").slice(0, 2500);
+  const user =
+    `Raw title: ${scraped.title}\n` +
+    `URL: ${scraped.source_url}\n` +
+    `Site/Author: ${scraped.brand_guess || ""}\n` +
+    `Type: ${scraped.type}\n` +
+    (body ? `Article body:\n${body}\n` : "");
   try {
     const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -337,12 +347,13 @@ async function inferMetadata(
                 type: "object",
                 properties: {
                   brand: { type: ["string", "null"] },
+                  agency: { type: ["string", "null"] },
                   categories: { type: "array", items: { type: "string" } },
                   tags: { type: "array", items: { type: "string" } },
                   year: { type: ["integer", "null"] },
                   clean_title: { type: "string" },
                 },
-                required: ["brand", "categories", "tags", "year", "clean_title"],
+                required: ["brand", "agency", "categories", "tags", "year", "clean_title"],
                 additionalProperties: false,
               },
             },
@@ -362,6 +373,7 @@ async function inferMetadata(
     const cleaned = (parsed.clean_title || "").trim();
     return {
       brand: parsed.brand || scraped.brand_guess || null,
+      agency: parsed.agency || null,
       categories: (parsed.categories || []).filter((c: string) => allowed.includes(c)),
       tags: (parsed.tags || []).map((t: string) => String(t).toLowerCase()).slice(0, 6),
       year: parsed.year || null,
