@@ -315,7 +315,7 @@ const Drafts = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {drafts.map((r) => (
                 <div key={r.id} className="relative group">
-                  <ReferenceCard reference={r} />
+                  <ReferenceCard reference={r} orderedIds={drafts.map((x) => x.id)} />
                   <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                     <Button
                       size="icon"

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Search, Sparkles, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { rememberModalReturn } from "@/lib/modalReturn";
+import { rememberModalReturn, setModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
 // A reference is considered "AI-complete" only if brand, agency, AND year
@@ -235,7 +235,7 @@ const Logs = () => {
                   <TableRow key={r.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
                     <TableCell>
-                      <Link to={`/ref/${r.id}`} onClick={() => rememberModalReturn()} className="flex items-center gap-3 hover:opacity-80">
+                      <Link to={`/ref/${r.id}`} onClick={() => { rememberModalReturn(); setModalNavOrder(filtered.map((x) => x.id)); }} className="flex items-center gap-3 hover:opacity-80">
                         {r.thumbnail_url ? (
                           <img
                             src={r.thumbnail_url}

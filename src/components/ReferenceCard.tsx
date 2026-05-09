@@ -5,10 +5,13 @@ import { detectPlatform } from "@/lib/references";
 import { Play, ImageIcon, Link2 } from "lucide-react";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { FolderPickerButton } from "@/components/FolderPickerButton";
-import { rememberModalReturn } from "@/lib/modalReturn";
+import { rememberModalReturn, setModalNavOrder, clearModalNavOrder } from "@/lib/modalReturn";
 
 interface Props {
   reference: Reference;
+  /** Ordered list of reference IDs visible on the calling page, used to
+   *  drive prev/next navigation inside the detail modal. */
+  orderedIds?: string[];
 }
 
 // Smart object-position heuristic: faces, headlines, and main subjects in
@@ -24,7 +27,7 @@ function smartPosition(w: number, h: number): string {
   return "center";                        // ultra-wide / cinematic
 }
 
-export function ReferenceCard({ reference: r }: Props) {
+export function ReferenceCard({ reference: r, orderedIds }: Props) {
   // For photo projects, always prefer the first photo as the thumbnail.
   const firstMediaImage = (() => {
     const items = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
@@ -43,7 +46,11 @@ export function ReferenceCard({ reference: r }: Props) {
   return (
     <Link
       to={`/ref/${r.id}`}
-      onClick={() => rememberModalReturn()}
+      onClick={() => {
+        rememberModalReturn();
+        if (orderedIds && orderedIds.length > 0) setModalNavOrder(orderedIds);
+        else clearModalNavOrder();
+      }}
       className="reveal-card group block overflow-hidden bg-card border hairline"
     >
       <div className="relative aspect-video overflow-hidden bg-muted">

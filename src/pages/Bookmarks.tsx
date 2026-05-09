@@ -352,9 +352,12 @@ const Bookmarks = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-              {submissions.map((r) => (
-                <ReferenceCard key={r.id} reference={r} />
-              ))}
+              {(() => {
+                const order = submissions.map((x) => x.id);
+                return submissions.map((r) => (
+                  <ReferenceCard key={r.id} reference={r} orderedIds={order} />
+                ));
+              })()}
             </div>
           )
         ) : tab === "following" ? (
@@ -491,9 +494,10 @@ const Bookmarks = () => {
                       </span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                      {refs
-                        .filter((r) => uncategorizedIds.has(r.id))
-                        .map((r) => (
+                      {(() => {
+                        const subset = refs.filter((r) => uncategorizedIds.has(r.id));
+                        const order = subset.map((x) => x.id);
+                        return subset.map((r) => (
                           <CollectionCard
                             key={r.id}
                             reference={r}
@@ -507,8 +511,10 @@ const Bookmarks = () => {
                             onCreateFolder={() => openCreateFolderDialog([r.id])}
                             onDragStart={() => setDragging(true)}
                             onDragEnd={() => setDragging(false)}
+                            orderedIds={order}
                           />
-                        ))}
+                        ));
+                      })()}
                     </div>
                   </div>
                 )}
@@ -535,22 +541,26 @@ const Bookmarks = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    {filtered.map((r) => (
-                      <CollectionCard
-                        key={r.id}
-                        reference={r}
-                        folders={folders}
-                        inFolderIds={foldersForReference(r.id)}
-                        selected={selected.has(r.id)}
-                        selectionMode={selectionMode}
-                        onToggleSelect={toggleSelect}
-                        onAddToFolder={addToFolder}
-                        onRemoveFromFolder={removeFromFolder}
-                        onCreateFolder={() => openCreateFolderDialog([r.id])}
-                        onDragStart={() => setDragging(true)}
-                        onDragEnd={() => setDragging(false)}
-                      />
-                    ))}
+                    {(() => {
+                      const order = filtered.map((x) => x.id);
+                      return filtered.map((r) => (
+                        <CollectionCard
+                          key={r.id}
+                          reference={r}
+                          folders={folders}
+                          inFolderIds={foldersForReference(r.id)}
+                          selected={selected.has(r.id)}
+                          selectionMode={selectionMode}
+                          onToggleSelect={toggleSelect}
+                          onAddToFolder={addToFolder}
+                          onRemoveFromFolder={removeFromFolder}
+                          onCreateFolder={() => openCreateFolderDialog([r.id])}
+                          onDragStart={() => setDragging(true)}
+                          onDragEnd={() => setDragging(false)}
+                          orderedIds={order}
+                        />
+                      ));
+                    })()}
                   </div>
                 )}
               </div>

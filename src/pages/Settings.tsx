@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { X, Plus, Shield, Trash2, BarChart3, Users, Eye, Bookmark, Clock } from "lucide-react";
-import { rememberModalReturn } from "@/lib/modalReturn";
+import { rememberModalReturn, setModalNavOrder } from "@/lib/modalReturn";
 
 interface AdminStats {
   total_visitors: number;
@@ -256,7 +256,7 @@ const Settings = () => {
                     {stats.top_visited.length === 0 ? (
                       <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">No data yet</p>
                     ) : stats.top_visited.map((p, i) => (
-                      <button key={p.id} onClick={() => { rememberModalReturn(); navigate(`/ref/${p.id}`); }} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
+                      <button key={p.id} onClick={() => { rememberModalReturn(); setModalNavOrder(stats.top_visited.map((x) => x.id)); navigate(`/ref/${p.id}`); }} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
                         <span className="font-mono text-[10px] text-muted-foreground w-5">{(i + 1).toString().padStart(2, "0")}</span>
                         <div className="w-12 h-8 bg-secondary shrink-0 overflow-hidden">
                           {p.thumbnail_url && <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />}
@@ -280,7 +280,7 @@ const Settings = () => {
                     {stats.top_bookmarked.length === 0 ? (
                       <p className="p-4 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">No bookmarks yet</p>
                     ) : stats.top_bookmarked.map((p, i) => (
-                      <button key={p.id} onClick={() => { rememberModalReturn(); navigate(`/ref/${p.id}`); }} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
+                      <button key={p.id} onClick={() => { rememberModalReturn(); setModalNavOrder(stats.top_bookmarked.map((x) => x.id)); navigate(`/ref/${p.id}`); }} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
                         <span className="font-mono text-[10px] text-muted-foreground w-5">{(i + 1).toString().padStart(2, "0")}</span>
                         <div className="w-12 h-8 bg-secondary shrink-0 overflow-hidden">
                           {p.thumbnail_url && <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />}

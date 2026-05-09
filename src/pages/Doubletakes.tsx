@@ -273,7 +273,7 @@ const Doubletakes = () => {
                   {[p.a, p.b].map((r) => (
                     <div key={r.id} className="space-y-3">
                       <div className="relative">
-                        <ReferenceCard reference={r} />
+                        <ReferenceCard reference={r} orderedIds={[p.a.id, p.b.id]} />
                         <span
                           className={`absolute top-2 left-2 px-2 py-1 font-mono text-[10px] uppercase tracking-widest ${
                             r.published
