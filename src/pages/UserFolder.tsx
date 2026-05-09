@@ -145,9 +145,12 @@ const UserFolder = () => {
           <p className="font-display text-2xl italic text-muted-foreground">Empty for now.</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {refs.map((r) => (
-              <ReferenceCard key={r.id} reference={r} />
-            ))}
+            {(() => {
+              const order = refs.map((x) => x.id);
+              return refs.map((r) => (
+                <ReferenceCard key={r.id} reference={r} orderedIds={order} />
+              ));
+            })()}
           </div>
         )}
       </main>
