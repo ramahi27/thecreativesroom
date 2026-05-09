@@ -936,7 +936,7 @@ Deno.serve(async (req) => {
       const drafts = (result as any).drafts;
       return json({ success: true, split: true, count: drafts.length, drafts, draft: drafts[0] });
     }
-    return json({ success: true, draft: result.draft });
+    return json({ success: true, draft: result.draft, image_warning: !!(result as any).image_warning });
   } catch (e) {
     console.error("scrape-link error", e);
     return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
