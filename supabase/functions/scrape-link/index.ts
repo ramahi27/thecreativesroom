@@ -622,12 +622,13 @@ async function inferMetadata(
     if (!args) return fallback;
     const parsed = JSON.parse(args);
     const cleaned = (parsed.clean_title || "").trim();
+    const yr = Number.isInteger(parsed.year) ? parsed.year : null;
     return {
       brand: parsed.brand || scraped.brand_guess || null,
-      agency: parsed.agency || null,
+      agency: parsed.agency || scraped.agency_guess || null,
       categories: (parsed.categories || []).filter((c: string) => allowed.includes(c)),
       tags: (parsed.tags || []).map((t: string) => String(t).toLowerCase()).slice(0, 6),
-      year: parsed.year || null,
+      year: (yr && yr >= 1950 && yr <= 2026) ? yr : (scraped.year_guess ?? null),
       clean_title: cleaned.length > 1 ? cleaned : scraped.title,
     };
   } catch (e) {
