@@ -541,22 +541,26 @@ const Bookmarks = () => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    {filtered.map((r) => (
-                      <CollectionCard
-                        key={r.id}
-                        reference={r}
-                        folders={folders}
-                        inFolderIds={foldersForReference(r.id)}
-                        selected={selected.has(r.id)}
-                        selectionMode={selectionMode}
-                        onToggleSelect={toggleSelect}
-                        onAddToFolder={addToFolder}
-                        onRemoveFromFolder={removeFromFolder}
-                        onCreateFolder={() => openCreateFolderDialog([r.id])}
-                        onDragStart={() => setDragging(true)}
-                        onDragEnd={() => setDragging(false)}
-                      />
-                    ))}
+                    {(() => {
+                      const order = filtered.map((x) => x.id);
+                      return filtered.map((r) => (
+                        <CollectionCard
+                          key={r.id}
+                          reference={r}
+                          folders={folders}
+                          inFolderIds={foldersForReference(r.id)}
+                          selected={selected.has(r.id)}
+                          selectionMode={selectionMode}
+                          onToggleSelect={toggleSelect}
+                          onAddToFolder={addToFolder}
+                          onRemoveFromFolder={removeFromFolder}
+                          onCreateFolder={() => openCreateFolderDialog([r.id])}
+                          onDragStart={() => setDragging(true)}
+                          onDragEnd={() => setDragging(false)}
+                          orderedIds={order}
+                        />
+                      ));
+                    })()}
                   </div>
                 )}
               </div>
