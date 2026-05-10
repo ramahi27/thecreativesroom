@@ -216,9 +216,9 @@ Return ONLY via the tool call.`;
     matches = matches.filter((m) => validIds.has(m.id));
 
     // Persist brief reasoning into each matched reference's metadata for future learning.
-    // Stored as a `brief_reason:` prefixed tag (deduped) and appended to notes.
+    // Restricted to admins to prevent arbitrary content injection from any signed-in user.
     const briefSnippet = brief.trim().slice(0, 120).replace(/\s+/g, " ");
-    await Promise.all(
+    if (isAdmin) await Promise.all(
       matches.map(async (m) => {
         try {
           const { data: cur } = await supabase
