@@ -1,0 +1,1 @@
+GRANT SELECT (tag_synonyms) ON public.references TO anon;
