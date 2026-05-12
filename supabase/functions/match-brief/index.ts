@@ -46,13 +46,16 @@ Deno.serve(async (req) => {
     );
 
     // Only admins can have brief reasoning persisted back into reference metadata.
-    const { data: adminRow } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    const isAdmin = !!adminRow;
+    let isAdmin = false;
+    if (userId) {
+      const { data: adminRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", "admin")
+        .maybeSingle();
+      isAdmin = !!adminRow;
+    }
 
     // Fetch all published refs (compact)
     const { data: refs, error } = await supabase
