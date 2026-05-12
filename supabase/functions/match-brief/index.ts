@@ -9,29 +9,25 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Require an authenticated user — this endpoint is expensive (AI calls)
-    // and previously also wrote arbitrary user-supplied text into published refs.
+    // Auth is OPTIONAL — anonymous visitors can run brief matching to discover
+    // references. A valid signed-in user is only required to *persist* the
+    // brief reasoning back into reference metadata (admins only, see below).
     const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    let userId: string | null = null;
+    if (authHeader?.startsWith("Bearer ")) {
+      try {
+        const authClient = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_ANON_KEY")!,
+          { global: { headers: { Authorization: authHeader } } }
+        );
+        const token = authHeader.replace("Bearer ", "");
+        const { data: userData } = await authClient.auth.getUser(token);
+        userId = userData?.user?.id ?? null;
+      } catch (_) {
+        // Ignore auth errors — treat as anonymous.
+      }
     }
-    const authClient = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userErr } = await authClient.auth.getUser(token);
-    if (userErr || !userData?.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const userId = userData.user.id;
 
     const { brief } = await req.json();
     if (!brief || typeof brief !== "string" || brief.trim().length < 3) {
