@@ -1,14 +1,15 @@
-import { useEffect } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { PageMeta } from "@/components/PageMeta";
 
 const Terms = () => {
-  useEffect(() => {
-    document.title = "Terms of Service — The Creatives Room";
-  }, []);
-
   return (
     <div className="min-h-screen grain flex flex-col">
+      <PageMeta
+        title="Terms of Service — The Creatives Room"
+        description="The rules of the road for using The Creatives Room — a non-commercial, community-curated archive of creative work."
+        path="/terms"
+      />
       <SiteHeader />
       <main className="container max-w-3xl py-16 flex-1">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">

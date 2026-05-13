@@ -17,6 +17,7 @@ import { Search, Plus, Bookmark, Compass, ArrowUpRight, X, Sparkles, Loader2 } f
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { PageMeta } from "@/components/PageMeta";
 
 type MediaFilter = "all" | "videos" | "photos";
 type SortBy = "default" | "newest" | "oldest" | "campaign_newest" | "campaign_oldest" | "title";
@@ -131,11 +132,6 @@ const Index = () => {
   };
 
   useEffect(() => {
-    document.title = "The Creatives Room";
-    const meta = document.querySelector('meta[name="description"]');
-    if (meta)
-      meta.setAttribute("content", "A curated archive of ad films, commercials, and visual references for creatives.");
-
     (async () => {
       const { list, total } = await fetchPage(0);
       setRefs(shuffle(list));
@@ -228,6 +224,11 @@ const Index = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta
+        title="The Creatives Room — Digital Reference Archive for Creatives"
+        description="A curated archive of ad films, commercials, and photography references for creatives. Search by brief, browse, and save inspiration."
+        path="/"
+      />
       <SiteHeader />
 
       {/* Hero */}

@@ -1,14 +1,15 @@
-import { useEffect } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { PageMeta } from "@/components/PageMeta";
 
 const Privacy = () => {
-  useEffect(() => {
-    document.title = "Privacy Policy — The Creatives Room";
-  }, []);
-
   return (
     <div className="min-h-screen grain flex flex-col">
+      <PageMeta
+        title="Privacy Policy — The Creatives Room"
+        description="How The Creatives Room collects, uses, and protects your data on our curated archive of ad film and photo references."
+        path="/privacy"
+      />
       <SiteHeader />
       <main className="container max-w-3xl py-16 flex-1">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">
