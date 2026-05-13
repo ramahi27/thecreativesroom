@@ -12,6 +12,8 @@ interface Props {
   /** Ordered list of reference IDs visible on the calling page, used to
    *  drive prev/next navigation inside the detail modal. */
   orderedIds?: string[];
+  /** Disable lazy loading for above-the-fold images (improves LCP). */
+  priority?: boolean;
 }
 
 // Smart object-position heuristic: faces, headlines, and main subjects in
