@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2 } from "lucide-r
 import { consumeModalReturn, clearModalReturn, peekModalReturn, getModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 import { ZoomableImage } from "@/components/ZoomableImage";
+import { useJsonLd } from "@/hooks/useJsonLd";
 
 interface Props {
   id: string;
@@ -65,6 +66,26 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       cancelled = true;
     };
   }, [id]);
+
+  // JSON-LD CreativeWork schema for rich search results
+  const jsonLd = useMemo(() => {
+    if (!r) return null;
+    const creator = r.brand || r.agency;
+    const image = r.thumbnail_url || r.media_url || undefined;
+    return {
+      "@context": "https://schema.org",
+      "@type": "CreativeWork",
+      name: r.title,
+      url: `https://thecreativesroom.com/ref/${r.id}`,
+      ...(image ? { image } : {}),
+      ...(creator ? { creator: { "@type": "Organization", name: creator } } : {}),
+      ...(r.brand ? { brand: { "@type": "Brand", name: r.brand } } : {}),
+      ...(r.year ? { datePublished: String(r.year) } : {}),
+      ...(r.categories?.length ? { genre: r.categories } : {}),
+      ...(r.tags?.length ? { keywords: r.tags.join(", ") } : {}),
+    };
+  }, [r]);
+  useJsonLd(jsonLd, "reference-detail");
 
   // Build a similarity-scored ordering across all refs. Used as a fallback
   // for prev/next when the user didn't open the modal from a known list,
