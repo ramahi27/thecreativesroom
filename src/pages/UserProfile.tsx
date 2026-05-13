@@ -34,6 +34,25 @@ const UserProfile = () => {
     if (profile) document.title = `@${profile.username} — The Creatives Room`;
   }, [profile]);
 
+  // JSON-LD ProfilePage schema
+  const jsonLd = useMemo(() => {
+    if (!profile) return null;
+    const url = `https://thecreativesroom.com/u/${profile.username}`;
+    return {
+      "@context": "https://schema.org",
+      "@type": "ProfilePage",
+      url,
+      mainEntity: {
+        "@type": "Person",
+        name: (profile as any).display_name || profile.username,
+        alternateName: `@${profile.username}`,
+        url,
+        ...((profile as any).avatar_url ? { image: (profile as any).avatar_url } : {}),
+      },
+    };
+  }, [profile]);
+  useJsonLd(jsonLd, "profile-page");
+
   useEffect(() => {
     if (!profile?.user_id) return;
     let cancelled = false;
