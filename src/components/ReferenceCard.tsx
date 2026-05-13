@@ -29,7 +29,7 @@ function smartPosition(w: number, h: number): string {
   return "center";                        // ultra-wide / cinematic
 }
 
-export function ReferenceCard({ reference: r, orderedIds }: Props) {
+export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
   // For photo projects, always prefer the first photo as the thumbnail.
   const firstMediaImage = (() => {
     const items = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
