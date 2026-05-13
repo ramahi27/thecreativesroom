@@ -62,7 +62,8 @@ export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
           <img
             src={thumb}
             alt={r.title}
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            {...(priority ? { fetchpriority: "high" } : {})}
             onLoad={(e) => {
               const img = e.currentTarget;
               setPos(smartPosition(img.naturalWidth, img.naturalHeight));
