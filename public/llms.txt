@@ -1,0 +1,19 @@
+# The Creatives Room
+
+> A curated platform where creative professionals discover, save, and share creative references — from ad films to visual campaigns.
+
+The Creatives Room is a community-driven archive for advertising and film creatives. Members can browse a growing collection of creative references, organize them into personal folders, follow other creatives, and get AI-powered inspiration by matching campaign briefs to relevant work.
+
+## Pages
+
+- [/](/): Browse the creative reference archive with filtering by category, media type, and search.
+- [/users](/users): Explore creatives on the platform and discover their collections.
+- [/u/:username](/u/:username): Creative profiles showcasing their public folders and curated references.
+- [/u/:username/:folderSlug](/u/:username/:folderSlug): Public folders and collections of creative references curated by a member.
+- [/welcome](/welcome): Getting started guide for new members joining the community.
+- [/privacy](/privacy): Privacy policy and data handling practices.
+- [/terms](/terms): Terms of service and community guidelines.
+
+## Optional
+
+- [Sitemap](/sitemap.xml): Full site index for search engines.
