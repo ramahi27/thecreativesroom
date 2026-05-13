@@ -13,6 +13,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2 } from "lucide-r
 import { consumeModalReturn, clearModalReturn, peekModalReturn, getModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 import { ZoomableImage } from "@/components/ZoomableImage";
+import { useJsonLd } from "@/hooks/useJsonLd";
 
 interface Props {
   id: string;
