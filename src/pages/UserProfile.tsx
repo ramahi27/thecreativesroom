@@ -16,6 +16,7 @@ import Bookmarks from "@/pages/Bookmarks";
 import type { Reference } from "@/lib/references";
 import type { Folder } from "@/hooks/useFolders";
 import { useJsonLd } from "@/hooks/useJsonLd";
+import { PageMeta } from "@/components/PageMeta";
 
 type FolderWithRefs = Folder & { user_id: string; refs: Reference[] };
 
@@ -30,9 +31,7 @@ const UserProfile = () => {
 
   const isOwner = !!user && !!profile && user.id === profile.user_id;
 
-  useEffect(() => {
-    if (profile) document.title = `@${profile.username} — The Creatives Room`;
-  }, [profile]);
+  // Title is set declaratively via PageMeta below.
 
   // JSON-LD ProfilePage schema
   const jsonLd = useMemo(() => {
@@ -160,6 +159,15 @@ const UserProfile = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta
+        title={`@${profile.username} — The Creatives Room`}
+        description={
+          profile.bio?.trim()
+            ? profile.bio.slice(0, 155)
+            : `Browse @${profile.username}'s public folders and creative references on The Creatives Room.`
+        }
+        path={`/u/${profile.username}`}
+      />
       <SiteHeader />
 
       <section className="border-b hairline">
