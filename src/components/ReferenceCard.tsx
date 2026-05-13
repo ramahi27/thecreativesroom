@@ -12,6 +12,8 @@ interface Props {
   /** Ordered list of reference IDs visible on the calling page, used to
    *  drive prev/next navigation inside the detail modal. */
   orderedIds?: string[];
+  /** Disable lazy loading for above-the-fold images (improves LCP). */
+  priority?: boolean;
 }
 
 // Smart object-position heuristic: faces, headlines, and main subjects in
@@ -27,7 +29,7 @@ function smartPosition(w: number, h: number): string {
   return "center";                        // ultra-wide / cinematic
 }
 
-export function ReferenceCard({ reference: r, orderedIds }: Props) {
+export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
   // For photo projects, always prefer the first photo as the thumbnail.
   const firstMediaImage = (() => {
     const items = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
@@ -60,7 +62,8 @@ export function ReferenceCard({ reference: r, orderedIds }: Props) {
           <img
             src={thumb}
             alt={r.title}
-            loading="lazy"
+            loading={priority ? "eager" : "lazy"}
+            {...(priority ? { fetchpriority: "high" } : {})}
             onLoad={(e) => {
               const img = e.currentTarget;
               setPos(smartPosition(img.naturalWidth, img.naturalHeight));

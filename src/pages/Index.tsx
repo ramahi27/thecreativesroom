@@ -529,8 +529,8 @@ const Index = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {(() => {
                 const order = filtered.map((x) => x.id);
-                return filtered.map((r) => (
-                  <ReferenceCard key={r.id} reference={r} orderedIds={order} />
+                return filtered.map((r, i) => (
+                  <ReferenceCard key={r.id} reference={r} orderedIds={order} priority={i < 4} />
                 ));
               })()}
             </div>
