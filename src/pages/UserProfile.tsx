@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import Bookmarks from "@/pages/Bookmarks";
 import type { Reference } from "@/lib/references";
 import type { Folder } from "@/hooks/useFolders";
+import { useJsonLd } from "@/hooks/useJsonLd";
 
 type FolderWithRefs = Folder & { user_id: string; refs: Reference[] };
 
