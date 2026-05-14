@@ -287,7 +287,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(o) => !o && returnToOpener()}>
-      <DialogContent className="max-w-[1600px] w-[96vw] max-h-[95vh] overflow-y-auto p-0 bg-background grain">
+      <DialogContent className="max-w-[1600px] w-[96vw] max-h-[95vh] overflow-x-hidden overflow-y-auto p-0 bg-background grain">
         {/* Prev / Next side arrows */}
         {prev && (
           <button
