@@ -431,7 +431,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       ▶ Watch here
                     </button>
                   )}
-                  {r.source_url && (
+                  {r.source_url && r.type === "video" && (
                     <a
                       href={r.source_url}
                       target="_blank"
