@@ -68,6 +68,32 @@ const UserFolder = () => {
     if (folder && profile) document.title = `${folder.name} · @${profile.username} — The Creatives Room`;
   }, [folder, profile]);
 
+  // JSON-LD CollectionPage schema for rich search results
+  const jsonLd = useMemo(() => {
+    if (!folder || !profile) return null;
+    return {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      name: folder.name,
+      url: `https://thecreativesroom.com/u/${profile.username}/${folderSlug}`,
+      creator: {
+        "@type": "Person",
+        name: profile.username,
+        url: `https://thecreativesroom.com/u/${profile.username}`,
+      },
+      mainEntity: {
+        "@type": "ItemList",
+        itemListElement: refs.map((r, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          url: `https://thecreativesroom.com/ref/${r.id}`,
+          name: r.title,
+        })),
+      },
+    };
+  }, [folder, profile, folderSlug, refs]);
+  useJsonLd(jsonLd, "user-folder");
+
   if (pLoading || loading) {
     return (
       <div className="min-h-screen grain">
