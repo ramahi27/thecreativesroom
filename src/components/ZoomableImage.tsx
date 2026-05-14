@@ -155,7 +155,7 @@ export function ZoomableImage({ src, alt, className, scale = 2.25 }: Props) {
         src={src}
         alt={alt}
         draggable={false}
-        className="w-full bg-black object-contain max-h-[70vh] md:max-h-[calc(95vh-16rem)] mx-auto select-none"
+        className="w-full h-auto bg-black object-contain md:max-h-[calc(95vh-16rem)] mx-auto select-none"
         style={{
           objectFit: "contain",
           transform: zoomed ? `scale(${scale})` : "scale(1)",

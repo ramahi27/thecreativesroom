@@ -21,8 +21,26 @@
     <priority>0.3</priority>
   </url>
   <url>
+    <loc>https://thecreativesroom.com/ref/7795b6e9-87a1-469d-b4b2-1d92446f81a3</loc>
+    <lastmod>2026-05-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/8302e97b-0b31-4fe3-9d09-a69b79411444</loc>
+    <lastmod>2026-05-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/09e5d01d-be75-4f65-bd01-2fe115606847</loc>
+    <lastmod>2026-05-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://thecreativesroom.com/ref/04178b49-d34f-4e63-81c9-4518137733c8</loc>
-    <lastmod>2026-05-13</lastmod>
+    <lastmod>2026-05-14</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -123,6 +141,12 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://thecreativesroom.com/ref/390688ba-5cc2-44e9-bfd2-011edcd50e82</loc>
+    <lastmod>2026-05-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://thecreativesroom.com/ref/94b60cd8-8f74-47b7-9a3f-30d9e8f819af</loc>
     <lastmod>2026-05-12</lastmod>
     <changefreq>weekly</changefreq>
@@ -143,6 +167,18 @@
   <url>
     <loc>https://thecreativesroom.com/ref/7bafb5c1-2209-4f34-87da-c41e862649bf</loc>
     <lastmod>2026-05-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/84063124-f69a-4241-b1e7-f51fbb464c0a</loc>
+    <lastmod>2026-05-14</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/70e8a5a7-79ab-42fb-9d56-b7744420c091</loc>
+    <lastmod>2026-05-14</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1222,7 +1258,7 @@
   </url>
   <url>
     <loc>https://thecreativesroom.com/ref/e447c98a-d89c-49da-a204-c32f6ab813db</loc>
-    <lastmod>2026-05-12</lastmod>
+    <lastmod>2026-05-14</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -1887,31 +1923,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/e4062739-fcae-4ecc-9105-3f6c4fe1acc7</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/c7284b87-520b-4990-a31e-50b58dab735e</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/d8c435dc-0059-4dd2-a0a8-dad62a66f653</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/02442442-e13c-4745-931a-2b26b8e6d51b</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/1094c1de-ed93-4cc3-9f0e-2603e509fc54</loc>
+    <loc>https://thecreativesroom.com/ref/939fc751-7053-4816-92b0-594e62c2ea77</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1923,13 +1935,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/b06c5bb0-1668-48fa-91ea-9d198999a4b3</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/f069b980-5c05-4cac-bfc3-5bd4bdb19e40</loc>
+    <loc>https://thecreativesroom.com/ref/d8c435dc-0059-4dd2-a0a8-dad62a66f653</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1941,25 +1947,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/075882ca-1e0f-4b15-b9e9-c51e43764e22</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/acb9d07f-6be2-4d2a-ae17-b703796d87d3</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/939fc751-7053-4816-92b0-594e62c2ea77</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/7bb41862-bf58-4ef6-a252-535012655ea9</loc>
+    <loc>https://thecreativesroom.com/ref/f05281b8-500d-4986-a3e6-11cd8c4f791b</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -1971,19 +1959,67 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/f05281b8-500d-4986-a3e6-11cd8c4f791b</loc>
+    <loc>https://thecreativesroom.com/ref/e4062739-fcae-4ecc-9105-3f6c4fe1acc7</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/7fe23776-00e2-4efa-af16-d0cb1b9ccab4</loc>
+    <loc>https://thecreativesroom.com/ref/7bb41862-bf58-4ef6-a252-535012655ea9</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/c7284b87-520b-4990-a31e-50b58dab735e</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://thecreativesroom.com/ref/8cdd0aa2-10ef-4598-91fb-0a873aa791bd</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/02442442-e13c-4745-931a-2b26b8e6d51b</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/075882ca-1e0f-4b15-b9e9-c51e43764e22</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/b06c5bb0-1668-48fa-91ea-9d198999a4b3</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/1094c1de-ed93-4cc3-9f0e-2603e509fc54</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/f069b980-5c05-4cac-bfc3-5bd4bdb19e40</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/acb9d07f-6be2-4d2a-ae17-b703796d87d3</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/7fe23776-00e2-4efa-af16-d0cb1b9ccab4</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2367,43 +2403,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/64464c0e-3caf-4575-be8e-97fd3631e300</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://thecreativesroom.com/ref/9cff347d-a794-4828-9a32-fb665c2524cc</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/c0df4118-52d3-4553-96af-1502a863e0ed</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/565271bf-8900-44cb-9ea2-a0abbae859bc</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/0905b9c2-0455-43e8-9ab1-d4a457f15fa1</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/a0a0e3a8-4d75-433c-a50a-e5b801ae0a2d</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/ab4ed4dd-8faa-4b58-9779-d1cee394f149</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2415,13 +2415,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/a676403f-0d6e-48cc-b235-ca2d411c3dc9</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/b624c1fa-b048-462a-a594-303d16301364</loc>
+    <loc>https://thecreativesroom.com/ref/ab4ed4dd-8faa-4b58-9779-d1cee394f149</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2433,37 +2427,19 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/95d84b18-ea11-4b1c-932a-30ad4af5a150</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/cf6ebd5c-a14e-484a-aee0-c8c20e552ed3</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://thecreativesroom.com/ref/8fb7c6cc-5067-4ea1-b252-f458c0304b01</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/3d3b801d-b0b8-40bb-bd8e-24306906b89a</loc>
+    <loc>https://thecreativesroom.com/ref/c0df4118-52d3-4553-96af-1502a863e0ed</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/64964ba5-777a-45a9-b2fc-aaf619472482</loc>
-    <lastmod>2026-05-11</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/ac478fb0-6995-4c8b-aab0-5ab182ae53b0</loc>
+    <loc>https://thecreativesroom.com/ref/64464c0e-3caf-4575-be8e-97fd3631e300</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2475,13 +2451,73 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://thecreativesroom.com/ref/53fbcd3e-37c3-49f4-ae26-6fd66eeb9031</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/cf6ebd5c-a14e-484a-aee0-c8c20e552ed3</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/ac478fb0-6995-4c8b-aab0-5ab182ae53b0</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/a676403f-0d6e-48cc-b235-ca2d411c3dc9</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://thecreativesroom.com/ref/26dd0b00-0e46-41c0-8e47-8e0841da9a0a</loc>
     <lastmod>2026-05-11</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/53fbcd3e-37c3-49f4-ae26-6fd66eeb9031</loc>
+    <loc>https://thecreativesroom.com/ref/565271bf-8900-44cb-9ea2-a0abbae859bc</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/95d84b18-ea11-4b1c-932a-30ad4af5a150</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/64964ba5-777a-45a9-b2fc-aaf619472482</loc>
+    <lastmod>2026-05-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/3d3b801d-b0b8-40bb-bd8e-24306906b89a</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/a0a0e3a8-4d75-433c-a50a-e5b801ae0a2d</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/b624c1fa-b048-462a-a594-303d16301364</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/0905b9c2-0455-43e8-9ab1-d4a457f15fa1</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2517,19 +2553,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/cfc78e12-de10-4b9c-9016-33058d6dd820</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://thecreativesroom.com/ref/d43390d5-5727-4b6c-9b15-fb04d694fa34</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/ecb3faf0-5eec-4127-b5c0-d555f9b33a69</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2541,13 +2565,25 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/ba35aea6-a697-4065-ab1c-912c80c5d429</loc>
+    <loc>https://thecreativesroom.com/ref/ecb3faf0-5eec-4127-b5c0-d555f9b33a69</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/cfc78e12-de10-4b9c-9016-33058d6dd820</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://thecreativesroom.com/ref/2673d70c-7c77-4a57-8980-9d34fbf214e2</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/ba35aea6-a697-4065-ab1c-912c80c5d429</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2565,18 +2601,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/19a1ed9f-69cb-4f32-b96d-45d6e7c8d118</loc>
-    <lastmod>2026-05-12</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/e2b7d684-8f40-400e-b1a1-72637b627048</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://thecreativesroom.com/ref/d01b49b6-9d86-4205-8d59-d01c058788b4</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
@@ -2584,12 +2608,6 @@
   </url>
   <url>
     <loc>https://thecreativesroom.com/ref/af310d61-b942-4868-bd47-d7b5add2af4e</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/62e3452e-5979-4fe0-8070-a286e9854a43</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2603,6 +2621,24 @@
   <url>
     <loc>https://thecreativesroom.com/ref/3fe5cd6a-75d1-48d2-9999-b04da620d02a</loc>
     <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/62e3452e-5979-4fe0-8070-a286e9854a43</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/e2b7d684-8f40-400e-b1a1-72637b627048</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/19a1ed9f-69cb-4f32-b96d-45d6e7c8d118</loc>
+    <lastmod>2026-05-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2625,31 +2661,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/984aa859-391e-4103-bb4a-9cafa32d21b0</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/41562c64-7b88-4986-a49d-a755ba4c5338</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/71d83495-df28-4ba8-84c4-0737ef493f6c</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://thecreativesroom.com/ref/44d06de2-4246-410e-bfdf-a9dc2c2fc649</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/1463ea74-7a28-4567-8354-69d0ac5c48c3</loc>
+    <loc>https://thecreativesroom.com/ref/984aa859-391e-4103-bb4a-9cafa32d21b0</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2661,13 +2679,25 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://thecreativesroom.com/ref/41562c64-7b88-4986-a49d-a755ba4c5338</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://thecreativesroom.com/ref/efe18ac6-53a2-4e9b-8ce9-60cc0f5bfe5c</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/437a2bd1-d7e6-46c7-a20d-6b081dc35fc3</loc>
+    <loc>https://thecreativesroom.com/ref/1463ea74-7a28-4567-8354-69d0ac5c48c3</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/71d83495-df28-4ba8-84c4-0737ef493f6c</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2685,13 +2715,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/c676d9ee-89c6-4512-8e56-cbc6440f86b4</loc>
+    <loc>https://thecreativesroom.com/ref/437a2bd1-d7e6-46c7-a20d-6b081dc35fc3</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/4c8b7533-5f44-4d0a-8664-91f47a0918d5</loc>
+    <loc>https://thecreativesroom.com/ref/1b873438-ef86-4a3f-9485-c32b8db5e733</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2703,7 +2733,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/1b873438-ef86-4a3f-9485-c32b8db5e733</loc>
+    <loc>https://thecreativesroom.com/ref/4c8b7533-5f44-4d0a-8664-91f47a0918d5</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/c676d9ee-89c6-4512-8e56-cbc6440f86b4</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2721,7 +2757,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/6612f9db-a147-4a36-8e10-733efff58975</loc>
+    <loc>https://thecreativesroom.com/ref/72f0986e-6813-457e-ba52-ee16c6824979</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2733,13 +2769,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/9db135a5-2ae4-4712-b718-8b87b2c14f9a</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/72f0986e-6813-457e-ba52-ee16c6824979</loc>
+    <loc>https://thecreativesroom.com/ref/6612f9db-a147-4a36-8e10-733efff58975</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2751,13 +2781,13 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/87e44d19-363a-46c5-be7d-be155c6019b0</loc>
+    <loc>https://thecreativesroom.com/ref/9db135a5-2ae4-4712-b718-8b87b2c14f9a</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/0efa150b-ef0d-4729-a142-7779bc665d7f</loc>
+    <loc>https://thecreativesroom.com/ref/87e44d19-363a-46c5-be7d-be155c6019b0</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2769,19 +2799,13 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://thecreativesroom.com/ref/0efa150b-ef0d-4729-a142-7779bc665d7f</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://thecreativesroom.com/ref/28c7d987-1e3d-4c31-b5ce-2270f972b7a6</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/07d42b5a-d73a-46c6-8c8b-f7d2d59ce5c4</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/5f15b7e0-b322-4bdb-8677-db92079ff9c1</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2793,31 +2817,19 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://thecreativesroom.com/ref/5f15b7e0-b322-4bdb-8677-db92079ff9c1</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/07d42b5a-d73a-46c6-8c8b-f7d2d59ce5c4</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://thecreativesroom.com/ref/6052d2e7-bbc2-490c-a70d-fe07ea2f760d</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/f5cc06dd-2b8f-4d9c-8235-40d220b67a62</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/b6e077b4-e35d-4412-bbd1-4bc10a811d33</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/61cee094-63f7-48d1-bdf4-007fa0bfef20</loc>
-    <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/047cc7f6-3ab0-4c23-8f01-b98658605f3e</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2829,13 +2841,25 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/5e451f9a-c26a-4250-91b9-3fcd869f488d</loc>
+    <loc>https://thecreativesroom.com/ref/634e83e2-e4b2-4961-80b5-4346352a7df2</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/df7f3459-306a-4db4-a7a8-aa5160a998a8</loc>
+    <loc>https://thecreativesroom.com/ref/61cee094-63f7-48d1-bdf4-007fa0bfef20</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/f5cc06dd-2b8f-4d9c-8235-40d220b67a62</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/5e451f9a-c26a-4250-91b9-3fcd869f488d</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2847,19 +2871,31 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/634e83e2-e4b2-4961-80b5-4346352a7df2</loc>
+    <loc>https://thecreativesroom.com/ref/b6e077b4-e35d-4412-bbd1-4bc10a811d33</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/396e24f5-2e77-4f76-b620-19f93c3d7460</loc>
-    <lastmod>2026-05-08</lastmod>
+    <loc>https://thecreativesroom.com/ref/df7f3459-306a-4db4-a7a8-aa5160a998a8</loc>
+    <lastmod>2026-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/047cc7f6-3ab0-4c23-8f01-b98658605f3e</loc>
+    <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://thecreativesroom.com/ref/a55c1719-f7b2-46c0-8be3-e7e97d94a546</loc>
+    <lastmod>2026-05-08</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/396e24f5-2e77-4f76-b620-19f93c3d7460</loc>
     <lastmod>2026-05-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2871,7 +2907,7 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/82bdd341-2063-478f-afbf-e308af00238e</loc>
+    <loc>https://thecreativesroom.com/ref/5917ab64-3b39-4fbc-8112-60a7c5b3eb7d</loc>
     <lastmod>2026-05-09</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
@@ -2883,14 +2919,8 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/5917ab64-3b39-4fbc-8112-60a7c5b3eb7d</loc>
+    <loc>https://thecreativesroom.com/ref/82bdd341-2063-478f-afbf-e308af00238e</loc>
     <lastmod>2026-05-09</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/13695229-3a4d-44b1-89ba-c0f624a6d9d4</loc>
-    <lastmod>2026-05-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -2902,6 +2932,12 @@
   </url>
   <url>
     <loc>https://thecreativesroom.com/ref/30709392-9636-4e0c-af9e-e02de8898694</loc>
+    <lastmod>2026-05-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/13695229-3a4d-44b1-89ba-c0f624a6d9d4</loc>
     <lastmod>2026-05-12</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
