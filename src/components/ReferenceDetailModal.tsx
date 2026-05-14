@@ -422,7 +422,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   </div>
                 )}
 
-                <div className="mt-4 flex flex-wrap gap-3">
+                <div className="mt-4 flex flex-wrap gap-3 [&>*]:min-w-0 [&>*]:max-w-full">
                   {embedUrl && !currentIsEmbed && (
                     <button
                       onClick={() => setActiveMedia(uploaded.length)}
