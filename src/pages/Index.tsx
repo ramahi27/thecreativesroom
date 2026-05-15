@@ -18,6 +18,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PageMeta } from "@/components/PageMeta";
+import { CyclingPlaceholder } from "@/components/CyclingPlaceholder";
 
 type MediaFilter = "all" | "videos" | "photos";
 type SortBy = "default" | "newest" | "oldest" | "campaign_newest" | "campaign_oldest" | "title";
