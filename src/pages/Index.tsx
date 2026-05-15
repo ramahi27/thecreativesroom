@@ -40,6 +40,7 @@ const Index = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortBy>("default");
   const [search, setSearch] = useState("");
+  const [briefFocused, setBriefFocused] = useState(false);
 
   // Brief matching
   const [brief, setBrief] = useState("");
