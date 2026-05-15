@@ -18,6 +18,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PageMeta } from "@/components/PageMeta";
+import { CyclingPlaceholder } from "@/components/CyclingPlaceholder";
 
 type MediaFilter = "all" | "videos" | "photos";
 type SortBy = "default" | "newest" | "oldest" | "campaign_newest" | "campaign_oldest" | "title";
@@ -39,6 +40,7 @@ const Index = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortBy>("default");
   const [search, setSearch] = useState("");
+  const [briefFocused, setBriefFocused] = useState(false);
 
   // Brief matching
   const [brief, setBrief] = useState("");
@@ -342,9 +344,12 @@ const Index = () => {
               <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Brief
             </span>
             <div className="relative flex-1 min-w-[240px]">
+              <CyclingPlaceholder active={!briefFocused && !brief.trim()} className="items-start" />
               <Textarea
                 value={brief}
                 onChange={(e) => setBrief(e.target.value)}
+                onFocus={() => setBriefFocused(true)}
+                onBlur={() => setBriefFocused(false)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
@@ -352,7 +357,7 @@ const Index = () => {
                   }
                 }}
                 rows={3}
-                placeholder={"What do you need references for?\ne.g. I'm looking for a luxury fragrance commercial with a dark, cinematic, intimate tone"}
+                placeholder=""
                 className="pr-9 bg-secondary border-0 font-mono text-sm leading-snug placeholder:normal-case resize-none py-3"
                 disabled={matching}
               />
