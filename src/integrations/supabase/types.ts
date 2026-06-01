@@ -201,6 +201,63 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_refs: {
+        Row: {
+          agency: string | null
+          award_level: string | null
+          brand: string | null
+          category: string | null
+          created_at: string
+          curatorial_note: string | null
+          format: string | null
+          id: string
+          image_url: string | null
+          source: string
+          source_url: string
+          status: string
+          tags: string[]
+          title: string
+          updated_at: string
+          year: number | null
+        }
+        Insert: {
+          agency?: string | null
+          award_level?: string | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          curatorial_note?: string | null
+          format?: string | null
+          id?: string
+          image_url?: string | null
+          source?: string
+          source_url: string
+          status?: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+          year?: number | null
+        }
+        Update: {
+          agency?: string | null
+          award_level?: string | null
+          brand?: string | null
+          category?: string | null
+          created_at?: string
+          curatorial_note?: string | null
+          format?: string | null
+          id?: string
+          image_url?: string | null
+          source?: string
+          source_url?: string
+          status?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          year?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
