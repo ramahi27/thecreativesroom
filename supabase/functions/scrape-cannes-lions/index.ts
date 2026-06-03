@@ -33,20 +33,17 @@ interface Scraped {
 }
 
 function buildStartUrls(categories: string[]): { url: string; label: string }[] {
+  const map: Record<string, { url: string; label: string }[]> = {
+    film: [
+      { url: "https://www.lovethework.com/en/awards/winners-shortlists/cannes-lions/film", label: "Film" },
+      { url: "https://www.lovethework.com/en/awards/winners-shortlists/cannes-lions/film-craft", label: "Film Craft" },
+    ],
+    print: [{ url: "https://www.lovethework.com/en/awards/winners-shortlists/cannes-lions/print-publishing", label: "Print & Publishing" }],
+    outdoor: [{ url: "https://www.lovethework.com/en/awards/winners-shortlists/cannes-lions/outdoor", label: "Outdoor" }],
+    photography: [{ url: "https://www.lovethework.com/en/awards/winners-shortlists/cannes-lions/photography", label: "Photography" }],
+  };
   const out: { url: string; label: string }[] = [];
-  if (categories.includes("film")) {
-    out.push({ url: "https://www.lovethework.com/work-awards/results/cannes-lions/film", label: "Film" });
-    out.push({ url: "https://www.lovethework.com/work-awards/results/cannes-lions/film-craft", label: "Film Craft" });
-  }
-  if (categories.includes("print")) {
-    out.push({ url: "https://www.lovethework.com/work-awards/results/cannes-lions/print-publishing", label: "Print & Publishing" });
-  }
-  if (categories.includes("outdoor")) {
-    out.push({ url: "https://www.lovethework.com/work-awards/results/cannes-lions/outdoor", label: "Outdoor" });
-  }
-  if (categories.includes("photography")) {
-    out.push({ url: "https://www.lovethework.com/work-awards/results/cannes-lions/photography", label: "Photography" });
-  }
+  for (const c of categories) if (map[c]) out.push(...map[c]);
   return out;
 }
 
@@ -62,89 +59,72 @@ function categoryFromUrl(url: string): string {
 function parsePage(html: string, requestUrl: string): Scraped[] {
   const $ = cheerio.load(html);
   const results: Scraped[] = [];
+  const urlCategory = categoryFromUrl(requestUrl);
+  const format: "video" | "photo" = urlCategory.includes("Film") ? "video" : "photo";
 
-  const selector = [
-    '[class*="WorkCard"]',
-    '[class*="work-card"]',
-    '[class*="EntryCard"]',
-    '[class*="entry-card"]',
-    '[class*="ResultCard"]',
-    '[class*="result-card"]',
-    'article',
-    '[data-testid*="card"]',
-    '[class*="Card"]',
-  ].join(", ");
-
-  const entries = $(selector);
-
-  entries.each((_i, el) => {
+  $("h3, h2").each((_i, el) => {
     const $el = $(el);
-    const badgeText = $el
-      .find('[class*="badge"], [class*="award"], [class*="lion"], [class*="medal"]')
-      .text().trim().toLowerCase();
+    const $card = $el.closest('a, [class*="card"], [class*="Card"], article, section > div');
+    const containerText = ($card.length ? $card.text() : $el.parent().text()).toLowerCase();
 
-    const awardLevel = badgeText.includes("grand prix")
+    const awardLevel = containerText.includes("grand prix")
       ? "Grand Prix"
-      : badgeText.includes("gold")
+      : containerText.includes("gold cannes")
       ? "Gold Lion"
       : null;
     if (!awardLevel) return;
 
-    const title = $el
-      .find('[class*="title"], [class*="name"], [class*="campaign"], h2, h3, h4')
-      .first().text().trim();
+    const title = $el.text().trim();
+    if (!title || title.length < 2) return;
 
-    const brand = $el
-      .find('[class*="brand"], [class*="advertiser"], [class*="client"]')
-      .first().text().trim();
+    const metaText =
+      $el.next().text().trim() ||
+      ($card.length ? $card.find('p, [class*="meta"], [class*="brand"], [class*="client"]').first().text().trim() : "");
+    const [brandRaw, agencyRaw] = metaText.split(",");
+    const brand = (brandRaw || "").trim();
+    const agency = (agencyRaw || "").trim();
 
-    const agency = $el
-      .find('[class*="agency"], [class*="entrant"]')
-      .first().text().trim();
-
-    const imgEl = $el.find("img").first();
-    const imageUrl =
-      imgEl.attr("data-src") ||
-      imgEl.attr("src") ||
-      $el.find('[class*="thumbnail"], [class*="image"]').first().attr("data-src") ||
-      $el.find('[class*="thumbnail"], [class*="image"]').first().attr("src") ||
+    const $imgScope = $card.length ? $card : $el.closest("div");
+    const imgSrc =
+      $imgScope.find("img").first().attr("src") ||
+      $imgScope.find("img").first().attr("data-src") ||
       null;
 
-    const href = $el.find("a").first().attr("href") || "";
-    const sourceUrl = href.startsWith("http") ? href : href ? `https://www.lovethework.com${href}` : "";
-    if (!sourceUrl) return;
-
-    const urlCategory = categoryFromUrl(requestUrl);
-    const format: "video" | "photo" = urlCategory.includes("Film") ? "video" : "photo";
-
-    const yearMatch = $el.text().match(/\b(20[0-9]{2})\b/);
-    const year = yearMatch ? parseInt(yearMatch[1]) : null;
-
-    if (!title && !brand) return;
+    const href =
+      ($card.is("a") ? $card.attr("href") : "") ||
+      $card.find("a").first().attr("href") ||
+      $el.closest("a").attr("href") ||
+      "";
+    const sourceUrl = href.startsWith("http")
+      ? href
+      : href
+      ? `https://www.lovethework.com${href}`
+      : "";
 
     results.push({
-      title: title || brand,
-      brand: brand || "",
-      agency: agency || "",
+      title,
+      brand,
+      agency,
       category: urlCategory,
       award_level: awardLevel,
-      image_url: imageUrl,
+      image_url: imgSrc,
       source_url: sourceUrl,
-      year,
+      year: null,
       format,
       tags: ["cannes lions", awardLevel.toLowerCase(), urlCategory.toLowerCase()],
       curatorial_note: `Cannes Lions ${awardLevel} — ${urlCategory}`,
     });
   });
 
-  // Dedupe within the same page by source_url
   const seen = new Set<string>();
   return results.filter((r) => {
+    if (!r.source_url) return true;
     if (seen.has(r.source_url)) return false;
     seen.add(r.source_url);
     return true;
   });
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -233,12 +213,11 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          let results = parsePage(html, url);
+          const rawResults = parsePage(html, url);
+          const rawCount = rawResults.length;
 
-          // Filter by award level selection
-          results = results.filter((r) => awardWhitelist.has(r.award_level));
+          let results = rawResults.filter((r) => awardWhitelist.has(r.award_level));
 
-          // Post-scrape year filter: keep null years; only filter known years outside range
           results = results.filter((r) => {
             if (r.year == null) return true;
             if (r.year < yearFrom || r.year > yearTo) {
@@ -246,6 +225,11 @@ Deno.serve(async (req) => {
               return false;
             }
             return true;
+          });
+
+          send({
+            type: "progress",
+            message: `✓ ${label} page scraped — ${rawCount} raw entries found, ${results.length} passed filters`,
           });
 
           summary.total_fetched += results.length;
