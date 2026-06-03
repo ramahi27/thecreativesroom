@@ -8,7 +8,8 @@ import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
-import { Check, Trash2, Trash, Copy, Sparkles, Link2 } from "lucide-react";
+import { Check, Trash2, Trash, Copy, Sparkles, Link2, ChevronRight } from "lucide-react";
+import { CannesLionsScraper } from "@/components/CannesLionsScraper";
 import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +40,9 @@ const Drafts = () => {
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
   const [scrapeUrl, setScrapeUrl] = useState("");
   const [scraping, setScraping] = useState(false);
+  const [scrapersOpen, setScrapersOpen] = useState(false);
+  
+
   
 
   // Keep URL in sync with filters/page so we can return here with the same view.
@@ -325,6 +329,22 @@ const Drafts = () => {
       </section>
 
       <main className="container py-12">
+        <div className="mb-10 border hairline">
+          <button
+            type="button"
+            onClick={() => setScrapersOpen((v) => !v)}
+            className="w-full flex items-center gap-2 px-4 py-3 font-mono text-[11px] uppercase tracking-widest hover:bg-secondary/50 transition-colors"
+          >
+            <ChevronRight className={`h-3 w-3 transition-transform ${scrapersOpen ? "rotate-90" : ""}`} />
+            <span>Scrapers</span>
+          </button>
+          {scrapersOpen && (
+            <div className="border-t hairline p-6">
+              <CannesLionsScraper />
+            </div>
+          )}
+        </div>
+
         {loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading drafts…</p>
         ) : drafts.length === 0 ? (

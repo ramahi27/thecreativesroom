@@ -1,6 +1,7 @@
-// Cannes Lions scraper (lovethework.com) — streams progress via NDJSON.
-// Standalone: does not touch any other scraper or table besides public.pending_refs.
+// Cannes Lions scraper (lovethework.com) — direct fetch + cheerio parse.
+// Streams progress via NDJSON. Standalone: only writes to public.pending_refs.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import * as cheerio from "https://esm.sh/cheerio@1.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,7 +14,7 @@ interface Body {
   yearFrom?: number;
   yearTo?: number;
   awardLevels?: string[]; // "grand-prix" | "gold"
-  categories?: string[];  // film | print | photography | outdoor | craft
+  categories?: string[];  // film | print | photography | outdoor
   autoApproveGrandPrix?: boolean;
 }
 
@@ -31,79 +32,118 @@ interface Scraped {
   curatorial_note: string;
 }
 
-function buildUrls(yearFrom: number, yearTo: number, awards: string[]) {
-  const urls: { url: string; year: number; award: string }[] = [];
-  for (let y = yearTo; y >= yearFrom; y--) {
-    for (const a of awards) {
-      urls.push({
-        url: `https://www.lovethework.com/en-GB/awards?award=${a}&year=${y}`,
-        year: y,
-        award: a,
-      });
-    }
+function buildStartUrls(categories: string[]): { url: string; label: string }[] {
+  const out: { url: string; label: string }[] = [];
+  if (categories.includes("film")) {
+    out.push({ url: "https://www.lovethework.com/work-awards/results/cannes-lions/film", label: "Film" });
+    out.push({ url: "https://www.lovethework.com/work-awards/results/cannes-lions/film-craft", label: "Film Craft" });
   }
-  return urls;
+  if (categories.includes("print")) {
+    out.push({ url: "https://www.lovethework.com/work-awards/results/cannes-lions/print-publishing", label: "Print & Publishing" });
+  }
+  if (categories.includes("outdoor")) {
+    out.push({ url: "https://www.lovethework.com/work-awards/results/cannes-lions/outdoor", label: "Outdoor" });
+  }
+  if (categories.includes("photography")) {
+    out.push({ url: "https://www.lovethework.com/work-awards/results/cannes-lions/photography", label: "Photography" });
+  }
+  return out;
 }
 
-// Lightweight HTML parser using regex — extracts cards.
-function parsePage(html: string, year: number, award: string, targetCats: string[]): Scraped[] {
-  const out: Scraped[] = [];
-  // Match anchor/article blocks heuristically.
-  const blockRegex = /<(?:article|div)[^>]*class="[^"]*(?:work-card|entry-card|award-entry|WorkCard|EntryCard)[^"]*"[^>]*>([\s\S]*?)<\/(?:article|div)>/gi;
-  let m: RegExpExecArray | null;
-  const matches: string[] = [];
-  while ((m = blockRegex.exec(html)) !== null) matches.push(m[0]);
+function categoryFromUrl(url: string): string {
+  if (url.includes("film-craft")) return "Film Craft";
+  if (url.includes("film")) return "Film";
+  if (url.includes("print")) return "Print & Publishing";
+  if (url.includes("outdoor")) return "Outdoor";
+  if (url.includes("photography")) return "Photography";
+  return "Film";
+}
 
-  // Fallback: try <a> tags pointing to work pages.
-  if (matches.length === 0) {
-    const linkRegex = /<a[^>]+href="(\/en-GB\/work\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
-    while ((m = linkRegex.exec(html)) !== null) matches.push(m[0]);
-  }
+function parsePage(html: string, requestUrl: string): Scraped[] {
+  const $ = cheerio.load(html);
+  const results: Scraped[] = [];
 
-  const txt = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const selector = [
+    '[class*="WorkCard"]',
+    '[class*="work-card"]',
+    '[class*="EntryCard"]',
+    '[class*="entry-card"]',
+    '[class*="ResultCard"]',
+    '[class*="result-card"]',
+    'article',
+    '[data-testid*="card"]',
+    '[class*="Card"]',
+  ].join(", ");
 
-  for (const block of matches) {
-    const titleM = block.match(/<(?:h[1-4]|[^>]*class="[^"]*title[^"]*")[^>]*>([\s\S]*?)<\//i);
-    const brandM = block.match(/class="[^"]*(?:brand|client|advertiser)[^"]*"[^>]*>([\s\S]*?)</i);
-    const agencyM = block.match(/class="[^"]*agency[^"]*"[^>]*>([\s\S]*?)</i);
-    const catM = block.match(/class="[^"]*(?:category|award-type|sector)[^"]*"[^>]*>([\s\S]*?)</i);
-    const imgM = block.match(/<img[^>]+(?:data-src|src)="([^"]+)"/i)
-      || block.match(/background-image:\s*url\(['"]?([^'")]+)/i);
-    const hrefM = block.match(/href="([^"]+)"/i);
+  const entries = $(selector);
 
-    const title = titleM ? txt(titleM[1]) : "";
-    const brand = brandM ? txt(brandM[1]) : "";
-    const agency = agencyM ? txt(agencyM[1]) : "";
-    const category = catM ? txt(catM[1]) : "";
-    const imageUrl = imgM ? imgM[1] : null;
-    const rawHref = hrefM ? hrefM[1] : "";
-    const sourceUrl = rawHref.startsWith("http")
-      ? rawHref
-      : rawHref ? `https://www.lovethework.com${rawHref}` : "";
+  entries.each((_i, el) => {
+    const $el = $(el);
+    const badgeText = $el
+      .find('[class*="badge"], [class*="award"], [class*="lion"], [class*="medal"]')
+      .text().trim().toLowerCase();
 
-    const catLower = category.toLowerCase();
-    const isTarget = targetCats.some((c) => catLower.includes(c.toLowerCase()));
-    if (!title || !isTarget || !sourceUrl) continue;
+    const awardLevel = badgeText.includes("grand prix")
+      ? "Grand Prix"
+      : badgeText.includes("gold")
+      ? "Gold Lion"
+      : null;
+    if (!awardLevel) return;
 
-    out.push({
-      title,
-      brand,
-      agency,
-      category,
-      award_level: award === "grand-prix" ? "Grand Prix" : "Gold Lion",
+    const title = $el
+      .find('[class*="title"], [class*="name"], [class*="campaign"], h2, h3, h4')
+      .first().text().trim();
+
+    const brand = $el
+      .find('[class*="brand"], [class*="advertiser"], [class*="client"]')
+      .first().text().trim();
+
+    const agency = $el
+      .find('[class*="agency"], [class*="entrant"]')
+      .first().text().trim();
+
+    const imgEl = $el.find("img").first();
+    const imageUrl =
+      imgEl.attr("data-src") ||
+      imgEl.attr("src") ||
+      $el.find('[class*="thumbnail"], [class*="image"]').first().attr("data-src") ||
+      $el.find('[class*="thumbnail"], [class*="image"]').first().attr("src") ||
+      null;
+
+    const href = $el.find("a").first().attr("href") || "";
+    const sourceUrl = href.startsWith("http") ? href : href ? `https://www.lovethework.com${href}` : "";
+    if (!sourceUrl) return;
+
+    const urlCategory = categoryFromUrl(requestUrl);
+    const format: "video" | "photo" = urlCategory.includes("Film") ? "video" : "photo";
+
+    const yearMatch = $el.text().match(/\b(20[0-9]{2})\b/);
+    const year = yearMatch ? parseInt(yearMatch[1]) : null;
+
+    if (!title && !brand) return;
+
+    results.push({
+      title: title || brand,
+      brand: brand || "",
+      agency: agency || "",
+      category: urlCategory,
+      award_level: awardLevel,
       image_url: imageUrl,
       source_url: sourceUrl,
       year,
-      format: catLower.includes("film") || catLower.includes("craft") ? "video" : "photo",
-      tags: [
-        "cannes lions",
-        award === "grand-prix" ? "grand prix" : "gold lion",
-        category.toLowerCase(),
-      ].filter(Boolean),
-      curatorial_note: `Cannes Lions ${award === "grand-prix" ? "Grand Prix" : "Gold Lion"} winner ${year} — ${category}`,
+      format,
+      tags: ["cannes lions", awardLevel.toLowerCase(), urlCategory.toLowerCase()],
+      curatorial_note: `Cannes Lions ${awardLevel} — ${urlCategory}`,
     });
-  }
-  return out;
+  });
+
+  // Dedupe within the same page by source_url
+  const seen = new Set<string>();
+  return results.filter((r) => {
+    if (seen.has(r.source_url)) return false;
+    seen.add(r.source_url);
+    return true;
+  });
 }
 
 Deno.serve(async (req) => {
@@ -114,32 +154,48 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
   );
 
-  // Auth check: only admins.
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  if (!authHeader) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
   const userClient = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_ANON_KEY")!,
     { global: { headers: { Authorization: authHeader } } },
   );
   const { data: { user } } = await userClient.auth.getUser();
-  if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
   const { data: roleRow } = await userClient.rpc("has_role", { _user_id: user.id, _role: "admin" });
-  if (!roleRow) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  if (!roleRow) {
+    return new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   const body: Body = await req.json().catch(() => ({}));
   const yearFrom = body.yearFrom ?? 2010;
   const yearTo = body.yearTo ?? 2025;
-  const awards = (body.awardLevels && body.awardLevels.length ? body.awardLevels : ["grand-prix", "gold"]);
-  const categories = (body.categories && body.categories.length ? body.categories : ["film", "print", "photography", "outdoor"]);
+  const awards = body.awardLevels && body.awardLevels.length ? body.awardLevels : ["grand-prix", "gold"];
+  const categories = body.categories && body.categories.length ? body.categories : ["film", "print", "photography", "outdoor"];
   const autoApprove = body.autoApproveGrandPrix ?? true;
 
-  const urls = buildUrls(yearFrom, yearTo, awards);
+  const awardWhitelist = new Set(
+    awards.map((a) => (a === "grand-prix" ? "Grand Prix" : "Gold Lion")),
+  );
+
+  const startUrls = buildStartUrls(categories);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (obj: unknown) => controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
+      const send = (obj: unknown) =>
+        controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
 
       const summary = {
         total_fetched: 0,
@@ -148,13 +204,13 @@ Deno.serve(async (req) => {
         skipped_duplicates: 0,
         skipped_no_image: 0,
         skipped_invalid: 0,
+        skipped_out_of_year: 0,
         errors: 0,
       };
 
       try {
-        for (const { url, year, award } of urls) {
-          const label = `${award === "grand-prix" ? "Grand Prix" : "Gold Lion"} ${year}`;
-          send({ type: "progress", message: `Fetching ${label}...`, url });
+        for (const { url, label } of startUrls) {
+          send({ type: "progress", message: `Fetching ${label} winners...`, url });
 
           let html = "";
           try {
@@ -177,15 +233,27 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          const results = parsePage(html, year, award, categories);
+          let results = parsePage(html, url);
+
+          // Filter by award level selection
+          results = results.filter((r) => awardWhitelist.has(r.award_level));
+
+          // Post-scrape year filter: keep null years; only filter known years outside range
+          results = results.filter((r) => {
+            if (r.year == null) return true;
+            if (r.year < yearFrom || r.year > yearTo) {
+              summary.skipped_out_of_year++;
+              return false;
+            }
+            return true;
+          });
+
           summary.total_fetched += results.length;
 
           for (const r of results) {
             if (!r.image_url) { summary.skipped_no_image++; continue; }
             if (!r.title) { summary.skipped_invalid++; continue; }
-            if (!r.year || r.year < 1990 || r.year > 2025) { summary.skipped_invalid++; continue; }
 
-            // Dedupe against pending_refs + references.
             const { data: existingPending } = await supabase
               .from("pending_refs").select("id").eq("source_url", r.source_url).maybeSingle();
             if (existingPending) { summary.skipped_duplicates++; continue; }
