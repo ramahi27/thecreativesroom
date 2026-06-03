@@ -402,10 +402,6 @@ const Settings = () => {
           )}
         </section>
 
-        {/* ── Scrapers ── */}
-        <div className="border-t hairline pt-12">
-          <CannesLionsScraper />
-        </div>
       </main>
     </div>
   );
