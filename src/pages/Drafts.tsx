@@ -40,6 +40,9 @@ const Drafts = () => {
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
   const [scrapeUrl, setScrapeUrl] = useState("");
   const [scraping, setScraping] = useState(false);
+  const [scrapersOpen, setScrapersOpen] = useState(false);
+  
+
   
 
   // Keep URL in sync with filters/page so we can return here with the same view.
