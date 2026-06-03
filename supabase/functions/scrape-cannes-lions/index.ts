@@ -213,12 +213,11 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          let results = parsePage(html, url);
+          const rawResults = parsePage(html, url);
+          const rawCount = rawResults.length;
 
-          // Filter by award level selection
-          results = results.filter((r) => awardWhitelist.has(r.award_level));
+          let results = rawResults.filter((r) => awardWhitelist.has(r.award_level));
 
-          // Post-scrape year filter: keep null years; only filter known years outside range
           results = results.filter((r) => {
             if (r.year == null) return true;
             if (r.year < yearFrom || r.year > yearTo) {
@@ -226,6 +225,11 @@ Deno.serve(async (req) => {
               return false;
             }
             return true;
+          });
+
+          send({
+            type: "progress",
+            message: `✓ ${label} page scraped — ${rawCount} raw entries found, ${results.length} passed filters`,
           });
 
           summary.total_fetched += results.length;
