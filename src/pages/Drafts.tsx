@@ -10,6 +10,7 @@ import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
 import { Check, Trash2, Trash, Copy, Sparkles, Link2, ChevronRight } from "lucide-react";
 import { CannesLionsScraper } from "@/components/CannesLionsScraper";
+import { PinterestBoardImporter } from "@/components/PinterestBoardImporter";
 import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -339,8 +340,11 @@ const Drafts = () => {
             <span>Scrapers</span>
           </button>
           {scrapersOpen && (
-            <div className="border-t hairline p-6">
+            <div className="border-t hairline p-6 space-y-8">
               <CannesLionsScraper />
+              <div className="border-t hairline pt-8">
+                <PinterestBoardImporter />
+              </div>
             </div>
           )}
         </div>

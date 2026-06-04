@@ -31,12 +31,13 @@ function smartPosition(w: number, h: number): string {
 
 export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
   // For photo projects, always prefer the first photo as the thumbnail.
-  const firstMediaImage = (() => {
+  const mediaImages = (() => {
     const items = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
-    if (!Array.isArray(items)) return null;
-    const firstImg = items.find((it) => it?.kind === "image" && it.url);
-    return firstImg?.url ?? null;
+    if (!Array.isArray(items)) return [] as string[];
+    return items.filter((it) => it?.kind === "image" && it.url).map((it) => it.url!) as string[];
   })();
+  const firstMediaImage = mediaImages[0] ?? null;
+  const extraImages = Math.max(0, mediaImages.length - 1);
   const thumb = r.type === "image"
     ? (firstMediaImage || r.thumbnail_url || r.media_url)
     : (r.thumbnail_url || null);
@@ -84,6 +85,12 @@ export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
             </div>
           </div>
         )}
+        {extraImages > 0 && (
+          <div className="absolute bottom-3 left-3 bg-background/80 px-2 py-1 backdrop-blur-md font-mono text-[10px] uppercase tracking-widest">
+            +{extraImages} more
+          </div>
+        )}
+
 
         <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center gap-1.5">
           <div className="flex items-center gap-1.5 bg-background/80 px-2 py-1 backdrop-blur-md">
