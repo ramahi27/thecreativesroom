@@ -31,12 +31,13 @@ function smartPosition(w: number, h: number): string {
 
 export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
   // For photo projects, always prefer the first photo as the thumbnail.
-  const firstMediaImage = (() => {
+  const mediaImages = (() => {
     const items = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
-    if (!Array.isArray(items)) return null;
-    const firstImg = items.find((it) => it?.kind === "image" && it.url);
-    return firstImg?.url ?? null;
+    if (!Array.isArray(items)) return [] as string[];
+    return items.filter((it) => it?.kind === "image" && it.url).map((it) => it.url!) as string[];
   })();
+  const firstMediaImage = mediaImages[0] ?? null;
+  const extraImages = Math.max(0, mediaImages.length - 1);
   const thumb = r.type === "image"
     ? (firstMediaImage || r.thumbnail_url || r.media_url)
     : (r.thumbnail_url || null);
