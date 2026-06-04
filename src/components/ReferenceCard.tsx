@@ -85,6 +85,12 @@ export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
             </div>
           </div>
         )}
+        {extraImages > 0 && (
+          <div className="absolute bottom-3 left-3 bg-background/80 px-2 py-1 backdrop-blur-md font-mono text-[10px] uppercase tracking-widest">
+            +{extraImages} more
+          </div>
+        )}
+
 
         <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center gap-1.5">
           <div className="flex items-center gap-1.5 bg-background/80 px-2 py-1 backdrop-blur-md">
