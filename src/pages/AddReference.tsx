@@ -331,7 +331,7 @@ const AddReference = () => {
               .maybeSingle();
             const existing: string[] = Array.isArray(cur?.tags) ? (cur!.tags as string[]) : [];
             const merged = Array.from(new Set([...existing, ...newTags]));
-            const updates: { tags: string[]; brand?: string; agency?: string; year?: number } = { tags: merged };
+            const updates: { tags: string[]; brand?: string; agency?: string; year?: number; visual_summary?: string } = { tags: merged };
             if (!cur?.brand && typeof meta.brand === "string" && meta.brand.trim()) {
               updates.brand = meta.brand.trim();
             }
@@ -340,6 +340,9 @@ const AddReference = () => {
             }
             if (!cur?.year && Number.isInteger(meta.year)) {
               updates.year = meta.year;
+            }
+            if (typeof meta.visual_summary === "string" && meta.visual_summary.trim()) {
+              updates.visual_summary = meta.visual_summary.trim();
             }
             await supabase.from("references").update(updates).eq("id", savedId!);
           })
