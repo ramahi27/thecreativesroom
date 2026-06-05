@@ -16,7 +16,6 @@ type Row = {
   bookmarks_count: number;
   references_added: number;
   references_approved: number;
-  country: string | null;
   time_spent_seconds: number;
 };
 
@@ -133,7 +132,6 @@ const Users = () => {
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">#</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Email</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Role</TableHead>
-                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">Country</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Time on site</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Bookmarks</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Added</TableHead>
@@ -149,7 +147,6 @@ const Users = () => {
                     <TableCell className="font-mono text-[11px] uppercase tracking-widest">
                       {r.is_admin ? <span className="text-primary">Admin</span> : <span className="text-muted-foreground">User</span>}
                     </TableCell>
-                    <TableCell className="font-mono text-xs">{r.country || "—"}</TableCell>
                     <TableCell className="font-mono text-xs text-right">{formatDuration(r.time_spent_seconds)}</TableCell>
                     <TableCell className="font-mono text-xs text-right">{r.bookmarks_count}</TableCell>
                     <TableCell className="font-mono text-xs text-right">{r.references_added}</TableCell>

@@ -173,7 +173,6 @@ export type Database = {
       }
       page_views: {
         Row: {
-          country: string | null
           created_at: string
           duration_seconds: number
           id: string
@@ -183,7 +182,6 @@ export type Database = {
           visitor_id: string
         }
         Insert: {
-          country?: string | null
           created_at?: string
           duration_seconds?: number
           id?: string
@@ -193,7 +191,6 @@ export type Database = {
           visitor_id: string
         }
         Update: {
-          country?: string | null
           created_at?: string
           duration_seconds?: number
           id?: string
