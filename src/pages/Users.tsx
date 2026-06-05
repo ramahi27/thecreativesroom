@@ -40,6 +40,7 @@ const Users = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -53,8 +54,10 @@ const Users = () => {
       const { data, error } = await supabase.rpc("get_user_overview");
       if (error) {
         console.error(error);
+        setFetchError(error.message);
         setRows([]);
       } else {
+        setFetchError(null);
         setRows((data as Row[]) || []);
       }
       setLoading(false);
@@ -118,6 +121,8 @@ const Users = () => {
       <section className="container py-8">
         {loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
+        ) : fetchError ? (
+          <p className="font-mono text-xs uppercase tracking-widest text-destructive">Error: {fetchError}</p>
         ) : filtered.length === 0 ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">No users.</p>
         ) : (
