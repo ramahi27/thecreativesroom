@@ -14,9 +14,10 @@ import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
 // A reference is considered "AI-complete" only if brand, agency, AND year
 // are all filled. For video references, editing_style must also be present.
-function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null; type?: string; editing_style?: string | null }): boolean {
+function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null; type?: string; editing_style?: string | null; visual_summary?: string | null }): boolean {
   if (!(r.brand && r.agency && r.year)) return false;
   if (r.type === "video" && !r.editing_style) return false;
+  if (!r.visual_summary) return false;
   return true;
 }
 
@@ -76,7 +77,7 @@ const Logs = () => {
         // Re-fetch to verify completeness
         const { data: fresh } = await supabase
           .from("references")
-          .select("brand,agency,year,editing_style")
+          .select("brand,agency,year,editing_style,visual_summary")
           .eq("id", r.id)
           .maybeSingle();
         const complete = hasCompleteMetadata({
@@ -85,6 +86,7 @@ const Logs = () => {
           year: fresh?.year ?? null,
           type: r.type,
           editing_style: (fresh as any)?.editing_style ?? null,
+          visual_summary: (fresh as any)?.visual_summary ?? null,
         });
         if (complete) {
           ok++;
@@ -97,6 +99,7 @@ const Logs = () => {
                     agency: fresh?.agency ?? x.agency,
                     year: fresh?.year ?? x.year,
                     editing_style: (fresh as any)?.editing_style ?? x.editing_style,
+                    visual_summary: (fresh as any)?.visual_summary ?? (x as any).visual_summary,
                     has_ai_metadata: true,
                   }
                 : x,
@@ -133,22 +136,22 @@ const Logs = () => {
       const baseRows = (data as LogRow[]) || [];
       // The RPC doesn't include `agency` or `editing_style`; fetch to determine completeness.
       const ids = baseRows.map((r) => r.id);
-      const infoMap = new Map<string, { agency: string | null; editing_style: string | null }>();
+      const infoMap = new Map<string, { agency: string | null; editing_style: string | null; visual_summary: string | null }>();
       const CHUNK = 150;
       for (let i = 0; i < ids.length; i += CHUNK) {
         const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
-          .select("id,agency,editing_style")
+          .select("id,agency,editing_style,visual_summary")
           .in("id", slice);
         (extra || []).forEach((t: any) =>
-          infoMap.set(t.id, { agency: t.agency ?? null, editing_style: t.editing_style ?? null }),
+          infoMap.set(t.id, { agency: t.agency ?? null, editing_style: t.editing_style ?? null, visual_summary: t.visual_summary ?? null }),
         );
       }
       setRows(
         baseRows.map((r) => {
           const info = infoMap.get(r.id);
-          const merged = { ...r, agency: info?.agency ?? r.agency ?? null, editing_style: info?.editing_style ?? null };
+          const merged = { ...r, agency: info?.agency ?? r.agency ?? null, editing_style: info?.editing_style ?? null, visual_summary: info?.visual_summary ?? null };
           return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) } as LogRow;
         }),
       );
