@@ -14,9 +14,10 @@ import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
 // A reference is considered "AI-complete" only if brand, agency, AND year
 // are all filled. For video references, editing_style must also be present.
-function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null; type?: string; editing_style?: string | null }): boolean {
+function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null; type?: string; editing_style?: string | null; visual_summary?: string | null }): boolean {
   if (!(r.brand && r.agency && r.year)) return false;
   if (r.type === "video" && !r.editing_style) return false;
+  if (!r.visual_summary) return false;
   return true;
 }
 
