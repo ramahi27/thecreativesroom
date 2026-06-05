@@ -96,3 +96,13 @@
     box-shadow: var(--shadow-cinema);
   }
 }
+
+
+/* Hide the Lovable "Edit with Lovable" badge injected by the platform */
+iframe[src*="lovable.app"],
+iframe[src*="lovable.dev"],
+[data-lovable-badge],
+#lovable-badge,
+.lovable-badge {
+  display: none !important;
+}

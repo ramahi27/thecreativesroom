@@ -38,7 +38,6 @@ const AddReference = () => {
   const [allowMainPage, setAllowMainPage] = useState(true);
   const [title, setTitle] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
-  const [thumbnailUrl] = useState("");
   const [brand, setBrand] = useState("");
   const [agency, setAgency] = useState("");
   const [year, setYear] = useState("");
@@ -255,8 +254,8 @@ const AddReference = () => {
       const firstImage = items.find((i) => i.kind === "image")?.url ?? null;
       // For photo projects, the first photo is ALWAYS the thumbnail.
       const finalThumb = type === "image"
-        ? (firstImage || thumbnailUrl || auto)
-        : (thumbnailUrl || auto || firstImage);
+        ? (firstImage || auto)
+        : (auto || firstImage);
 
       setProgress("Saving…");
 

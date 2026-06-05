@@ -58,6 +58,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       .select(listCols)
       .eq("published", true)
       .order("created_at", { ascending: false })
+      .limit(300)
       .then(({ data: list }) => {
         if (cancelled) return;
         setAllRefs((list as unknown as Reference[]) || []);
@@ -293,7 +294,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
           <button
             onClick={goPrev}
             aria-label="Previous reference"
-            className="fixed left-2 md:left-6 top-1/2 -translate-y-1/2 z-50 h-12 w-12 flex items-center justify-center bg-background/70 hover:bg-background border hairline backdrop-blur-md transition-colors"
+            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 flex items-center justify-center bg-background/70 hover:bg-background border hairline backdrop-blur-md transition-colors"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -302,7 +303,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
           <button
             onClick={goNext}
             aria-label="Next reference"
-            className="fixed right-2 md:right-6 top-1/2 -translate-y-1/2 z-50 h-12 w-12 flex items-center justify-center bg-background/70 hover:bg-background border hairline backdrop-blur-md transition-colors"
+            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 flex items-center justify-center bg-background/70 hover:bg-background border hairline backdrop-blur-md transition-colors"
           >
             <ChevronRight className="h-5 w-5" />
           </button>

@@ -114,18 +114,16 @@ const UserProfile = () => {
     [profile],
   );
 
-  if (isOwner) return <Bookmarks />;
+  if (loading || authLoading) return (
+    <div className="min-h-screen grain">
+      <SiteHeader />
+      <main className="container py-20">
+        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
+      </main>
+    </div>
+  );
 
-  if (loading || authLoading) {
-    return (
-      <div className="min-h-screen grain">
-        <SiteHeader />
-        <main className="container py-20">
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
-        </main>
-      </div>
-    );
-  }
+  if (isOwner) return <Bookmarks />;
 
   if (notFound || !profile) {
     return (

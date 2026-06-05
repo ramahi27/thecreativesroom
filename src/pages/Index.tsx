@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -33,6 +33,7 @@ const Index = () => {
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const loadingMoreRef = useRef(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState<number | null>(null);
 
@@ -144,7 +145,8 @@ const Index = () => {
   }, []);
 
   const loadMore = async () => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMoreRef.current || !hasMore) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     const { list, total } = await fetchPage(refs.length);
     setRefs((prev) => {
@@ -154,6 +156,7 @@ const Index = () => {
     });
     setTotalCount(total);
     setHasMore(refs.length + list.length < total);
+    loadingMoreRef.current = false;
     setLoadingMore(false);
   };
 

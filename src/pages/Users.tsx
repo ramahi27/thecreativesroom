@@ -54,10 +54,10 @@ const Users = () => {
       // Build the overview entirely from tables the admin can already read,
       // so it doesn't depend on a server-side function.
       const [profilesRes, rolesRes, refsRes, viewsRes] = await Promise.all([
-        supabase.from("profiles").select("user_id, username, created_at"),
-        supabase.from("user_roles").select("user_id").eq("role", "admin"),
-        supabase.from("references").select("created_by, approved_by").eq("published", true),
-        supabase.from("page_views").select("user_id, duration_seconds").not("user_id", "is", null),
+        supabase.from("profiles").select("user_id, username, created_at").limit(500),
+        supabase.from("user_roles").select("user_id").eq("role", "admin").limit(500),
+        supabase.from("references").select("created_by, approved_by").eq("published", true).limit(5000),
+        supabase.from("page_views").select("user_id, duration_seconds").not("user_id", "is", null).limit(10000),
       ]);
 
       const firstError = profilesRes.error || rolesRes.error || refsRes.error || viewsRes.error;
