@@ -110,7 +110,7 @@ export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
 
       <div className="p-4 space-y-2">
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="leading-tight line-clamp-2 font-light font-serif text-xl">
+          <h3 className="leading-tight line-clamp-2 font-light font-serif text-xl" title={r.title}>
             {r.title}
           </h3>
           {r.year && (
