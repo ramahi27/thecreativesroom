@@ -134,11 +134,13 @@ const Logs = () => {
       // The RPC doesn't include `agency` or `editing_style`; fetch to determine completeness.
       const ids = baseRows.map((r) => r.id);
       const infoMap = new Map<string, { agency: string | null; editing_style: string | null }>();
-      if (ids.length) {
+      const CHUNK = 150;
+      for (let i = 0; i < ids.length; i += CHUNK) {
+        const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
           .select("id,agency,editing_style")
-          .in("id", ids);
+          .in("id", slice);
         (extra || []).forEach((t: any) =>
           infoMap.set(t.id, { agency: t.agency ?? null, editing_style: t.editing_style ?? null }),
         );
