@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const VISITOR_KEY = "tcr_visitor_id";
+const COUNTRY_KEY = "tcr_country";
 
 function getVisitorId(): string {
   try {
@@ -14,6 +15,28 @@ function getVisitorId(): string {
   } catch {
     return "anon-" + Math.random().toString(36).slice(2);
   }
+}
+
+let countryPromise: Promise<string | null> | null = null;
+function getCountry(): Promise<string | null> {
+  try {
+    const cached = localStorage.getItem(COUNTRY_KEY);
+    if (cached) return Promise.resolve(cached);
+  } catch {}
+  if (countryPromise) return countryPromise;
+  countryPromise = fetch("https://get.geojs.io/v1/ip/country.json")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j: any) => {
+      const c = j?.name || j?.country || null;
+      if (c) {
+        try {
+          localStorage.setItem(COUNTRY_KEY, c);
+        } catch {}
+      }
+      return c;
+    })
+    .catch(() => null);
+  return countryPromise;
 }
 
 /**
@@ -29,7 +52,10 @@ export function usePageView(path: string, referenceId?: string | null) {
     const visitorId = getVisitorId();
 
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const [{ data: { session } }, country] = await Promise.all([
+        supabase.auth.getSession(),
+        getCountry(),
+      ]);
       const { data, error } = await supabase
         .from("page_views")
         .insert({
@@ -37,7 +63,8 @@ export function usePageView(path: string, referenceId?: string | null) {
           user_id: session?.user?.id ?? null,
           path,
           reference_id: referenceId ?? null,
-        })
+          country,
+        } as any)
         .select("id")
         .single();
       if (!cancelled && !error && data) viewId = data.id;

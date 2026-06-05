@@ -10,6 +10,7 @@ import ResetPassword from "./pages/ResetPassword.tsx";
 import AddReference from "./pages/AddReference.tsx";
 import Drafts from "./pages/Drafts.tsx";
 import Doubletakes from "./pages/Doubletakes.tsx";
+import Uncategorized from "./pages/Uncategorized.tsx";
 import Settings from "./pages/Settings.tsx";
 import Logs from "./pages/Logs.tsx";
 import Users from "./pages/Users.tsx";
@@ -39,6 +40,7 @@ const App = () => (
           <Route path="/ref/:id" element={<Index />} />
           <Route path="/drafts" element={<Drafts />} />
           <Route path="/drafts/doubletakes" element={<Doubletakes />} />
+          <Route path="/drafts/uncategorized" element={<Uncategorized />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/logs" element={<Logs />} />
           <Route path="/users" element={<Users />} />

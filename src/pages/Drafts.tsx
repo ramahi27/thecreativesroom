@@ -8,9 +8,7 @@ import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
-import { Check, Trash2, Trash, Copy, Sparkles, Link2, ChevronRight } from "lucide-react";
-import { CannesLionsScraper } from "@/components/CannesLionsScraper";
-import { PinterestBoardImporter } from "@/components/PinterestBoardImporter";
+import { Check, Trash2, Trash, Copy, Sparkles, Link2, Tag } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +39,6 @@ const Drafts = () => {
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
   const [scrapeUrl, setScrapeUrl] = useState("");
   const [scraping, setScraping] = useState(false);
-  const [scrapersOpen, setScrapersOpen] = useState(false);
   
 
   
@@ -325,29 +322,22 @@ const Drafts = () => {
                 <Copy className="h-3.5 w-3.5 mr-2" /> Doubletakes
               </Link>
             </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="font-mono text-xs uppercase tracking-widest"
+            >
+              <Link to="/drafts/uncategorized">
+                <Tag className="h-3.5 w-3.5 mr-2" /> Uncategorized
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
 
       <main className="container py-12">
-        <div className="mb-10 border hairline">
-          <button
-            type="button"
-            onClick={() => setScrapersOpen((v) => !v)}
-            className="w-full flex items-center gap-2 px-4 py-3 font-mono text-[11px] uppercase tracking-widest hover:bg-secondary/50 transition-colors"
-          >
-            <ChevronRight className={`h-3 w-3 transition-transform ${scrapersOpen ? "rotate-90" : ""}`} />
-            <span>Scrapers</span>
-          </button>
-          {scrapersOpen && (
-            <div className="border-t hairline p-6 space-y-8">
-              <CannesLionsScraper />
-              <div className="border-t hairline pt-8">
-                <PinterestBoardImporter />
-              </div>
-            </div>
-          )}
-        </div>
+
 
         {loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading drafts…</p>
