@@ -25,6 +25,8 @@ export function usePageView(path: string, referenceId?: string | null) {
     if (!path) return;
     let viewId: string | null = null;
     let cancelled = false;
+    let finalized = false;
+    let pendingSeconds = 0;
     const startedAt = Date.now();
     const visitorId = getVisitorId();
 
@@ -40,21 +42,33 @@ export function usePageView(path: string, referenceId?: string | null) {
         })
         .select("id")
         .single();
-      if (!cancelled && !error && data) viewId = data.id;
+      if (!cancelled && !error && data) {
+        viewId = data.id;
+        // finalize() was called before INSERT resolved — send duration now
+        if (pendingSeconds > 0) {
+          supabase.from("page_views").update({ duration_seconds: pendingSeconds }).eq("id", viewId);
+        }
+      }
     })();
 
     const finalize = () => {
-      if (!viewId) return;
+      if (finalized) return;
+      finalized = true;
+      window.removeEventListener("beforeunload", finalize);
       const seconds = Math.min(3600, Math.round((Date.now() - startedAt) / 1000));
       if (seconds <= 0) return;
-      supabase.from("page_views").update({ duration_seconds: seconds }).eq("id", viewId);
+      if (viewId) {
+        supabase.from("page_views").update({ duration_seconds: seconds }).eq("id", viewId);
+      } else {
+        // INSERT hasn't resolved yet — store duration and send once viewId arrives
+        pendingSeconds = seconds;
+      }
     };
 
     window.addEventListener("beforeunload", finalize);
     return () => {
       cancelled = true;
       finalize();
-      window.removeEventListener("beforeunload", finalize);
     };
   }, [path, referenceId]);
 }

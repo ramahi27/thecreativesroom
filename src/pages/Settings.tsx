@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -61,8 +61,7 @@ const Settings = () => {
 
   useEffect(() => {
     document.title = "Settings — The Creatives Room";
-    if (!authLoading && (!user || !isAdmin)) navigate("/");
-  }, [authLoading, user, isAdmin, navigate]);
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -211,7 +210,9 @@ const Settings = () => {
     }
   }
 
-  if (authLoading || !isAdmin) return null;
+  if (authLoading) return null;
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!isAdmin) return <Navigate to="/" replace />;
 
   return (
     <div className="min-h-screen grain">
