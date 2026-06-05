@@ -64,7 +64,7 @@ export function usePageView(path: string, referenceId?: string | null) {
           path,
           reference_id: referenceId ?? null,
           country,
-        } as any)
+        })
         .select("id")
         .single();
       if (!cancelled && !error && data) viewId = data.id;
