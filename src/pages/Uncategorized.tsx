@@ -27,11 +27,13 @@ const Uncategorized = () => {
         .from("references")
         .select("*")
         .eq("published", true)
-        .eq("categories", "{}")
         .order("created_at", { ascending: false })
-        .limit(500);
+        .limit(2000);
       if (error) toast.error(error.message);
-      setRefs((data as unknown as Reference[]) || []);
+      const list = ((data as unknown as Reference[]) || []).filter(
+        (r) => !r.categories || r.categories.length === 0
+      );
+      setRefs(list);
       setLoading(false);
     })();
   }, [isAdmin]);

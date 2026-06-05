@@ -413,11 +413,13 @@ export type Database = {
         Args: never
         Returns: {
           bookmarks_count: number
+          country: string
           created_at: string
           email: string
           is_admin: boolean
           references_added: number
           references_approved: number
+          time_spent_seconds: number
           user_id: string
         }[]
       }
