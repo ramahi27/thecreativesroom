@@ -16,11 +16,24 @@ type Row = {
   bookmarks_count: number;
   references_added: number;
   references_approved: number;
+  country: string | null;
+  time_spent_seconds: number;
 };
 
 const formatDate = (s: string) => {
   const d = new Date(s);
   return d.toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric" });
+};
+
+const formatDuration = (totalSeconds: number) => {
+  const s = Number(totalSeconds || 0);
+  if (s <= 0) return "—";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${sec}s`;
+  return `${sec}s`;
 };
 
 const Users = () => {
@@ -115,6 +128,8 @@ const Users = () => {
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">#</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Email</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Role</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">Country</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Time on site</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Bookmarks</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Added</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Approved</TableHead>
@@ -129,6 +144,8 @@ const Users = () => {
                     <TableCell className="font-mono text-[11px] uppercase tracking-widest">
                       {r.is_admin ? <span className="text-primary">Admin</span> : <span className="text-muted-foreground">User</span>}
                     </TableCell>
+                    <TableCell className="font-mono text-xs">{r.country || "—"}</TableCell>
+                    <TableCell className="font-mono text-xs text-right">{formatDuration(r.time_spent_seconds)}</TableCell>
                     <TableCell className="font-mono text-xs text-right">{r.bookmarks_count}</TableCell>
                     <TableCell className="font-mono text-xs text-right">{r.references_added}</TableCell>
                     <TableCell className="font-mono text-xs text-right">{r.references_approved}</TableCell>
