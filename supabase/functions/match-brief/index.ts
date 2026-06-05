@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     // Fetch all published refs (compact)
     const { data: refs, error } = await supabase
       .from("references")
-      .select("id,title,brand,agency,tags,categories,type,notes")
+      .select("id,title,brand,agency,tags,categories,type,notes,visual_summary")
       .eq("published", true)
       .limit(2000);
     if (error) throw error;
@@ -73,10 +73,15 @@ Deno.serve(async (req) => {
       tags: r.tags ?? [],
       categories: r.categories ?? [],
       format: r.type,
-      notes: (r.notes ?? "").slice(0, 200),
+      // visual_summary is the primary signal for brief matching — include in full
+      visual_summary: r.visual_summary ?? null,
+      // include notes only as fallback when no visual_summary exists yet
+      notes: r.visual_summary ? null : (r.notes ?? "").slice(0, 150),
     }));
 
     const systemPrompt = `You are a senior creative director and visual research expert with 20 years of experience in advertising, film, and editorial photography. Your job is to analyse a creative brief and match it against a library of reference campaigns with extreme precision.
+
+IMPORTANT: Each reference in the library may include a "visual_summary" field — a curated description of its visual character (colour, lighting, mood, composition). When present, treat this as the PRIMARY and most reliable signal for matching. Weight it above tags or title alone. References without a visual_summary should be matched on tags + title, but with lower confidence.
 
 When given a brief, you must identify and weight these dimensions:
 

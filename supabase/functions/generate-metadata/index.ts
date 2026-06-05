@@ -17,6 +17,7 @@ You will receive a reference describing an advertising or photography project (t
 2. Produce a separate list of 20-60 lowercase synonyms / alternative search terms / plurals / related concepts for the tags. These are HIDDEN search-only metadata. For example, if a tag is "car", include "cars", "vehicles", "automobile", "automobiles", "auto", "driving", "transport", etc. Cover singular/plural forms, common synonyms, broader and narrower terms, and related concepts a user might search for. No duplicates with the visible tags.
 3. If brand, agency, or year are missing or empty, only fill them in when you are 100% certain based on verifiable knowledge of the actual campaign (matching title + source URL + known credits). If there is ANY doubt, ambiguity, or you are merely guessing/inferring from patterns, leave the field null. Do NOT speculate. Do NOT fill a plausible-sounding agency just because it fits the brand. Year must be an integer between 1950 and the current year and must be the verified release year. Do NOT overwrite values that were already supplied — those are sent only as context.
 4. If type is "video", produce a concise editing_style description (1-3 sentences, max ~280 chars) describing the editing approach: pacing (fast cuts, slow dissolves, long takes), transitions (jump cuts, match cuts, whip pans, cross-dissolves), rhythm (music-driven, beat-synced, organic), structural devices (montage, split-screen, intercutting, non-linear), and any signature editorial techniques. Base this on verifiable knowledge of the actual film/spot when possible; otherwise infer from title/notes/source. For non-video references, leave editing_style null.
+5. Produce a visual_summary: 2-4 sentences describing the VISUAL and EMOTIONAL character of this work as a creative director would. Cover: colour temperature and palette (warm/cool/desaturated/vivid), lighting style (hard/soft/natural/low-key/golden hour/practical), composition tendencies (tight/wide/symmetrical/negative space), mood and emotional register (joy/tension/intimacy/awe/melancholy/etc.), and casting/human element if relevant. This is the primary signal used for creative brief matching — be specific and evocative, not generic. Base on verifiable knowledge when possible; otherwise infer carefully from title/notes/brand/source.
 
 Return only the structured tool call.`;
 
@@ -61,6 +62,11 @@ const TOOL = {
           type: ["string", "null"],
           description:
             "For video references only: 1-3 sentence description of the editing style (pacing, transitions, rhythm, structural devices). Null for non-video.",
+        },
+        visual_summary: {
+          type: ["string", "null"],
+          description:
+            "2-4 sentences describing the visual and emotional character: colour temperature, lighting style, composition, mood, and casting. Used as the primary signal for creative brief matching. Be specific and evocative.",
         },
       },
       required: ["tags"],
