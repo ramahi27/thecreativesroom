@@ -20,7 +20,7 @@ export async function enrichReferenceMetadata(referenceId: string) {
   try {
     const { data: cur } = await supabase
       .from("references")
-      .select("title,type,brand,agency,year,source_url,notes,tags,tag_synonyms,editing_style")
+      .select("title,type,brand,agency,year,source_url,notes,tags,tag_synonyms,editing_style,visual_summary")
       .eq("id", referenceId)
       .maybeSingle();
     if (!cur?.title) return;
@@ -66,6 +66,7 @@ export async function enrichReferenceMetadata(referenceId: string) {
       agency?: string;
       year?: number;
       editing_style?: string;
+      visual_summary?: string;
     } = {
       tags: merged,
       tag_synonyms: mergedSyns,
@@ -86,6 +87,13 @@ export async function enrichReferenceMetadata(referenceId: string) {
       meta.editing_style.trim()
     ) {
       updates.editing_style = meta.editing_style.trim();
+    }
+    if (
+      !(cur as any).visual_summary &&
+      typeof meta.visual_summary === "string" &&
+      meta.visual_summary.trim()
+    ) {
+      updates.visual_summary = meta.visual_summary.trim();
     }
     await supabase.from("references").update(updates).eq("id", referenceId);
   } catch {
