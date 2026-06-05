@@ -8,9 +8,7 @@ import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
-import { Check, Trash2, Trash, Copy, Sparkles, Link2, ChevronRight } from "lucide-react";
-import { CannesLionsScraper } from "@/components/CannesLionsScraper";
-import { PinterestBoardImporter } from "@/components/PinterestBoardImporter";
+import { Check, Trash2, Trash, Copy, Sparkles, Link2, Tag } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,7 +39,6 @@ const Drafts = () => {
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
   const [scrapeUrl, setScrapeUrl] = useState("");
   const [scraping, setScraping] = useState(false);
-  const [scrapersOpen, setScrapersOpen] = useState(false);
   
 
   
@@ -323,6 +320,16 @@ const Drafts = () => {
             >
               <Link to="/drafts/doubletakes">
                 <Copy className="h-3.5 w-3.5 mr-2" /> Doubletakes
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="sm"
+              className="font-mono text-xs uppercase tracking-widest"
+            >
+              <Link to="/drafts/uncategorized">
+                <Tag className="h-3.5 w-3.5 mr-2" /> Uncategorized
               </Link>
             </Button>
           </div>
