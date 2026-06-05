@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { validateUsername } from "@/lib/username";
+import { PageMeta } from "@/components/PageMeta";
 
 type Mode = "signin" | "signup" | "forgot";
 
@@ -23,7 +24,6 @@ const Auth = () => {
   const [agreed, setAgreed] = useState(false);
 
   useEffect(() => {
-    document.title = "Sign in — The Creatives Room";
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) navigate("/");
     });
@@ -95,6 +95,12 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta
+        title="Sign in — The Creatives Room"
+        description="Sign in or create an account to save references, build collections, and explore the creative archive."
+        path="/auth"
+        noindex
+      />
       <SiteHeader />
       {signedUpEmail ? (
         <main className="container flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center text-center py-20">

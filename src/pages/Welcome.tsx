@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { validateUsername } from "@/lib/username";
+import { PageMeta } from "@/components/PageMeta";
 
 const Welcome = () => {
   const navigate = useNavigate();
@@ -16,7 +17,6 @@ const Welcome = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    document.title = "Choose a username — The Creatives Room";
     if (authLoading) return;
     if (!user) {
       navigate("/auth");
@@ -62,6 +62,12 @@ const Welcome = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta
+        title="Choose a username — The Creatives Room"
+        description="Pick your username to complete your account setup."
+        path="/welcome"
+        noindex
+      />
       <SiteHeader />
       <main className="container max-w-md py-20">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">⏵ One last step</p>

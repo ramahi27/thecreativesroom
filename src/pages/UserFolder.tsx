@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { FollowButton } from "@/components/FollowButton";
+import { PageMeta } from "@/components/PageMeta";
 import { Share2 } from "lucide-react";
 import { folderShareUrl } from "@/lib/username";
 import { slugify } from "@/lib/slug";
@@ -64,9 +65,7 @@ const UserFolder = () => {
     return () => { cancelled = true; };
   }, [folderSlug, profile, user]);
 
-  useEffect(() => {
-    if (folder && profile) document.title = `${folder.name} · @${profile.username} — The Creatives Room`;
-  }, [folder, profile]);
+  // document.title kept as fallback; PageMeta handles canonical/og tags below
 
   // JSON-LD CollectionPage schema for rich search results
   const jsonLd = useMemo(() => {
@@ -140,6 +139,12 @@ const UserFolder = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta
+        title={`${folder.name} · @${profile.username} — The Creatives Room`}
+        description={`${refs.length} curated reference${refs.length === 1 ? "" : "s"} in ${folder.name} by @${profile.username} on The Creatives Room.`}
+        path={`/u/${profile.username}/${folderSlug}`}
+        ogImage={refs.find(r => r.thumbnail_url)?.thumbnail_url ?? undefined}
+      />
       <SiteHeader />
       <section className="border-b hairline">
         <div className="container py-12 md:py-16">

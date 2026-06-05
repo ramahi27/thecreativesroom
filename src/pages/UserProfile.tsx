@@ -165,6 +165,7 @@ const UserProfile = () => {
             : `Browse @${profile.username}'s public folders and creative references on The Creatives Room.`
         }
         path={`/u/${profile.username}`}
+        ogImage={profile.avatar_url ?? undefined}
       />
       <SiteHeader />
 
