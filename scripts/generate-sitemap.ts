@@ -31,13 +31,19 @@ async function fetchDynamicEntries(): Promise<SitemapEntry[]> {
   // Published references
   const { data: refs } = await supabase
     .from("references")
-    .select("id,updated_at")
+    .select("id,title,updated_at")
     .eq("published", true)
     .order("created_at", { ascending: false });
 
   for (const r of refs || []) {
+    const titleSlug = (r.title || "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60);
+    const path = titleSlug ? `/ref/${r.id}-${titleSlug}` : `/ref/${r.id}`;
     entries.push({
-      path: `/ref/${r.id}`,
+      path,
       lastmod: r.updated_at ? r.updated_at.slice(0, 10) : undefined,
       changefreq: "weekly",
       priority: "0.8",

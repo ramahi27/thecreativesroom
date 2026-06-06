@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { rememberModalReturn, setModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
+import { refPath } from "@/lib/slug";
 
 function hasValue(value: string | null | undefined) {
   return typeof value === "string" ? value.trim().length > 0 : false;
@@ -292,7 +293,7 @@ const Logs = () => {
                   <TableRow key={r.id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
                     <TableCell>
-                      <Link to={`/ref/${r.id}`} onClick={() => { rememberModalReturn(); setModalNavOrder(filtered.map((x) => x.id)); }} className="flex items-center gap-3 hover:opacity-80">
+                      <Link to={refPath(r.id, r.title)} onClick={() => { rememberModalReturn(); setModalNavOrder(filtered.map((x) => x.id)); }} className="flex items-center gap-3 hover:opacity-80">
                         {r.thumbnail_url ? (
                           <img
                             src={r.thumbnail_url}

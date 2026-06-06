@@ -6,6 +6,7 @@ import { Play, ImageIcon, Link2 } from "lucide-react";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { FolderPickerButton } from "@/components/FolderPickerButton";
 import { rememberModalReturn, setModalNavOrder, clearModalNavOrder } from "@/lib/modalReturn";
+import { refPath } from "@/lib/slug";
 
 interface Props {
   reference: Reference;
@@ -48,7 +49,7 @@ export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
 
   return (
     <Link
-      to={`/ref/${r.id}`}
+      to={refPath(r.id, r.title)}
       onClick={() => {
         rememberModalReturn();
         if (orderedIds && orderedIds.length > 0) setModalNavOrder(orderedIds);

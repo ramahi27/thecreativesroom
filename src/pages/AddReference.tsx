@@ -20,6 +20,7 @@ import {
 import { useCategories } from "@/hooks/useCategories";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, ArrowUp, ArrowDown } from "lucide-react";
+import { refPath } from "@/lib/slug";
 
 const AI_MARKER = "ai:processed";
 function metadataToTags(m: any): string[] {
@@ -352,7 +353,7 @@ const AddReference = () => {
       }
 
       if (isEdit) {
-        navigate(`/ref/${editId}`);
+        navigate(refPath(editId!, title));
       } else if (!isAdmin) {
         setSubmittedToCollection(true);
       } else {
@@ -626,7 +627,7 @@ const AddReference = () => {
             <Button
               type="button"
               variant="ghost"
-              onClick={() => navigate(isEdit ? `/ref/${editId}` : "/")}
+              onClick={() => navigate(isEdit ? refPath(editId!, title) : "/")}
               className="font-mono text-xs uppercase tracking-widest h-12"
             >
               Cancel

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { extractId } from "@/lib/slug";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -28,7 +29,8 @@ const PAGE_SIZE = 100;
 
 const Index = () => {
   const { isAdmin } = useAuth();
-  const { id: openId } = useParams();
+  const { id: rawId } = useParams();
+  const openId = rawId ? extractId(rawId) : undefined;
   const navigate = useNavigate();
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);

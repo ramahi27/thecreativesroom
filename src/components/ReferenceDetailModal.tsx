@@ -15,6 +15,7 @@ import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 import { ZoomableImage } from "@/components/ZoomableImage";
 import { useJsonLd } from "@/hooks/useJsonLd";
 import { PageMeta } from "@/components/PageMeta";
+import { refPath } from "@/lib/slug";
 
 interface Props {
   id: string;
@@ -48,7 +49,14 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       .then(({ data: one }) => {
         if (cancelled) return;
         setR(one ? (one as unknown as Reference) : null);
-        if (one) document.title = `${(one as any).title} — The Creatives Room`;
+        if (one) {
+          document.title = `${(one as any).title} — The Creatives Room`;
+          // Silently upgrade old /ref/uuid URLs to /ref/uuid-title-slug
+          const canonical = refPath((one as any).id, (one as any).title);
+          if (window.location.pathname !== canonical) {
+            navigate(canonical, { replace: true });
+          }
+        }
         setLoading(false);
       });
     // 2) Fetch the lighter list in parallel for prev/next + related (no notes/media_items).
@@ -78,7 +86,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       "@context": "https://schema.org",
       "@type": "CreativeWork",
       name: r.title,
-      url: `https://thecreativesroom.com/ref/${r.id}`,
+      url: `https://thecreativesroom.com${refPath(r.id, r.title)}`,
       ...(image ? { image } : {}),
       ...(creator ? { creator: { "@type": "Organization", name: creator } } : {}),
       ...(r.brand ? { brand: { "@type": "Brand", name: r.brand } } : {}),
@@ -175,8 +183,8 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     };
   }, [r, allRefs, navOrder, similarityOrdered]);
 
-  const goPrev = useCallback(() => prev && navigate(`/ref/${prev.id}`), [prev, navigate]);
-  const goNext = useCallback(() => next && navigate(`/ref/${next.id}`), [next, navigate]);
+  const goPrev = useCallback(() => prev && navigate(refPath(prev.id, prev.title)), [prev, navigate]);
+  const goNext = useCallback(() => next && navigate(refPath(next.id, next.title)), [next, navigate]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -216,7 +224,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
   async function handleShare() {
     if (!r) return;
-    const url = `${window.location.origin}/ref/${r.id}`;
+    const url = `${window.location.origin}${refPath(r.id, r.title)}`;
     const shareData = {
       title: r.title,
       text: `${r.title} — on The Creatives Room`,
@@ -302,7 +310,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         <PageMeta
           title={`${r.title} — The Creatives Room`}
           description={metaDescription}
-          path={`/ref/${r.id}`}
+          path={refPath(r.id, r.title)}
           ogImage={r.thumbnail_url || r.media_url || undefined}
         />
       )}
@@ -634,7 +642,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     return (
                       <button
                         key={rel.id}
-                        onClick={() => navigate(`/ref/${rel.id}`)}
+                        onClick={() => navigate(refPath(rel.id, rel.title))}
                         className="group text-left"
                       >
                         <div className="relative aspect-video overflow-hidden bg-secondary border hairline">

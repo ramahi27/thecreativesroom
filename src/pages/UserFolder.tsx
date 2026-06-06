@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useProfileByUsername } from "@/hooks/useProfile";
 import { useJsonLd } from "@/hooks/useJsonLd";
+import { refPath } from "@/lib/slug";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ReferenceCard } from "@/components/ReferenceCard";
@@ -85,7 +86,7 @@ const UserFolder = () => {
         itemListElement: refs.map((r, i) => ({
           "@type": "ListItem",
           position: i + 1,
-          url: `https://thecreativesroom.com/ref/${r.id}`,
+          url: `https://thecreativesroom.com${refPath(r.id, r.title)}`,
           name: r.title,
         })),
       },
