@@ -311,6 +311,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
+          visual_summary: string | null
           year: number | null
         }
         Insert: {
@@ -335,6 +336,7 @@ export type Database = {
           title: string
           type: string
           updated_at?: string
+          visual_summary?: string | null
           year?: number | null
         }
         Update: {
@@ -359,6 +361,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          visual_summary?: string | null
           year?: number | null
         }
         Relationships: []
