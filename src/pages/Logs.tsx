@@ -36,6 +36,7 @@ type LogRow = {
   created_by_email: string | null;
   approved_by_email: string | null;
   editing_style?: string | null;
+  visual_summary?: string | null;
   has_ai_metadata?: boolean;
 };
 
@@ -134,24 +135,38 @@ const Logs = () => {
         return;
       }
       const baseRows = (data as LogRow[]) || [];
-      // The RPC doesn't include `agency` or `editing_style`; fetch to determine completeness.
+      // The RPC doesn't include all AI-derived fields; fetch them once in chunks
+      // and compute completeness from the same source of truth.
       const ids = baseRows.map((r) => r.id);
-      const infoMap = new Map<string, { agency: string | null; editing_style: string | null; visual_summary: string | null }>();
+      const infoMap = new Map<string, { brand: string | null; agency: string | null; year: number | null; editing_style: string | null; visual_summary: string | null }>();
       const CHUNK = 150;
       for (let i = 0; i < ids.length; i += CHUNK) {
         const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
-          .select("id,agency,editing_style,visual_summary")
+          .select("id,brand,agency,year,editing_style,visual_summary")
           .in("id", slice);
         (extra || []).forEach((t: any) =>
-          infoMap.set(t.id, { agency: t.agency ?? null, editing_style: t.editing_style ?? null, visual_summary: t.visual_summary ?? null }),
+          infoMap.set(t.id, {
+            brand: t.brand ?? null,
+            agency: t.agency ?? null,
+            year: t.year ?? null,
+            editing_style: t.editing_style ?? null,
+            visual_summary: t.visual_summary ?? null,
+          }),
         );
       }
       setRows(
         baseRows.map((r) => {
           const info = infoMap.get(r.id);
-          const merged = { ...r, agency: info?.agency ?? r.agency ?? null, editing_style: info?.editing_style ?? null, visual_summary: info?.visual_summary ?? null };
+          const merged = {
+            ...r,
+            brand: info?.brand ?? r.brand ?? null,
+            agency: info?.agency ?? r.agency ?? null,
+            year: info?.year ?? r.year ?? null,
+            editing_style: info?.editing_style ?? null,
+            visual_summary: info?.visual_summary ?? null,
+          };
           return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) } as LogRow;
         }),
       );
