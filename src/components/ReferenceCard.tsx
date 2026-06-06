@@ -14,6 +14,8 @@ interface Props {
   orderedIds?: string[];
   /** Disable lazy loading for above-the-fold images (improves LCP). */
   priority?: boolean;
+  /** Show image at natural aspect ratio instead of forced 16:9 (masonry mode). */
+  masonry?: boolean;
 }
 
 // Smart object-position heuristic: faces, headlines, and main subjects in
@@ -29,7 +31,7 @@ function smartPosition(w: number, h: number): string {
   return "center";                        // ultra-wide / cinematic
 }
 
-export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
+export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: Props) {
   // For photo projects, always prefer the first photo as the thumbnail.
   const mediaImages = (() => {
     const items = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
@@ -56,7 +58,7 @@ export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
       }}
       className="reveal-card group block overflow-hidden bg-card border hairline"
     >
-      <div className="relative aspect-video overflow-hidden bg-muted">
+      <div className={`relative overflow-hidden bg-muted ${masonry ? "" : "aspect-video"}`}>
         <BookmarkButton referenceId={r.id} />
         <FolderPickerButton referenceId={r.id} />
         {thumb ? (
@@ -69,11 +71,11 @@ export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
               const img = e.currentTarget;
               setPos(smartPosition(img.naturalWidth, img.naturalHeight));
             }}
-            className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-            style={{ objectPosition: pos }}
+            className={masonry ? "w-full h-auto block" : "h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"}
+            style={masonry ? undefined : { objectPosition: pos }}
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-secondary to-background">
+          <div className={`flex items-center justify-center bg-gradient-to-br from-secondary to-background ${masonry ? "aspect-video w-full" : "h-full w-full"}`}>
             <Icon className="h-10 w-10 text-muted-foreground/40" strokeWidth={1} />
           </div>
         )}

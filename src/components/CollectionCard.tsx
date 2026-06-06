@@ -28,6 +28,7 @@ interface Props {
   onDragStart: (id: string) => void;
   onDragEnd: () => void;
   orderedIds?: string[];
+  masonry?: boolean;
 }
 
 export function CollectionCard({
@@ -43,6 +44,7 @@ export function CollectionCard({
   onDragStart,
   onDragEnd,
   orderedIds,
+  masonry,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -126,7 +128,7 @@ export function CollectionCard({
         </DropdownMenu>
       </div>
 
-      <ReferenceCard reference={r} orderedIds={orderedIds} />
+      <ReferenceCard reference={r} orderedIds={orderedIds} masonry={masonry} />
 
       {inFolderIds.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
