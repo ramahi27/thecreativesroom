@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { useCategories } from "@/hooks/useCategories";
 import { useFolders } from "@/hooks/useFolders";
@@ -238,6 +239,7 @@ const Bookmarks = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta title="My Collection — The Creatives Room" description="Your saved references." noindex />
       <SiteHeader />
       <CollectionProfileHeader
         profile={profile}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PageMeta } from "@/components/PageMeta";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -46,6 +47,7 @@ const ResetPassword = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta title="Reset password — The Creatives Room" description="Reset your account password." noindex />
       <SiteHeader />
       <main className="container max-w-md py-20">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">⏵ Recover</p>

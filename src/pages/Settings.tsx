@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PageMeta } from "@/components/PageMeta";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -216,6 +217,7 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta title="Settings — The Creatives Room" description="Admin settings." noindex />
       <SiteHeader />
 
       <section className="border-b hairline">

@@ -3,6 +3,7 @@ import { Navigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -227,6 +228,7 @@ const Logs = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta title="Admin · Logs — The Creatives Room" description="Reference approval logs." noindex />
       <SiteHeader />
 
       <section className="border-b hairline">

@@ -3,6 +3,7 @@ import { Link, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
@@ -202,6 +203,7 @@ const Doubletakes = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta title="Doubletakes — The Creatives Room" description="Potential duplicate references." noindex />
       <SiteHeader />
 
       <section className="border-b hairline">

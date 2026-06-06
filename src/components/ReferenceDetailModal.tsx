@@ -14,6 +14,7 @@ import { consumeModalReturn, clearModalReturn, peekModalReturn, getModalNavOrder
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 import { ZoomableImage } from "@/components/ZoomableImage";
 import { useJsonLd } from "@/hooks/useJsonLd";
+import { PageMeta } from "@/components/PageMeta";
 
 interface Props {
   id: string;
@@ -87,6 +88,15 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     };
   }, [r]);
   useJsonLd(jsonLd, "reference-detail");
+
+  // Per-reference social/SEO meta (best-effort: client-rendered)
+  const metaDescription = useMemo(() => {
+    if (!r) return "";
+    const bits = [r.brand, r.agency, r.year ? String(r.year) : null].filter(Boolean);
+    const lead = bits.length ? `${bits.join(" · ")}. ` : "";
+    const tail = r.notes?.trim() || (r.categories?.length ? r.categories.join(", ") : "") || "Creative reference on The Creatives Room.";
+    return `${lead}${tail}`.slice(0, 200);
+  }, [r]);
 
   // Build a similarity-scored ordering across all refs. Used as a fallback
   // for prev/next when the user didn't open the modal from a known list,
@@ -288,6 +298,14 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
   return (
     <Dialog open onOpenChange={(o) => !o && returnToOpener()}>
+      {r && (
+        <PageMeta
+          title={`${r.title} — The Creatives Room`}
+          description={metaDescription}
+          path={`/ref/${r.id}`}
+          ogImage={r.thumbnail_url || r.media_url || undefined}
+        />
+      )}
       <DialogContent className="max-w-[1600px] w-[96vw] max-h-[95vh] overflow-x-hidden overflow-y-auto p-0 bg-background grain">
         {/* Prev / Next side arrows */}
         {prev && (

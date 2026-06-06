@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
 
@@ -371,6 +372,7 @@ const AddReference = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta title={isEdit ? "Edit reference — The Creatives Room" : "Add reference — The Creatives Room"} description="Add or edit a creative reference." noindex />
       <SiteHeader />
       <main className="container max-w-2xl py-12">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">

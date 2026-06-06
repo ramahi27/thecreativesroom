@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
@@ -121,6 +122,7 @@ const Users = () => {
 
   return (
     <div className="min-h-screen grain">
+      <PageMeta title="Admin · Users — The Creatives Room" description="User management." noindex />
       <SiteHeader />
 
       <section className="border-b hairline">

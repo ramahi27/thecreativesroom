@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile } from "@/hooks/useProfile";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -128,6 +129,7 @@ const ProfileSettings = () => {
 
   return (
     <div className="min-h-screen grain flex flex-col">
+      <PageMeta title="My Profile — The Creatives Room" description="Manage your profile settings." noindex />
       <SiteHeader />
       <main className="container py-12 md:py-16 flex-1 max-w-2xl">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-3">⏵ My Profile</p>
