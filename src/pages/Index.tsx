@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { extractId } from "@/lib/slug";
+import { extractId, refPath } from "@/lib/slug";
+import { useBookmarks } from "@/hooks/useBookmarks";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -44,6 +45,11 @@ const Index = () => {
   const [sortBy, setSortBy] = useState<SortBy>("default");
   const [search, setSearch] = useState("");
   const [briefFocused, setBriefFocused] = useState(false);
+
+  // Keyboard grid navigation
+  const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const { toggle: toggleBookmark } = useBookmarks();
 
   // Brief matching
   const [brief, setBrief] = useState("");
@@ -106,6 +112,72 @@ const Index = () => {
   };
 
   usePageView(openId ? `/ref/${openId}` : "/", openId ?? null);
+
+  // Reset focus when the filtered list changes (search / filter applied)
+  useEffect(() => { setFocusedIdx(null); }, [filtered]);
+
+  // Measure grid column count from the DOM
+  const getColCount = useCallback(() => {
+    const grid = gridRef.current;
+    if (!grid || grid.children.length < 2) return 1;
+    const firstTop = (grid.children[0] as HTMLElement).getBoundingClientRect().top;
+    let cols = 1;
+    for (let i = 1; i < grid.children.length; i++) {
+      if ((grid.children[i] as HTMLElement).getBoundingClientRect().top !== firstTop) break;
+      cols++;
+    }
+    return cols;
+  }, []);
+
+  // Keyboard grid navigation — only active when modal is closed
+  useEffect(() => {
+    if (openId) return;
+    const list = filtered;
+    if (list.length === 0) return;
+
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.key === "ArrowRight" || e.key === "j") {
+        e.preventDefault();
+        setFocusedIdx((p) => (p === null ? 0 : Math.min(p + 1, list.length - 1)));
+      } else if (e.key === "ArrowLeft" || e.key === "k") {
+        e.preventDefault();
+        setFocusedIdx((p) => (p === null ? 0 : Math.max(p - 1, 0)));
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const cols = getColCount();
+        setFocusedIdx((p) => (p === null ? 0 : Math.min(p + cols, list.length - 1)));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const cols = getColCount();
+        setFocusedIdx((p) => (p === null ? 0 : Math.max(p - cols, 0)));
+      } else if (e.key === "Enter") {
+        setFocusedIdx((p) => {
+          if (p !== null && list[p]) navigate(refPath(list[p].id, list[p].title));
+          return p;
+        });
+      } else if (e.key === "b" || e.key === "B") {
+        setFocusedIdx((p) => {
+          if (p !== null && list[p]) toggleBookmark(list[p].id);
+          return p;
+        });
+      } else if (e.key === "Escape") {
+        setFocusedIdx(null);
+      }
+    }
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openId, filtered, getColCount, navigate, toggleBookmark]);
+
+  // Scroll focused card into view
+  useEffect(() => {
+    if (focusedIdx === null || !gridRef.current) return;
+    const el = gridRef.current.children[focusedIdx] as HTMLElement | undefined;
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [focusedIdx]);
 
   useEffect(() => {
     try {
@@ -537,14 +609,24 @@ const Index = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div ref={gridRef} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {(() => {
                 const order = filtered.map((x) => x.id);
                 return filtered.map((r, i) => (
-                  <ReferenceCard key={r.id} reference={r} orderedIds={order} priority={i < 4} />
+                  <div
+                    key={r.id}
+                    className={focusedIdx === i ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}
+                  >
+                    <ReferenceCard reference={r} orderedIds={order} priority={i < 4} />
+                  </div>
                 ));
               })()}
             </div>
+            <p className="mt-4 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground select-none">
+              {focusedIdx !== null
+                ? `${focusedIdx + 1} / ${filtered.length} · Enter to open · B to bookmark · Esc to clear`
+                : "← → ↑ ↓ to navigate · Enter to open · B to bookmark"}
+            </p>
             {hasMore && (
               <div className="mt-12 flex flex-col items-center gap-3">
                 <Button
