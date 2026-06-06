@@ -55,6 +55,30 @@ const Index = () => {
   // Keep ref in sync so keyboard handlers always read the latest value
   useEffect(() => { focusedIdxRef.current = focusedIdx; }, [focusedIdx]);
 
+  // Smart search: AI expands the query into related terms after a short pause
+  const [expandedTerms, setExpandedTerms] = useState<string[]>([]);
+  const [searchExpanding, setSearchExpanding] = useState(false);
+  const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (expandTimerRef.current) clearTimeout(expandTimerRef.current);
+    setExpandedTerms([]);
+    const q = search.trim();
+    if (q.length < 3) return;
+    expandTimerRef.current = setTimeout(async () => {
+      setSearchExpanding(true);
+      try {
+        const { data } = await supabase.functions.invoke("expand-search", { body: { term: q } });
+        setExpandedTerms(data?.terms || []);
+      } catch {
+        // silent — regular keyword search still works
+      } finally {
+        setSearchExpanding(false);
+      }
+    }, 600);
+    return () => { if (expandTimerRef.current) clearTimeout(expandTimerRef.current); };
+  }, [search]);
+
   // Brief matching
   const [brief, setBrief] = useState("");
   const [matching, setMatching] = useState(false);
@@ -223,7 +247,8 @@ const Index = () => {
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
-        if (!hay.includes(q)) return false;
+        const terms = [q, ...expandedTerms.map((t) => t.toLowerCase())];
+        if (!terms.some((t) => hay.includes(t))) return false;
       }
       return true;
     });
@@ -249,7 +274,7 @@ const Index = () => {
         break;
     }
     return sorted;
-  }, [refs, mediaFilter, categoryFilter, search, sortBy]);
+  }, [refs, mediaFilter, categoryFilter, search, expandedTerms, sortBy]);
 
   // Reset focus when the filtered list changes (search / filter applied)
   useEffect(() => { setFocusedIdx(null); }, [filtered]);
@@ -538,39 +563,39 @@ const Index = () => {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && search.trim().length >= 3) {
-                  e.preventDefault();
-                  runBriefMatch(search.trim());
-                }
-              }}
               placeholder="Search client, brand, tag…"
-              className="pl-9 pr-16 bg-secondary border-0 font-mono text-xs uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
+              className="pl-9 pr-9 bg-secondary border-0 font-mono text-xs uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
             />
-            {search && (
-              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={() => runBriefMatch(search.trim())}
-                  aria-label="AI search"
-                  title="Search with AI"
-                  className="p-1 rounded-sm text-primary hover:text-primary/80 hover:bg-muted transition-colors"
-                >
-                  <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  aria-label="Clear search"
-                  className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                  <X className="h-3.5 w-3.5" strokeWidth={1.5} />
-                </button>
+            {(search || searchExpanding) && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                {searchExpanding && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    aria-label="Clear search"
+                    className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  </button>
+                )}
               </div>
             )}
           </div>
 
         </div>
+        {search && expandedTerms.length > 0 && (
+          <div className="container pb-2.5 flex items-center gap-2 flex-wrap">
+            <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground">Also searching:</span>
+            {expandedTerms
+              .filter((t) => t.toLowerCase() !== search.trim().toLowerCase())
+              .map((t) => (
+                <span key={t} className="font-mono text-[9px] uppercase tracking-widest bg-secondary border hairline px-2 py-0.5 text-muted-foreground">
+                  {t}
+                </span>
+              ))}
+          </div>
+        )}
       </section>
 
       {/* Matched for your brief */}
@@ -640,11 +665,6 @@ const Index = () => {
                 ));
               })()}
             </div>
-            <p className="mt-4 text-center font-mono text-[10px] uppercase tracking-widest text-muted-foreground select-none">
-              {focusedIdx !== null
-                ? `${focusedIdx + 1} / ${filtered.length} · Enter to open · B to bookmark · Esc to clear`
-                : "← → ↑ ↓ to navigate · Enter to open · B to bookmark"}
-            </p>
             {hasMore && (
               <div className="mt-12 flex flex-col items-center gap-3">
                 <Button
