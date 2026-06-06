@@ -406,7 +406,9 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                         className="w-full bg-black object-contain max-h-[calc(95vh-16rem)]"
                       />
                     ) : (
-                      <ZoomableImage src={current.url} alt={r.title} />
+                      <div className="aspect-video bg-black">
+                        <ZoomableImage src={current.url} alt={r.title} className="h-full" />
+                      </div>
                     )
                   ) : (
                     <div className="aspect-video flex items-center justify-center bg-secondary">
