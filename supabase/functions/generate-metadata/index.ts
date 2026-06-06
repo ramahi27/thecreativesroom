@@ -197,14 +197,34 @@ Deno.serve(async (req) => {
     }
 
     const data = await resp.json();
-    const call = data?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!call?.function?.arguments) {
+    const message = data?.choices?.[0]?.message;
+    const call = message?.tool_calls?.[0];
+
+    let metadata = null;
+    if (call?.function?.arguments) {
+      metadata = JSON.parse(call.function.arguments);
+    } else if (typeof message?.content === "string" && message.content.trim()) {
+      try {
+        metadata = JSON.parse(message.content);
+      } catch {
+        metadata = null;
+      }
+    }
+
+    if (!metadata || typeof metadata !== "object") {
+      console.error("No parseable metadata returned", JSON.stringify(data));
       return new Response(JSON.stringify({ error: "No metadata returned" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const metadata = JSON.parse(call.function.arguments);
+
+    if (!Array.isArray((metadata as Record<string, unknown>).tags)) {
+      return new Response(JSON.stringify({ error: "Invalid metadata returned" }), {
+        status: 502,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     return new Response(JSON.stringify({ metadata }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

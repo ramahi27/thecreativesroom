@@ -12,12 +12,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { rememberModalReturn, setModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
+function hasValue(value: string | null | undefined) {
+  return typeof value === "string" ? value.trim().length > 0 : false;
+}
+
 // A reference is considered "AI-complete" only if brand, agency, AND year
 // are all filled. For video references, editing_style must also be present.
 function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null; type?: string; editing_style?: string | null; visual_summary?: string | null }): boolean {
-  if (!(r.brand && r.agency && r.year)) return false;
-  if (r.type === "video" && !r.editing_style) return false;
-  if (!r.visual_summary) return false;
+  if (!(hasValue(r.brand) && hasValue(r.agency) && r.year)) return false;
+  if (r.type === "video" && !hasValue(r.editing_style)) return false;
+  if (!hasValue(r.visual_summary)) return false;
   return true;
 }
 
@@ -74,13 +78,15 @@ const Logs = () => {
       const r = pending[i];
       setBackfillProgress(`${i + 1}/${pending.length} · ${r.title}`);
       try {
+        const before = rows.find((x) => x.id === r.id);
         await enrichReferenceMetadata(r.id);
         // Re-fetch to verify completeness
-        const { data: fresh } = await supabase
+        const { data: fresh, error: freshError } = await supabase
           .from("references")
           .select("brand,agency,year,editing_style,visual_summary")
           .eq("id", r.id)
           .maybeSingle();
+        if (freshError) throw freshError;
         const complete = hasCompleteMetadata({
           brand: fresh?.brand ?? null,
           agency: fresh?.agency ?? null,
@@ -107,9 +113,27 @@ const Logs = () => {
             ),
           );
         } else {
+          if (before && fresh) {
+            setRows((prev) =>
+              prev.map((x) =>
+                x.id === r.id
+                  ? {
+                      ...x,
+                      brand: fresh.brand ?? x.brand,
+                      agency: fresh.agency ?? x.agency,
+                      year: fresh.year ?? x.year,
+                      editing_style: (fresh as any)?.editing_style ?? x.editing_style,
+                      visual_summary: (fresh as any)?.visual_summary ?? x.visual_summary,
+                      has_ai_metadata: false,
+                    }
+                  : x,
+              ),
+            );
+          }
           failed++;
         }
-      } catch {
+      } catch (error: any) {
+        console.error("Backfill failed", r.id, error);
         failed++;
       }
       await new Promise((res) => setTimeout(res, 400));
