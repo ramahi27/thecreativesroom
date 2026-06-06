@@ -14,7 +14,7 @@ import { CollectionCard } from "@/components/CollectionCard";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { Globe } from "lucide-react";
 
-import { FolderGridCard, NewFolderCard } from "@/components/FolderGridCard";
+import { FolderSidebar } from "@/components/FolderSidebar";
 import {
   Select,
   SelectContent,
@@ -55,6 +55,7 @@ const Bookmarks = () => {
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"recent" | "title" | "year_new" | "year_old">("recent");
 
   // Folders
   const {
@@ -67,7 +68,6 @@ const Bookmarks = () => {
     deleteFolder,
     addToFolder,
     removeFromFolder,
-    setVisibility,
   } = useFolders();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useMyProfile();
   const { folders: followed, loading: followedLoading } = useFollowedFolders();
@@ -157,7 +157,7 @@ const Bookmarks = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return refs.filter((r) => {
+    const list = refs.filter((r) => {
       // folder filter
       if (activeFolder === "uncategorized") {
         if (!uncategorizedIds.has(r.id)) return false;
@@ -188,7 +188,29 @@ const Bookmarks = () => {
       }
       return true;
     });
-  }, [refs, mediaFilter, categoryFilter, search, activeFolder, items, uncategorizedIds]);
+    // refs already arrive newest-bookmarked first, which is the "recent" default.
+    if (sortBy === "recent") return list;
+    const sorted = [...list];
+    switch (sortBy) {
+      case "title":
+        sorted.sort((a, b) => (a.title || "").localeCompare(b.title || ""));
+        break;
+      case "year_new":
+        sorted.sort((a, b) => (b.year || 0) - (a.year || 0));
+        break;
+      case "year_old":
+        sorted.sort((a, b) => (a.year || 9999) - (b.year || 9999));
+        break;
+    }
+    return sorted;
+  }, [refs, mediaFilter, categoryFilter, search, sortBy, activeFolder, items, uncategorizedIds]);
+
+  const activeFolderName =
+    activeFolder === null
+      ? "All"
+      : activeFolder === "uncategorized"
+        ? "Unsorted"
+        : folders.find((f) => f.id === activeFolder)?.name ?? "All";
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -272,71 +294,6 @@ const Bookmarks = () => {
         </div>
       </section>
 
-      {/* Filter bar */}
-      {tab === "mine" && refs.length > 0 && (
-        <section className="border-b hairline bg-background/80 backdrop-blur-xl">
-          <div className="container py-4 flex flex-wrap items-center gap-4">
-            <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-              Filter
-            </span>
-            <Select
-              value={mediaFilter}
-              onValueChange={(v) => {
-                setMediaFilter(v as MediaFilter);
-                setCategoryFilter("all");
-              }}
-            >
-              <SelectTrigger className="w-[160px] bg-secondary border-0 font-mono text-xs uppercase tracking-widest">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">
-                  All
-                </SelectItem>
-                <SelectItem value="videos" className="font-mono text-xs uppercase tracking-widest">
-                  Videos
-                </SelectItem>
-                <SelectItem value="photos" className="font-mono text-xs uppercase tracking-widest">
-                  Photos
-                </SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-              <SelectTrigger className="w-[220px] bg-secondary border-0 font-mono text-xs uppercase tracking-widest">
-                <SelectValue placeholder="All categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">
-                  All categories
-                </SelectItem>
-                {availableCategories.map((c) => (
-                  <SelectItem
-                    key={c}
-                    value={c}
-                    className="font-mono text-xs uppercase tracking-widest"
-                  >
-                    {c}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
-              <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
-                strokeWidth={1.5}
-              />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search client, brand, tag…"
-                className="pl-9 bg-secondary border-0 font-mono text-xs uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
-              />
-            </div>
-          </div>
-        </section>
-      )}
 
       <main className="container py-12">
         {tab === "submitted" ? (
@@ -449,124 +406,127 @@ const Bookmarks = () => {
             </Link>
           </div>
         ) : (
-          <div>
-            {activeFolder === null ? (
-              <div className="space-y-12">
-                <div>
-                  <div className="flex items-baseline justify-between mb-5">
-                    <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                      Collections
-                    </h2>
-                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                      {folders.length} {folders.length === 1 ? "folder" : "folders"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    {folders.map((f) => {
-                      const folderRefs = refs.filter((r) =>
-                        items.some((it) => it.folder_id === f.id && it.reference_id === r.id),
-                      );
-                      return (
-                        <FolderGridCard
-                          key={f.id}
-                          folder={f}
-                          references={folderRefs.slice(0, 3)}
-                          count={countForFolder(f.id)}
-                          onClick={() => setActiveFolder(f.id)}
-                          onDelete={() => deleteFolder(f.id)}
-                          onDropReference={(e) => handleDropOnFolder(f.id, e)}
-                          draggingActive={dragging}
-                          username={profile?.username}
-                          onToggleVisibility={() => setVisibility(f.id, !f.is_public)}
-                        />
-                      );
-                    })}
-                    <NewFolderCard onClick={() => openCreateFolderDialog([])} />
-                  </div>
-                </div>
+          <div className="flex flex-col lg:flex-row gap-8">
+            <FolderSidebar
+              folders={folders}
+              countForFolder={countForFolder}
+              totalCount={refs.length}
+              uncategorizedCount={uncategorizedIds.size}
+              activeId={activeFolder}
+              onSelect={setActiveFolder}
+              onCreate={createFolder}
+              onRename={renameFolder}
+              onDelete={deleteFolder}
+              onDropOnFolder={handleDropOnFolder}
+              draggingActive={dragging}
+              username={profile?.username}
+            />
 
-                {uncategorizedIds.size > 0 && (
-                  <div>
-                    <div className="flex items-baseline justify-between mb-5">
-                      <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                        Unsorted
-                      </h2>
-                      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                        Drag onto a folder above
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                      {(() => {
-                        const subset = refs.filter((r) => uncategorizedIds.has(r.id));
-                        const order = subset.map((x) => x.id);
-                        return subset.map((r) => (
-                          <CollectionCard
-                            key={r.id}
-                            reference={r}
-                            folders={folders}
-                            inFolderIds={foldersForReference(r.id)}
-                            selected={selected.has(r.id)}
-                            selectionMode={selectionMode}
-                            onToggleSelect={toggleSelect}
-                            onAddToFolder={addToFolder}
-                            onRemoveFromFolder={removeFromFolder}
-                            onCreateFolder={() => openCreateFolderDialog([r.id])}
-                            onDragStart={() => setDragging(true)}
-                            onDragEnd={() => setDragging(false)}
-                            orderedIds={order}
-                          />
-                        ));
-                      })()}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                <div className="flex items-baseline justify-between mb-5">
-                  <h2 className="font-display text-3xl font-bold tracking-tight">
-                    {folders.find((f) => f.id === activeFolder)?.name}
+            <div className="flex-1 min-w-0">
+              {/* Header: active folder name + controls */}
+              <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
+                <div className="flex items-baseline gap-3 min-w-0">
+                  <h2 className="font-display text-3xl font-bold tracking-tight truncate">
+                    {activeFolderName}
                   </h2>
-                  <button
-                    type="button"
-                    onClick={() => setActiveFolder(null)}
-                    className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
-                  >
-                    ← All collections
-                  </button>
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
+                    {filtered.length} {filtered.length === 1 ? "ref" : "refs"}
+                  </span>
                 </div>
-                {filtered.length === 0 ? (
-                  <div className="py-20 text-center">
-                    <p className="font-display text-3xl text-muted-foreground italic">
-                      Nothing here.
-                    </p>
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <Select
+                    value={mediaFilter}
+                    onValueChange={(v) => {
+                      setMediaFilter(v as MediaFilter);
+                      setCategoryFilter("all");
+                    }}
+                  >
+                    <SelectTrigger className="w-[120px] h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">All</SelectItem>
+                      <SelectItem value="videos" className="font-mono text-xs uppercase tracking-widest">Videos</SelectItem>
+                      <SelectItem value="photos" className="font-mono text-xs uppercase tracking-widest">Photos</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="w-[180px] h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest">
+                      <SelectValue placeholder="All categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">All categories</SelectItem>
+                      {availableCategories.map((c) => (
+                        <SelectItem key={c} value={c} className="font-mono text-xs uppercase tracking-widest">{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                    <SelectTrigger className="w-[160px] h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="recent" className="font-mono text-xs uppercase tracking-widest">Sort: Recent</SelectItem>
+                      <SelectItem value="title" className="font-mono text-xs uppercase tracking-widest">Title A–Z</SelectItem>
+                      <SelectItem value="year_new" className="font-mono text-xs uppercase tracking-widest">Campaign · newest</SelectItem>
+                      <SelectItem value="year_old" className="font-mono text-xs uppercase tracking-widest">Campaign · oldest</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <div className="relative w-[200px]">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
+                    <Input
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search…"
+                      className="pl-9 h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
+                    />
                   </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                    {(() => {
-                      const order = filtered.map((x) => x.id);
-                      return filtered.map((r) => (
-                        <CollectionCard
-                          key={r.id}
-                          reference={r}
-                          folders={folders}
-                          inFolderIds={foldersForReference(r.id)}
-                          selected={selected.has(r.id)}
-                          selectionMode={selectionMode}
-                          onToggleSelect={toggleSelect}
-                          onAddToFolder={addToFolder}
-                          onRemoveFromFolder={removeFromFolder}
-                          onCreateFolder={() => openCreateFolderDialog([r.id])}
-                          onDragStart={() => setDragging(true)}
-                          onDragEnd={() => setDragging(false)}
-                          orderedIds={order}
-                        />
-                      ));
-                    })()}
-                  </div>
-                )}
+                </div>
               </div>
-            )}
+
+              {filtered.length === 0 ? (
+                <div className="py-20 text-center border border-dashed hairline">
+                  <p className="font-display text-2xl text-muted-foreground italic">
+                    {search.trim() || mediaFilter !== "all" || categoryFilter !== "all"
+                      ? "No matches."
+                      : activeFolder
+                        ? "This folder is empty."
+                        : "Nothing here yet."}
+                  </p>
+                  {activeFolder && !search.trim() && mediaFilter === "all" && categoryFilter === "all" && (
+                    <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      Drag references here, or use the ⋯ menu on a card.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+                  {(() => {
+                    const order = filtered.map((x) => x.id);
+                    return filtered.map((r) => (
+                      <CollectionCard
+                        key={r.id}
+                        reference={r}
+                        folders={folders}
+                        inFolderIds={foldersForReference(r.id)}
+                        selected={selected.has(r.id)}
+                        selectionMode={selectionMode}
+                        onToggleSelect={toggleSelect}
+                        onAddToFolder={addToFolder}
+                        onRemoveFromFolder={removeFromFolder}
+                        onCreateFolder={() => openCreateFolderDialog([r.id])}
+                        onDragStart={() => setDragging(true)}
+                        onDragEnd={() => setDragging(false)}
+                        orderedIds={order}
+                      />
+                    ));
+                  })()}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>
