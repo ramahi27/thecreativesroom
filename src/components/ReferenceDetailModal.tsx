@@ -9,7 +9,7 @@ import type { Reference, MediaItem } from "@/lib/references";
 import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
-import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2, Flag } from "lucide-react";
 import { consumeModalReturn, clearModalReturn, peekModalReturn, getModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 import { ZoomableImage } from "@/components/ZoomableImage";
@@ -32,6 +32,10 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [activeMedia, setActiveMedia] = useState(0);
   const [tagInput, setTagInput] = useState("");
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportField, setReportField] = useState("brand");
+  const [reportMsg, setReportMsg] = useState("");
+  const [reportSending, setReportSending] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -220,6 +224,22 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     // Backfill missing brand/agency/year using AI in the background.
     enrichReferenceMetadata(r.id);
     returnToOpener();
+  }
+
+  async function handleReport(e: React.FormEvent) {
+    e.preventDefault();
+    if (!r || !reportMsg.trim()) return;
+    setReportSending(true);
+    const { error } = await supabase.from("reference_reports").insert({
+      reference_id: r.id,
+      field: reportField,
+      message: reportMsg.trim().slice(0, 500),
+    });
+    setReportSending(false);
+    if (error) { toast.error("Couldn't submit report."); return; }
+    toast.success("Report submitted — thanks!");
+    setReportOpen(false);
+    setReportMsg("");
   }
 
   async function handleShare() {
@@ -500,6 +520,60 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     </dl>
                   );
                 })()}
+
+                {/* Report a mistake */}
+                {!reportOpen ? (
+                  <button
+                    onClick={() => setReportOpen(true)}
+                    className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Flag className="h-3 w-3" />
+                    Report a mistake
+                  </button>
+                ) : (
+                  <form onSubmit={handleReport} className="border hairline p-4 space-y-3">
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      ⏵ Report a mistake
+                    </p>
+                    <select
+                      value={reportField}
+                      onChange={(e) => setReportField(e.target.value)}
+                      className="w-full bg-secondary border-0 font-mono text-xs px-3 py-2 focus:outline-none"
+                    >
+                      <option value="brand">Wrong brand</option>
+                      <option value="agency">Wrong agency / director</option>
+                      <option value="year">Wrong year</option>
+                      <option value="title">Wrong title</option>
+                      <option value="category">Wrong category</option>
+                      <option value="other">Other</option>
+                    </select>
+                    <textarea
+                      required
+                      maxLength={500}
+                      rows={3}
+                      placeholder="What's correct? e.g. 'Agency should be Droga5, not BBDO'"
+                      value={reportMsg}
+                      onChange={(e) => setReportMsg(e.target.value)}
+                      className="w-full bg-secondary border-0 font-mono text-xs px-3 py-2 resize-none focus:outline-none placeholder:text-muted-foreground"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={reportSending || !reportMsg.trim()}
+                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 bg-foreground text-background hover:opacity-80 disabled:opacity-40 transition-opacity"
+                      >
+                        {reportSending ? "Sending…" : "Submit"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setReportOpen(false); setReportMsg(""); }}
+                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 border hairline hover:bg-secondary transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
 
                 {isAdmin ? (
                   <div className="border-t hairline pt-6">

@@ -61,6 +61,41 @@ const Logs = () => {
   const [backfilling, setBackfilling] = useState(false);
   const [backfillProgress, setBackfillProgress] = useState<string>("");
 
+  type Report = {
+    id: string;
+    reference_id: string;
+    field: string;
+    message: string;
+    resolved: boolean;
+    created_at: string;
+    ref_title?: string;
+  };
+  const [reports, setReports] = useState<Report[]>([]);
+
+  async function loadReports() {
+    const { data } = await supabase
+      .from("reference_reports")
+      .select("id,reference_id,field,message,resolved,created_at,references(title)")
+      .eq("resolved", false)
+      .order("created_at", { ascending: false });
+    setReports(
+      ((data as any[]) || []).map((r) => ({
+        ...r,
+        ref_title: r.references?.title ?? r.reference_id,
+      })),
+    );
+  }
+
+  async function resolveReport(id: string) {
+    const { error } = await supabase
+      .from("reference_reports")
+      .update({ resolved: true })
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    setReports((prev) => prev.filter((r) => r.id !== id));
+    toast.success("Report resolved");
+  }
+
   async function handleBackfillAll() {
     const pending = rows.filter((r) => !r.has_ai_metadata);
     if (pending.length === 0) {
@@ -162,6 +197,7 @@ const Logs = () => {
 
   useEffect(() => {
     if (!isAdmin) return;
+    loadReports();
     (async () => {
       setLoading(true);
       const { data, error } = await supabase.rpc("get_reference_logs");
@@ -268,6 +304,33 @@ const Logs = () => {
           </div>
         </div>
       </section>
+
+      {reports.length > 0 && (
+        <section className="container py-8 border-b hairline">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-4">
+            ⏵ {reports.length} pending report{reports.length !== 1 ? "s" : ""}
+          </p>
+          <div className="border hairline divide-y">
+            {reports.map((rep) => (
+              <div key={rep.id} className="flex items-start gap-4 p-4">
+                <div className="flex-1 min-w-0">
+                  <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground mb-0.5">
+                    {rep.field} · <Link to={refPath(rep.reference_id, rep.ref_title ?? "")} className="hover:text-foreground transition-colors">{rep.ref_title}</Link>
+                  </p>
+                  <p className="font-body text-sm">{rep.message}</p>
+                  <p className="font-mono text-[9px] text-muted-foreground mt-1">{new Date(rep.created_at).toLocaleString()}</p>
+                </div>
+                <button
+                  onClick={() => resolveReport(rep.id)}
+                  className="shrink-0 font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 border hairline hover:bg-secondary transition-colors"
+                >
+                  Resolve
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="container py-8">
         {loading ? (
