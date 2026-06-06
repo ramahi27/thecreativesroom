@@ -33,12 +33,24 @@ function init() {
 
   supabase.auth.onAuthStateChange((_event, session) => {
     const user = session?.user ?? null;
-    // Always reset isAdmin to false before the async check so a previously
-    // cached true value is never inherited by a different (or re-authed) user.
-    setState({ user, isAdmin: false });
+    const sameUser = cached.user?.id && user?.id && cached.user.id === user.id;
+
+    if (!user) {
+      setState({ user: null, isAdmin: false, loading: false });
+      return;
+    }
+
+    setState({
+      user,
+      loading: true,
+      isAdmin: sameUser ? cached.isAdmin : false,
+    });
+
     if (user) {
-      // Defer to avoid deadlock inside the auth callback
-      setTimeout(() => checkAdmin(user.id), 0);
+      setTimeout(async () => {
+        await checkAdmin(user.id);
+        setState({ loading: false });
+      }, 0);
     }
   });
 
