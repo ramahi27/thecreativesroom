@@ -1,7 +1,22 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const MAX_TERM_LEN = 100;
+const DAILY_IP_LIMIT = 300; // generous for real use, blocks scripted abuse
+
+// Hash an IP address with a secret key so raw PII is never persisted.
+async function hashIp(ip: string): Promise<string> {
+  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "salt";
+  const data = new TextEncoder().encode(`${secret}:${ip}`);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -13,9 +28,37 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const cleanTerm = term.trim().slice(0, MAX_TERM_LEN);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+
+    // ── Rate limiting (per hashed IP, per day) ─────────────────────────────
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+    const today = new Date().toISOString().split("T")[0];
+    const rawIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const ipHash = await hashIp(rawIp);
+    const { data: usageRow } = await supabase
+      .from("search_usages")
+      .select("count")
+      .eq("ip_hash", ipHash)
+      .eq("usage_date", today)
+      .maybeSingle();
+    const usedToday = usageRow?.count ?? 0;
+    if (usedToday >= DAILY_IP_LIMIT) {
+      // Fail soft: return no expansion terms; regular keyword search still works.
+      return new Response(JSON.stringify({ terms: [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    await supabase.from("search_usages").upsert(
+      { ip_hash: ipHash, usage_date: today, count: usedToday + 1 },
+      { onConflict: "ip_hash,usage_date" }
+    );
+    // ── End rate limiting ──────────────────────────────────────────────────
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -28,7 +71,7 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: `Given the search term "${term.trim()}", return 6–10 synonyms and closely related terms a creative professional might use when searching an advertising, film, and photography archive. Include the original term. Return ONLY a JSON array of lowercase strings, no explanation. Example for "cars": ["car","cars","automobile","vehicle","automotive","road","driving"]`,
+            content: `Given the search term "${cleanTerm}", return 6–10 synonyms and closely related terms a creative professional might use when searching an advertising, film, and photography archive. Include the original term. Return ONLY a JSON array of lowercase strings, no explanation. Example for "cars": ["car","cars","automobile","vehicle","automotive","road","driving"]`,
           },
         ],
         max_tokens: 150,

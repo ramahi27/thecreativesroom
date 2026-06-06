@@ -7,6 +7,17 @@ const corsHeaders = {
 
 const LIMITS = { anon: 1, free: 3, paid: 20 } as const;
 type Plan = keyof typeof LIMITS;
+const MAX_BRIEF_LEN = 2000;
+
+// Hash an IP address with a secret key so raw PII is never persisted.
+async function hashIp(ip: string): Promise<string> {
+  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "salt";
+  const data = new TextEncoder().encode(`${secret}:${ip}`);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -29,13 +40,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { brief } = await req.json();
-    if (!brief || typeof brief !== "string" || brief.trim().length < 3) {
+    const { brief: rawBrief } = await req.json();
+    if (!rawBrief || typeof rawBrief !== "string" || rawBrief.trim().length < 3) {
       return new Response(JSON.stringify({ error: "Brief is too short" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // Cap input length to prevent abuse and runaway token costs.
+    const brief = rawBrief.slice(0, MAX_BRIEF_LEN);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
@@ -47,7 +60,8 @@ Deno.serve(async (req) => {
 
     // ── Rate limiting ────────────────────────────────────────────────────────
     const today = new Date().toISOString().split("T")[0];
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const rawIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const ip = await hashIp(rawIp); // store only a salted hash, never the raw IP
     let plan: Plan = "anon";
     let usedToday = 0;
 
