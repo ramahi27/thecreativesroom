@@ -262,7 +262,7 @@ const Settings = () => {
                       <button key={p.id} onClick={() => { rememberModalReturn(); setModalNavOrder(stats.top_visited.map((x) => x.id)); navigate(`/ref/${p.id}`); }} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
                         <span className="font-mono text-[10px] text-muted-foreground w-5">{(i + 1).toString().padStart(2, "0")}</span>
                         <div className="w-12 h-8 bg-secondary shrink-0 overflow-hidden">
-                          {p.thumbnail_url && <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />}
+                          {p.thumbnail_url && <img src={p.thumbnail_url} alt={p.title} className="w-full h-full object-cover" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-body text-xs truncate">{p.title}</p>
@@ -286,7 +286,7 @@ const Settings = () => {
                       <button key={p.id} onClick={() => { rememberModalReturn(); setModalNavOrder(stats.top_bookmarked.map((x) => x.id)); navigate(`/ref/${p.id}`); }} className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors">
                         <span className="font-mono text-[10px] text-muted-foreground w-5">{(i + 1).toString().padStart(2, "0")}</span>
                         <div className="w-12 h-8 bg-secondary shrink-0 overflow-hidden">
-                          {p.thumbnail_url && <img src={p.thumbnail_url} alt="" className="w-full h-full object-cover" />}
+                          {p.thumbnail_url && <img src={p.thumbnail_url} alt={p.title} className="w-full h-full object-cover" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-body text-xs truncate">{p.title}</p>
