@@ -229,29 +229,61 @@ const Index = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const exp = expandedTerms.map((t) => t.toLowerCase()).filter((t) => t && t !== q);
+
+    // Score a reference against the query. Exact-query hits weigh far more
+    // than expanded-synonym hits, and title/brand/tags weigh more than notes,
+    // so the closest projects float to the top.
+    const score = (r: Reference): number => {
+      const fields = {
+        title: (r.title || "").toLowerCase(),
+        brand: (r.brand || "").toLowerCase(),
+        agency: (r.agency || "").toLowerCase(),
+        tags: (r.tags || []).join(" ").toLowerCase(),
+        categories: (r.categories || []).join(" ").toLowerCase(),
+        syn: ((r as any).tag_synonyms || []).join(" ").toLowerCase(),
+        notes: (r.notes || "").toLowerCase(),
+      };
+      let s = 0;
+      const hit = (field: string, term: string, exact: number, partial: number) => {
+        if (!field || !term) return 0;
+        // word-boundary (whole word) match scores higher than substring
+        const whole = new RegExp(`(^|[^a-z])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`).test(field);
+        if (whole) return exact;
+        return field.includes(term) ? partial : 0;
+      };
+      // Original query — heavy weighting
+      s += hit(fields.title, q, 100, 60);
+      s += hit(fields.brand, q, 80, 40);
+      s += hit(fields.agency, q, 50, 25);
+      s += hit(fields.tags, q, 60, 30);
+      s += hit(fields.categories, q, 55, 28);
+      s += hit(fields.syn, q, 35, 18);
+      s += hit(fields.notes, q, 20, 10);
+      // Expanded / related terms — lighter weighting so they rank below
+      for (const t of exp) {
+        s += hit(fields.title, t, 18, 10);
+        s += hit(fields.brand, t, 14, 8);
+        s += hit(fields.tags, t, 12, 7);
+        s += hit(fields.categories, t, 11, 6);
+        s += hit(fields.syn, t, 6, 3);
+        s += hit(fields.notes, t, 4, 2);
+      }
+      return s;
+    };
+
     const list = refs.filter((r) => {
       if (mediaFilter === "videos" && !(r.type === "video" || r.type === "link")) return false;
       if (mediaFilter === "photos" && r.type !== "image") return false;
       if (categoryFilter !== "all" && !(r.categories || []).includes(categoryFilter)) return false;
-      if (q) {
-        const hay = [
-          r.title,
-          r.brand,
-          r.agency,
-          r.notes,
-          r.year ? String(r.year) : "",
-          ...(r.tags || []),
-          ...((r as any).tag_synonyms || []),
-          ...(r.categories || []),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        const terms = [q, ...expandedTerms.map((t) => t.toLowerCase())];
-        if (!terms.some((t) => hay.includes(t))) return false;
-      }
+      if (q && score(r) === 0) return false;
       return true;
     });
+
+    // When searching with no explicit sort chosen, rank by relevance.
+    if (q && sortBy === "default") {
+      return [...list].sort((a, b) => score(b) - score(a));
+    }
 
     if (sortBy === "default") return list;
     const sorted = [...list];
