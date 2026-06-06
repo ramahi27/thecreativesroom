@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { MoreHorizontal, Pencil, Trash2, Inbox, Layers, Check, Plus } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Inbox, Layers, Plus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -27,17 +26,6 @@ interface Props {
   draggingActive: boolean;
   username?: string | null;
 }
-
-const COLORS = [
-  { name: "Coral", value: "hsl(8 85% 62%)" },
-  { name: "Amber", value: "hsl(38 92% 55%)" },
-  { name: "Lime", value: "hsl(85 65% 50%)" },
-  { name: "Emerald", value: "hsl(160 60% 45%)" },
-  { name: "Sky", value: "hsl(200 80% 55%)" },
-  { name: "Indigo", value: "hsl(245 65% 62%)" },
-  { name: "Magenta", value: "hsl(320 70% 60%)" },
-  { name: "Slate", value: "hsl(220 10% 55%)" },
-];
 
 // Pinned chip (All / Unsorted) — no management menu.
 function StaticChip({
@@ -92,7 +80,7 @@ export function FolderBar({
   draggingActive,
   username,
 }: Props) {
-  const { updateColor, setVisibility } = useFolders();
+  const { setVisibility } = useFolders();
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -135,7 +123,6 @@ export function FolderBar({
       {folders.map((f) => {
         const isActive = activeId === f.id;
         const isOver = dragOverId === f.id;
-        const color = f.color || "hsl(var(--muted-foreground))";
 
         if (renamingId === f.id) {
           return (
@@ -185,10 +172,6 @@ export function FolderBar({
               onClick={() => onSelect(f.id)}
               className="inline-flex items-center gap-2 min-w-0"
             >
-              <span
-                className="h-2.5 w-2.5 rounded-full shrink-0 ring-1 ring-foreground/10"
-                style={{ backgroundColor: color }}
-              />
               <span className="font-mono text-[11px] uppercase tracking-widest truncate max-w-[160px]">
                 {f.name}
               </span>
@@ -216,27 +199,6 @@ export function FolderBar({
                 align="start"
                 className="font-mono text-xs uppercase tracking-widest min-w-[200px]"
               >
-                <DropdownMenuLabel className="text-[10px] text-muted-foreground">
-                  Color
-                </DropdownMenuLabel>
-                <div className="grid grid-cols-8 gap-1 px-2 pb-2">
-                  {COLORS.map((c) => {
-                    const active = f.color === c.value;
-                    return (
-                      <button
-                        key={c.value}
-                        type="button"
-                        title={c.name}
-                        onClick={() => updateColor(f.id, c.value)}
-                        className="h-5 w-5 rounded-full ring-1 ring-foreground/10 flex items-center justify-center transition-transform hover:scale-110"
-                        style={{ backgroundColor: c.value }}
-                      >
-                        {active && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
-                      </button>
-                    );
-                  })}
-                </div>
-                <DropdownMenuSeparator />
                 <div className="px-2 py-1.5">
                   <FolderVisibilityToggle
                     isPublic={f.is_public}
