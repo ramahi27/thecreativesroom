@@ -289,19 +289,16 @@ const Bookmarks = () => {
                   setTab(t.k);
                   setActiveFolder(null);
                 }}
-                className={`relative py-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors ${
-                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                className={`py-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors border-b-2 ${
+                  active
+                    ? "text-foreground border-primary"
+                    : "text-muted-foreground hover:text-foreground border-transparent"
                 }`}
               >
                 {t.label}
                 <span className={`tabular-nums text-[10px] ${active ? "text-primary" : "text-muted-foreground/60"}`}>
                   {t.count}
                 </span>
-                <span
-                  className={`absolute bottom-0 left-0 right-0 h-px bg-primary transition-transform origin-left ${
-                    active ? "scale-x-100" : "scale-x-0"
-                  }`}
-                />
               </button>
             );
           })}
@@ -324,11 +321,13 @@ const Bookmarks = () => {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <div className="columns-2 md:columns-3 xl:columns-4 gap-4">
               {(() => {
                 const order = submissions.map((x) => x.id);
                 return submissions.map((r) => (
-                  <ReferenceCard key={r.id} reference={r} orderedIds={order} />
+                  <div key={r.id} className="break-inside-avoid mb-4">
+                    <ReferenceCard reference={r} orderedIds={order} masonry />
+                  </div>
                 ));
               })()}
             </div>
@@ -523,25 +522,27 @@ const Bookmarks = () => {
                   )}
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+                <div className="columns-2 md:columns-3 xl:columns-4 gap-4">
                   {(() => {
                     const order = filtered.map((x) => x.id);
                     return filtered.map((r) => (
-                      <CollectionCard
-                        key={r.id}
-                        reference={r}
-                        folders={folders}
-                        inFolderIds={foldersForReference(r.id)}
-                        selected={selected.has(r.id)}
-                        selectionMode={selectionMode}
-                        onToggleSelect={toggleSelect}
-                        onAddToFolder={addToFolder}
-                        onRemoveFromFolder={removeFromFolder}
-                        onCreateFolder={() => openCreateFolderDialog([r.id])}
-                        onDragStart={() => setDragging(true)}
-                        onDragEnd={() => setDragging(false)}
-                        orderedIds={order}
-                      />
+                      <div key={r.id} className="break-inside-avoid mb-4">
+                        <CollectionCard
+                          reference={r}
+                          folders={folders}
+                          inFolderIds={foldersForReference(r.id)}
+                          selected={selected.has(r.id)}
+                          selectionMode={selectionMode}
+                          onToggleSelect={toggleSelect}
+                          onAddToFolder={addToFolder}
+                          onRemoveFromFolder={removeFromFolder}
+                          onCreateFolder={() => openCreateFolderDialog([r.id])}
+                          onDragStart={() => setDragging(true)}
+                          onDragEnd={() => setDragging(false)}
+                          orderedIds={order}
+                          masonry
+                        />
+                      </div>
                     ));
                   })()}
                 </div>

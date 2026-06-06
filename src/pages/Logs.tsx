@@ -18,6 +18,9 @@ function hasValue(value: string | null | undefined) {
   return typeof value === "string" ? value.trim().length > 0 : false;
 }
 
+// "AI metadata" is considered present once the AI-generated visual_summary exists.
+// brand/agency/year are factual fields the AI often cannot determine, so they are
+// optional and must not keep a reference permanently in the "missing AI" count.
 function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null; type?: string; editing_style?: string | null; visual_summary?: string | null }): boolean {
   return hasValue(r.visual_summary);
 }
