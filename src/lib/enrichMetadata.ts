@@ -40,7 +40,8 @@ export async function enrichReferenceMetadata(referenceId: string) {
       },
     );
     const meta = (data as any)?.metadata;
-    if (error || !meta) return;
+    if (error) throw error;
+    if (!meta) throw new Error("No metadata returned");
 
     const newTags = metadataToTags(meta);
     const existing: string[] = Array.isArray(cur.tags) ? (cur.tags as string[]) : [];
@@ -95,7 +96,11 @@ export async function enrichReferenceMetadata(referenceId: string) {
     ) {
       updates.visual_summary = meta.visual_summary.trim();
     }
-    await supabase.from("references").update(updates).eq("id", referenceId);
+    const { error: updateError } = await supabase
+      .from("references")
+      .update(updates)
+      .eq("id", referenceId);
+    if (updateError) throw updateError;
   } catch {
     /* best-effort */
   }
