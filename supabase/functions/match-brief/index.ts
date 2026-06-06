@@ -5,13 +5,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const LIMITS = { anon: 1, free: 3, paid: 20 } as const;
+type Plan = keyof typeof LIMITS;
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    // Auth is OPTIONAL — anonymous visitors can run brief matching to discover
-    // references. A valid signed-in user is only required to *persist* the
-    // brief reasoning back into reference metadata (admins only, see below).
     const authHeader = req.headers.get("Authorization");
     let userId: string | null = null;
     if (authHeader?.startsWith("Bearer ")) {
@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
         const { data: userData } = await authClient.auth.getUser(token);
         userId = userData?.user?.id ?? null;
       } catch (_) {
-        // Ignore auth errors — treat as anonymous.
+        // treat as anonymous
       }
     }
 
@@ -44,6 +44,39 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // ── Rate limiting ────────────────────────────────────────────────────────
+    const today = new Date().toISOString().split("T")[0];
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    let plan: Plan = "anon";
+    let usedToday = 0;
+
+    if (userId) {
+      const [{ data: profile }, { data: usageRow }] = await Promise.all([
+        supabase.from("profiles").select("plan").eq("id", userId).maybeSingle(),
+        supabase.from("brief_usages").select("count").eq("user_id", userId).eq("usage_date", today).maybeSingle(),
+      ]);
+      plan = (profile?.plan as Plan) || "free";
+      usedToday = usageRow?.count ?? 0;
+    } else {
+      const { data: usageRow } = await supabase
+        .from("brief_usages")
+        .select("count")
+        .eq("ip_address", ip)
+        .is("user_id", null)
+        .eq("usage_date", today)
+        .maybeSingle();
+      usedToday = usageRow?.count ?? 0;
+    }
+
+    const limit = LIMITS[plan];
+    if (usedToday >= limit) {
+      return new Response(
+        JSON.stringify({ error: "limit_reached", used: usedToday, limit, plan }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    // ── End rate limiting ────────────────────────────────────────────────────
 
     // Only admins can have brief reasoning persisted back into reference metadata.
     let isAdmin = false;
@@ -254,7 +287,21 @@ Return ONLY via the tool call.`;
       })
     );
 
-    return new Response(JSON.stringify({ matches }), {
+    // Increment usage counter
+    const newCount = usedToday + 1;
+    if (userId) {
+      await supabase.from("brief_usages").upsert(
+        { user_id: userId, usage_date: today, count: newCount },
+        { onConflict: "user_id,usage_date" }
+      );
+    } else {
+      await supabase.from("brief_usages").upsert(
+        { ip_address: ip, usage_date: today, count: newCount },
+        { onConflict: "ip_address,usage_date" }
+      );
+    }
+
+    return new Response(JSON.stringify({ matches, used: newCount, limit, plan }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

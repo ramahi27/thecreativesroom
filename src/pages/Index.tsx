@@ -83,6 +83,7 @@ const Index = () => {
   const [brief, setBrief] = useState("");
   const [matching, setMatching] = useState(false);
   const [matches, setMatches] = useState<Array<{ ref: Reference; reason: string }>>([]);
+  const [briefUsage, setBriefUsage] = useState<{ used: number; limit: number; plan: string } | null>(null);
 
   const runBriefMatch = async (overrideText?: string) => {
     const text = (overrideText ?? brief).trim();
@@ -91,7 +92,6 @@ const Index = () => {
       return;
     }
     setMatching(true);
-    // Reset filters so matches are evaluated across all categories
     setMediaFilter("all");
     setCategoryFilter("all");
     setSearch("");
@@ -99,14 +99,33 @@ const Index = () => {
       const { data, error } = await supabase.functions.invoke("match-brief", {
         body: { brief: text },
       });
+
+      // Rate limit hit
+      if (error?.status === 429 || data?.error === "limit_reached") {
+        const payload = data || {};
+        const plan: string = payload.plan ?? "anon";
+        const msg =
+          plan === "anon"
+            ? "You've used your free try. Sign in for 3 matches a day."
+            : plan === "free"
+            ? "You've reached your 3 daily matches. Upgrade for 20 a day."
+            : "Daily limit reached. Resets at midnight.";
+        toast.error(msg, { duration: 6000 });
+        if (payload.used !== undefined) setBriefUsage({ used: payload.used, limit: payload.limit, plan });
+        return;
+      }
+
       if (error) throw error;
+
+      // Store usage info returned by the server
+      if (data?.used !== undefined) setBriefUsage({ used: data.used, limit: data.limit, plan: data.plan });
+
       const list = (data?.matches || []) as Array<{ id: string; reason: string }>;
       if (list.length === 0) {
         toast.info("No strong matches found.");
         setMatches([]);
         return;
       }
-      // Fetch full ref data for matched IDs
       const ids = list.map((m) => m.id);
       const { data: rows } = await supabase
         .from("references")
@@ -122,7 +141,6 @@ const Index = () => {
         })
         .filter(Boolean) as Array<{ ref: Reference; reason: string }>;
       setMatches(ordered);
-      // Scroll to matched section
       setTimeout(() => {
         document.getElementById("matched")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }, 100);
@@ -507,13 +525,20 @@ const Index = () => {
                 </button>
               )}
             </div>
-            <Button
-              type="submit"
-              disabled={matching}
-              className="font-mono text-xs uppercase tracking-widest"
-            >
-              {matching ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching…</> : "Match brief"}
-            </Button>
+            <div className="flex flex-col items-start gap-1">
+              <Button
+                type="submit"
+                disabled={matching}
+                className="font-mono text-xs uppercase tracking-widest"
+              >
+                {matching ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching…</> : "Match brief"}
+              </Button>
+              {briefUsage && (
+                <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                  {briefUsage.used}/{briefUsage.limit} today
+                </span>
+              )}
+            </div>
           </form>
         </div>
         <div className="container py-3 flex flex-wrap items-center gap-4">
