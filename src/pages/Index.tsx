@@ -380,7 +380,7 @@ const Index = () => {
   return (
     <div className="min-h-screen grain">
       <PageMeta
-        title="The Creatives Room — Digital Reference Archive for Creatives"
+        title="The Creatives Room"
         description="A curated archive of ad films, commercials, and photography references for creatives. Search by brief, browse, and save inspiration."
         path="/"
       />
