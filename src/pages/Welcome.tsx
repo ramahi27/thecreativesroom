@@ -27,7 +27,11 @@ const Welcome = () => {
       .select("username")
       .eq("user_id", user.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Failed to check existing profile", error);
+          return;
+        }
         if (data?.username) navigate(`/u/${data.username}`);
       });
   }, [authLoading, user, navigate]);

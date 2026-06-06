@@ -25,9 +25,13 @@ export function useProfileByUsername(username: string | undefined) {
     setNotFound(false);
     supabase
       .rpc("get_profile_by_username", { _username: username.toLowerCase() })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
         if (cancelled) return;
-        if (!data) {
+        if (error) {
+          console.error("Failed to load profile", error);
+          setNotFound(true);
+          setProfile(null);
+        } else if (!data) {
           setNotFound(true);
           setProfile(null);
         } else {

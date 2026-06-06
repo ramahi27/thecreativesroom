@@ -211,7 +211,13 @@ Return ONLY via the tool call.`;
         const parsed = JSON.parse(toolCall.function.arguments);
         matches = (parsed.matches || []).slice(0, 8);
       } catch (e) {
+        // Distinguish a parse failure from a genuine "no matches" result so the
+        // client can tell the user to retry instead of showing an empty state.
         console.error("parse error", e);
+        return new Response(
+          JSON.stringify({ error: "Could not read AI response. Please try again." }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
       }
     }
 
