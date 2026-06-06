@@ -11,6 +11,7 @@ type AuthState = { user: User | null; isAdmin: boolean; loading: boolean };
 let cached: AuthState = { user: null, isAdmin: false, loading: true };
 const listeners = new Set<(s: AuthState) => void>();
 let initialized = false;
+let initialSessionResolved = false;
 
 function setState(next: Partial<AuthState>) {
   cached = { ...cached, ...next };
@@ -34,15 +35,17 @@ function init() {
   supabase.auth.onAuthStateChange((_event, session) => {
     const user = session?.user ?? null;
     const sameUser = cached.user?.id && user?.id && cached.user.id === user.id;
+    const canTrustCachedAdmin = Boolean(sameUser && cached.isAdmin);
 
     if (!user) {
+      if (!initialSessionResolved) return;
       setState({ user: null, isAdmin: false, loading: false });
       return;
     }
 
     setState({
       user,
-      loading: true,
+      loading: canTrustCachedAdmin ? false : true,
       isAdmin: sameUser ? cached.isAdmin : false,
     });
 
@@ -55,6 +58,7 @@ function init() {
   });
 
   supabase.auth.getSession().then(async ({ data: { session } }) => {
+    initialSessionResolved = true;
     const user = session?.user ?? null;
     // Don't set loading:false until after checkAdmin resolves —
     // otherwise components briefly see isAdmin:false for real admins
