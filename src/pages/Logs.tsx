@@ -18,11 +18,11 @@ function hasValue(value: string | null | undefined) {
 
 // A reference is considered "AI-complete" only if brand, agency, AND year
 // are all filled. For video references, editing_style must also be present.
+// "AI metadata" is considered present once the AI-generated visual_summary exists.
+// brand/agency/year are factual fields the AI often cannot determine, so they are
+// optional and must not keep a reference permanently in the "missing AI" count.
 function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null; type?: string; editing_style?: string | null; visual_summary?: string | null }): boolean {
-  if (!(hasValue(r.brand) && hasValue(r.agency) && r.year)) return false;
-  if (r.type === "video" && !hasValue(r.editing_style)) return false;
-  if (!hasValue(r.visual_summary)) return false;
-  return true;
+  return hasValue(r.visual_summary);
 }
 
 type LogRow = {
