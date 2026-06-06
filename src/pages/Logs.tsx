@@ -16,13 +16,8 @@ function hasValue(value: string | null | undefined) {
   return typeof value === "string" ? value.trim().length > 0 : false;
 }
 
-// A reference is considered "AI-complete" only if brand, agency, AND year
-// are all filled. For video references, editing_style must also be present.
 function hasCompleteMetadata(r: { brand: string | null; agency: string | null; year: number | null; type?: string; editing_style?: string | null; visual_summary?: string | null }): boolean {
-  if (!(hasValue(r.brand) && hasValue(r.agency) && r.year)) return false;
-  if (r.type === "video" && !hasValue(r.editing_style)) return false;
-  if (!hasValue(r.visual_summary)) return false;
-  return true;
+  return hasValue(r.visual_summary);
 }
 
 type LogRow = {
