@@ -113,9 +113,6 @@ const Index = () => {
 
   usePageView(openId ? `/ref/${openId}` : "/", openId ?? null);
 
-  // Reset focus when the filtered list changes (search / filter applied)
-  useEffect(() => { setFocusedIdx(null); }, [filtered]);
-
   // Measure grid column count from the DOM
   const getColCount = useCallback(() => {
     const grid = gridRef.current;
@@ -128,56 +125,6 @@ const Index = () => {
     }
     return cols;
   }, []);
-
-  // Keyboard grid navigation — only active when modal is closed
-  useEffect(() => {
-    if (openId) return;
-    const list = filtered;
-    if (list.length === 0) return;
-
-    function onKey(e: KeyboardEvent) {
-      const tag = (e.target as HTMLElement).tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
-
-      if (e.key === "ArrowRight" || e.key === "j") {
-        e.preventDefault();
-        setFocusedIdx((p) => (p === null ? 0 : Math.min(p + 1, list.length - 1)));
-      } else if (e.key === "ArrowLeft" || e.key === "k") {
-        e.preventDefault();
-        setFocusedIdx((p) => (p === null ? 0 : Math.max(p - 1, 0)));
-      } else if (e.key === "ArrowDown") {
-        e.preventDefault();
-        const cols = getColCount();
-        setFocusedIdx((p) => (p === null ? 0 : Math.min(p + cols, list.length - 1)));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        const cols = getColCount();
-        setFocusedIdx((p) => (p === null ? 0 : Math.max(p - cols, 0)));
-      } else if (e.key === "Enter") {
-        setFocusedIdx((p) => {
-          if (p !== null && list[p]) navigate(refPath(list[p].id, list[p].title));
-          return p;
-        });
-      } else if (e.key === "b" || e.key === "B") {
-        setFocusedIdx((p) => {
-          if (p !== null && list[p]) toggleBookmark(list[p].id);
-          return p;
-        });
-      } else if (e.key === "Escape") {
-        setFocusedIdx(null);
-      }
-    }
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [openId, filtered, getColCount, navigate, toggleBookmark]);
-
-  // Scroll focused card into view
-  useEffect(() => {
-    if (focusedIdx === null || !gridRef.current) return;
-    const el = gridRef.current.children[focusedIdx] as HTMLElement | undefined;
-    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [focusedIdx]);
 
   useEffect(() => {
     try {
@@ -300,6 +247,58 @@ const Index = () => {
     return sorted;
   }, [refs, mediaFilter, categoryFilter, search, sortBy]);
 
+  // Reset focus when the filtered list changes (search / filter applied)
+  useEffect(() => { setFocusedIdx(null); }, [filtered]);
+
+  // Keyboard grid navigation — only active when modal is closed
+  useEffect(() => {
+    if (openId) return;
+    const list = filtered;
+    if (list.length === 0) return;
+
+    function onKey(e: KeyboardEvent) {
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (e.key === "ArrowRight" || e.key === "j") {
+        e.preventDefault();
+        setFocusedIdx((p) => (p === null ? 0 : Math.min(p + 1, list.length - 1)));
+      } else if (e.key === "ArrowLeft" || e.key === "k") {
+        e.preventDefault();
+        setFocusedIdx((p) => (p === null ? 0 : Math.max(p - 1, 0)));
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        const cols = getColCount();
+        setFocusedIdx((p) => (p === null ? 0 : Math.min(p + cols, list.length - 1)));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        const cols = getColCount();
+        setFocusedIdx((p) => (p === null ? 0 : Math.max(p - cols, 0)));
+      } else if (e.key === "Enter") {
+        setFocusedIdx((p) => {
+          if (p !== null && list[p]) navigate(refPath(list[p].id, list[p].title));
+          return p;
+        });
+      } else if (e.key === "b" || e.key === "B") {
+        setFocusedIdx((p) => {
+          if (p !== null && list[p]) toggleBookmark(list[p].id);
+          return p;
+        });
+      } else if (e.key === "Escape") {
+        setFocusedIdx(null);
+      }
+    }
+
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openId, filtered, getColCount, navigate, toggleBookmark]);
+
+  // Scroll focused card into view
+  useEffect(() => {
+    if (focusedIdx === null || !gridRef.current) return;
+    const el = gridRef.current.children[focusedIdx] as HTMLElement | undefined;
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [focusedIdx]);
 
   return (
     <div className="min-h-screen grain">
