@@ -14,7 +14,7 @@ import { CollectionCard } from "@/components/CollectionCard";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { Globe } from "lucide-react";
 
-import { FolderBar } from "@/components/FolderBar";
+import { FolderRow } from "@/components/FolderRow";
 import {
   Select,
   SelectContent,
@@ -39,7 +39,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Search, FolderPlus, X } from "lucide-react";
+import { Search, FolderPlus, X, ChevronLeft, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Reference } from "@/lib/references";
 
@@ -68,6 +68,7 @@ const Bookmarks = () => {
     deleteFolder,
     addToFolder,
     removeFromFolder,
+    setVisibility,
   } = useFolders();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useMyProfile();
   const { folders: followed, loading: followedLoading } = useFollowedFolders();
@@ -212,11 +213,6 @@ const Bookmarks = () => {
         ? "Unsorted"
         : folders.find((f) => f.id === activeFolder)?.name ?? "All references";
 
-  const activeFolderColor =
-    activeFolder && activeFolder !== "uncategorized"
-      ? folders.find((f) => f.id === activeFolder)?.color ?? "hsl(var(--primary))"
-      : "hsl(var(--primary))";
-
   // Thumbnails for the active folder hero strip
   const folderThumbs = useMemo(() => {
     if (!activeFolder || activeFolder === "uncategorized") return [];
@@ -226,19 +222,15 @@ const Bookmarks = () => {
       .slice(0, 9) as string[];
   }, [activeFolder, filtered]);
 
-  // Items NOT in the active folder that share categories — shown as "More from your collection"
-  const similarRefs = useMemo(() => {
-    if (!activeFolder || activeFolder === "uncategorized") return [];
-    const cats = new Set(filtered.flatMap((r) => r.categories || []));
-    if (cats.size === 0) return [];
-    return refs
-      .filter(
-        (r) =>
-          !items.some((it) => it.folder_id === activeFolder && it.reference_id === r.id) &&
-          (r.categories || []).some((c) => cats.has(c)),
-      )
-      .slice(0, 16);
-  }, [activeFolder, filtered, refs, items]);
+  // References that belong to a given folder (for the folder index rows)
+  const refsInFolder = (folderId: string) =>
+    refs.filter((r) => items.some((it) => it.folder_id === folderId && it.reference_id === r.id));
+
+  // Unsorted references — shown at the bottom of the index
+  const unsortedRefs = useMemo(
+    () => refs.filter((r) => uncategorizedIds.has(r.id)),
+    [refs, uncategorizedIds],
+  );
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -441,136 +433,103 @@ const Bookmarks = () => {
               Browse archive
             </Link>
           </div>
-        ) : (
+        ) : activeFolder ? (
+          /* ============ FOLDER DETAIL ============ */
           <div className="space-y-8">
-            {/* Folder navigation bar */}
-            <FolderBar
-              folders={folders}
-              countForFolder={countForFolder}
-              totalCount={refs.length}
-              uncategorizedCount={uncategorizedIds.size}
-              activeId={activeFolder}
-              onSelect={setActiveFolder}
-              onCreate={createFolder}
-              onRename={renameFolder}
-              onDelete={deleteFolder}
-              onDropOnFolder={handleDropOnFolder}
-              draggingActive={dragging}
-              username={profile?.username}
-            />
+            <button
+              type="button"
+              onClick={() => setActiveFolder(null)}
+              className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} /> My collection
+            </button>
 
-            {/* Pinterest-style folder hero — only for real folders */}
-            {activeFolder && activeFolder !== "uncategorized" && (
-              <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-12 pb-8 border-b hairline">
-                {/* Left: name + meta */}
-                <div className="shrink-0 md:max-w-[260px]">
-                  <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-3">
-                    Collection
-                  </p>
-                  <h2 className="font-display text-4xl md:text-6xl font-black tracking-tighter leading-[0.9] mb-4">
-                    {activeFolderName}
-                  </h2>
-                  <p className="font-mono text-sm text-muted-foreground">
-                    {filtered.length} {filtered.length === 1 ? "reference" : "references"}
-                  </p>
-                </div>
-                {/* Right: thumbnail strip */}
-                {folderThumbs.length > 0 && (
-                  <div className="flex gap-2.5 overflow-x-auto flex-1 pb-1 [scrollbar-width:thin]">
-                    {folderThumbs.map((thumb, i) => (
-                      <div
-                        key={i}
-                        className="h-36 w-28 shrink-0 rounded-2xl overflow-hidden bg-secondary"
-                      >
-                        <img
-                          src={thumb}
-                          alt=""
-                          loading="lazy"
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
+            {/* Pinterest-style folder hero */}
+            <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-12 pb-8 border-b hairline">
+              <div className="shrink-0 md:max-w-[260px]">
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-3">
+                  Collection
+                </p>
+                <h2 className="font-display text-4xl md:text-6xl font-black tracking-tighter leading-[0.9] mb-4">
+                  {activeFolderName}
+                </h2>
+                <p className="font-mono text-sm text-muted-foreground">
+                  {filtered.length} {filtered.length === 1 ? "reference" : "references"}
+                </p>
               </div>
-            )}
+              {folderThumbs.length > 0 && (
+                <div className="flex gap-2.5 overflow-x-auto flex-1 pb-1 [scrollbar-width:thin]">
+                  {folderThumbs.map((thumb, i) => (
+                    <div key={i} className="h-36 w-28 shrink-0 rounded-2xl overflow-hidden bg-secondary">
+                      <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Filter controls */}
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              {/* Left: count label when not in a folder (hero already shows it for folders) */}
-              {(!activeFolder || activeFolder === "uncategorized") && (
-                <h2 className="font-display text-3xl font-black tracking-tighter">
-                  {activeFolderName}
-                  <span className="ml-3 font-mono text-base font-normal text-muted-foreground">
-                    {filtered.length}
-                  </span>
-                </h2>
-              )}
-              <div className="flex flex-wrap items-center gap-2.5 ml-auto">
-                <Select
-                  value={mediaFilter}
-                  onValueChange={(v) => {
-                    setMediaFilter(v as MediaFilter);
-                    setCategoryFilter("all");
-                  }}
-                >
-                  <SelectTrigger className="w-[110px] h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">All</SelectItem>
-                    <SelectItem value="videos" className="font-mono text-xs uppercase tracking-widest">Videos</SelectItem>
-                    <SelectItem value="photos" className="font-mono text-xs uppercase tracking-widest">Photos</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="flex flex-wrap items-center justify-end gap-2.5">
+              <Select
+                value={mediaFilter}
+                onValueChange={(v) => {
+                  setMediaFilter(v as MediaFilter);
+                  setCategoryFilter("all");
+                }}
+              >
+                <SelectTrigger className="w-[110px] h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">All</SelectItem>
+                  <SelectItem value="videos" className="font-mono text-xs uppercase tracking-widest">Videos</SelectItem>
+                  <SelectItem value="photos" className="font-mono text-xs uppercase tracking-widest">Photos</SelectItem>
+                </SelectContent>
+              </Select>
 
-                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-[170px] h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest">
-                    <SelectValue placeholder="All categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">All categories</SelectItem>
-                    {availableCategories.map((c) => (
-                      <SelectItem key={c} value={c} className="font-mono text-xs uppercase tracking-widest">{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[170px] h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest">
+                  <SelectValue placeholder="All categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">All categories</SelectItem>
+                  {availableCategories.map((c) => (
+                    <SelectItem key={c} value={c} className="font-mono text-xs uppercase tracking-widest">{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-                <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
-                  <SelectTrigger className="w-[155px] h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="recent" className="font-mono text-xs uppercase tracking-widest">Recent</SelectItem>
-                    <SelectItem value="title" className="font-mono text-xs uppercase tracking-widest">Title A–Z</SelectItem>
-                    <SelectItem value="year_new" className="font-mono text-xs uppercase tracking-widest">Newest first</SelectItem>
-                    <SelectItem value="year_old" className="font-mono text-xs uppercase tracking-widest">Oldest first</SelectItem>
-                  </SelectContent>
-                </Select>
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                <SelectTrigger className="w-[155px] h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent" className="font-mono text-xs uppercase tracking-widest">Recent</SelectItem>
+                  <SelectItem value="title" className="font-mono text-xs uppercase tracking-widest">Title A–Z</SelectItem>
+                  <SelectItem value="year_new" className="font-mono text-xs uppercase tracking-widest">Newest first</SelectItem>
+                  <SelectItem value="year_old" className="font-mono text-xs uppercase tracking-widest">Oldest first</SelectItem>
+                </SelectContent>
+              </Select>
 
-                <div className="relative w-[190px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
-                  <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search…"
-                    className="pl-9 h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
-                  />
-                </div>
+              <div className="relative w-[190px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search…"
+                  className="pl-9 h-9 bg-secondary border-0 font-mono text-[11px] uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
+                />
               </div>
             </div>
 
-            {/* Main grid */}
             {filtered.length === 0 ? (
               <div className="py-20 text-center border border-dashed hairline">
                 <p className="font-display text-2xl text-muted-foreground italic">
                   {search.trim() || mediaFilter !== "all" || categoryFilter !== "all"
                     ? "No matches."
-                    : activeFolder
-                      ? "This folder is empty."
-                      : "Nothing here yet."}
+                    : "This folder is empty."}
                 </p>
-                {activeFolder && !search.trim() && mediaFilter === "all" && categoryFilter === "all" && (
+                {!search.trim() && mediaFilter === "all" && categoryFilter === "all" && (
                   <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                     Drag references here, or use the ⋯ menu on a card.
                   </p>
@@ -602,17 +561,75 @@ const Bookmarks = () => {
                 })()}
               </div>
             )}
+          </div>
+        ) : (
+          /* ============ FOLDER INDEX ============ */
+          <div className="space-y-10">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                {folders.length} {folders.length === 1 ? "folder" : "folders"}
+              </h2>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openCreateFolderDialog([])}
+                className="font-mono text-[10px] uppercase tracking-widest h-9 gap-1.5"
+              >
+                <Plus className="h-3.5 w-3.5" strokeWidth={2} /> New folder
+              </Button>
+            </div>
 
-            {/* "More from your collection" — similar items not in this folder */}
-            {similarRefs.length > 0 && !search.trim() && (
-              <div className="pt-8 border-t hairline">
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-6">
-                  More from your collection
-                </p>
+            {/* Folder rows, stacked */}
+            {folders.length > 0 && (
+              <div className="space-y-4">
+                {folders.map((f) => (
+                  <FolderRow
+                    key={f.id}
+                    folder={f}
+                    references={refsInFolder(f.id)}
+                    count={countForFolder(f.id)}
+                    onOpen={() => setActiveFolder(f.id)}
+                    onRename={renameFolder}
+                    onDelete={() => deleteFolder(f.id)}
+                    onDropReference={(e) => handleDropOnFolder(f.id, e)}
+                    draggingActive={dragging}
+                    username={profile?.username}
+                    onToggleVisibility={() => setVisibility(f.id, !f.is_public)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {folders.length === 0 && (
+              <button
+                type="button"
+                onClick={() => openCreateFolderDialog([])}
+                className="w-full rounded-3xl border border-dashed hairline py-12 text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+              >
+                + Create your first folder
+              </button>
+            )}
+
+            {/* Unsorted projects at the bottom */}
+            {unsortedRefs.length > 0 && (
+              <div className="pt-4">
+                <div className="flex items-baseline justify-between mb-6">
+                  <h2 className="font-display text-3xl font-black tracking-tighter">
+                    Unsorted
+                    <span className="ml-3 font-mono text-base font-normal text-muted-foreground">
+                      {unsortedRefs.length}
+                    </span>
+                  </h2>
+                  {folders.length > 0 && (
+                    <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                      Drag onto a folder above
+                    </span>
+                  )}
+                </div>
                 <div className="columns-2 md:columns-3 xl:columns-4 gap-4">
                   {(() => {
-                    const order = similarRefs.map((x) => x.id);
-                    return similarRefs.map((r) => (
+                    const order = unsortedRefs.map((x) => x.id);
+                    return unsortedRefs.map((r) => (
                       <div key={r.id} className="break-inside-avoid mb-4">
                         <CollectionCard
                           reference={r}
