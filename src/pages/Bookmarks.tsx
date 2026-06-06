@@ -14,7 +14,7 @@ import { CollectionCard } from "@/components/CollectionCard";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { Globe } from "lucide-react";
 
-import { FolderSidebar } from "@/components/FolderSidebar";
+import { FolderBar } from "@/components/FolderBar";
 import {
   Select,
   SelectContent,
@@ -419,8 +419,8 @@ const Bookmarks = () => {
             </Link>
           </div>
         ) : (
-          <div className="flex flex-col lg:flex-row gap-8">
-            <FolderSidebar
+          <div className="space-y-6">
+            <FolderBar
               folders={folders}
               countForFolder={countForFolder}
               totalCount={refs.length}
@@ -435,7 +435,7 @@ const Bookmarks = () => {
               username={profile?.username}
             />
 
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0">
               {/* Header: active folder name + controls */}
               <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
                 <div className="flex items-stretch gap-4 min-w-0">
