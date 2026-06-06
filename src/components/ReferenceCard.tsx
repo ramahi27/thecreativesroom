@@ -55,7 +55,7 @@ export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
         if (orderedIds && orderedIds.length > 0) setModalNavOrder(orderedIds);
         else clearModalNavOrder();
       }}
-      className="reveal-card group block overflow-hidden bg-card border hairline"
+      className="reveal-card group block overflow-hidden bg-card border hairline flex flex-col"
     >
       <div className="relative aspect-video overflow-hidden bg-muted">
         <BookmarkButton referenceId={r.id} />
@@ -109,13 +109,13 @@ export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
         </div>
       </div>
 
-      <div className="p-4 space-y-2">
-        <div className="flex items-baseline justify-between gap-3">
+      <div className="p-4 flex flex-col justify-between flex-1" style={{ minHeight: "7rem" }}>
+        <div className="flex items-start justify-between gap-3">
           <h3 className="leading-tight line-clamp-2 font-light font-serif text-xl" title={r.title}>
             {r.title}
           </h3>
           {r.year && (
-            <span className="font-mono text-xs text-muted-foreground shrink-0">{r.year}</span>
+            <span className="font-mono text-xs text-muted-foreground shrink-0 mt-0.5">{r.year}</span>
           )}
         </div>
 
@@ -124,15 +124,13 @@ export function ReferenceCard({ reference: r, orderedIds, priority }: Props) {
           const showAgency = !isMagazine && r.agency;
           if (!r.brand && !showAgency) return null;
           return (
-            <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+            <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground mt-2 truncate">
               {r.brand}
               {r.brand && showAgency && <span className="mx-1.5 opacity-50">/</span>}
               {showAgency && r.agency}
             </p>
           );
         })()}
-
-
       </div>
     </Link>
   );
