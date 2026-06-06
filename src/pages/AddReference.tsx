@@ -313,6 +313,7 @@ const AddReference = () => {
           .invoke("generate-metadata", {
             body: {
               title,
+              type,
               brand: brand || null,
               agency: agency || null,
               year: year ? Number(year) : null,
