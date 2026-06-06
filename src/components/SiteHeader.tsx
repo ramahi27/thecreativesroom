@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTheme } from "next-themes";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile } from "@/hooks/useProfile";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,13 +12,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User as UserIcon } from "lucide-react";
+import { User as UserIcon, Sun, Moon } from "lucide-react";
 
 export function SiteHeader() {
   const { user, isAdmin } = useAuth();
   const { profile, loading: profileLoading } = useMyProfile();
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme, setTheme } = useTheme();
 
   // First-time OAuth users land without a profile row — send them to /welcome.
   useEffect(() => {
@@ -38,6 +40,14 @@ export function SiteHeader() {
         </Link>
 
         <nav className="flex items-center gap-1 sm:gap-2">
+          <button
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Toggle theme"
+          >
+            {theme === "dark" ? <Sun className="h-3.5 w-3.5" strokeWidth={1.5} /> : <Moon className="h-3.5 w-3.5" strokeWidth={1.5} />}
+            {theme === "dark" ? "Day" : "Night"}
+          </button>
           {user && profile?.username && (
             <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
               <Link to={`/u/${profile.username}`}>My Collection</Link>
