@@ -74,14 +74,29 @@ const Logs = () => {
       setBackfillProgress(`${i + 1}/${pending.length} · ${r.title}`);
       try {
         const before = rows.find((x) => x.id === r.id);
+        // Try once, then retry once after a longer pause if the first attempt didn't stick
         await enrichReferenceMetadata(r.id);
-        // Re-fetch to verify completeness
-        const { data: fresh, error: freshError } = await supabase
-          .from("references")
-          .select("brand,agency,year,editing_style,visual_summary")
-          .eq("id", r.id)
-          .maybeSingle();
-        if (freshError) throw freshError;
+        let fresh = null;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          if (attempt > 0) await new Promise((res) => setTimeout(res, 3000));
+          const { data, error: freshError } = await supabase
+            .from("references")
+            .select("brand,agency,year,editing_style,visual_summary")
+            .eq("id", r.id)
+            .maybeSingle();
+          if (freshError) throw freshError;
+          fresh = data;
+          if (hasCompleteMetadata({
+            brand: fresh?.brand ?? null,
+            agency: fresh?.agency ?? null,
+            year: fresh?.year ?? null,
+            type: r.type,
+            editing_style: (fresh as any)?.editing_style ?? null,
+            visual_summary: (fresh as any)?.visual_summary ?? null,
+          })) break;
+          // First attempt didn't produce visual_summary — retry the AI call
+          if (attempt === 0) await enrichReferenceMetadata(r.id);
+        }
         const complete = hasCompleteMetadata({
           brand: fresh?.brand ?? null,
           agency: fresh?.agency ?? null,
@@ -114,9 +129,9 @@ const Logs = () => {
                 x.id === r.id
                   ? {
                       ...x,
-                      brand: fresh.brand ?? x.brand,
-                      agency: fresh.agency ?? x.agency,
-                      year: fresh.year ?? x.year,
+                      brand: fresh!.brand ?? x.brand,
+                      agency: fresh!.agency ?? x.agency,
+                      year: fresh!.year ?? x.year,
                       editing_style: (fresh as any)?.editing_style ?? x.editing_style,
                       visual_summary: (fresh as any)?.visual_summary ?? x.visual_summary,
                       has_ai_metadata: false,
@@ -131,7 +146,8 @@ const Logs = () => {
         console.error("Backfill failed", r.id, error);
         failed++;
       }
-      await new Promise((res) => setTimeout(res, 400));
+      // 1.2s between calls to avoid hitting the AI gateway rate limit
+      await new Promise((res) => setTimeout(res, 1200));
     }
     setBackfilling(false);
     setBackfillProgress("");
