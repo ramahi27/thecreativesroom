@@ -48,16 +48,20 @@ const Index = () => {
 
   // Keyboard grid navigation
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
+  const focusedIdxRef = useRef<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const { toggle: toggleBookmark } = useBookmarks();
+
+  // Keep ref in sync so keyboard handlers always read the latest value
+  useEffect(() => { focusedIdxRef.current = focusedIdx; }, [focusedIdx]);
 
   // Brief matching
   const [brief, setBrief] = useState("");
   const [matching, setMatching] = useState(false);
   const [matches, setMatches] = useState<Array<{ ref: Reference; reason: string }>>([]);
 
-  const runBriefMatch = async () => {
-    const text = brief.trim();
+  const runBriefMatch = async (overrideText?: string) => {
+    const text = (overrideText ?? brief).trim();
     if (text.length < 3) {
       toast.error("Write a short brief first.");
       return;
@@ -259,31 +263,29 @@ const Index = () => {
     function onKey(e: KeyboardEvent) {
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      const p = focusedIdxRef.current;
 
       if (e.key === "ArrowRight" || e.key === "j") {
         e.preventDefault();
-        setFocusedIdx((p) => (p === null ? 0 : Math.min(p + 1, list.length - 1)));
+        setFocusedIdx(p === null ? 0 : Math.min(p + 1, list.length - 1));
       } else if (e.key === "ArrowLeft" || e.key === "k") {
         e.preventDefault();
-        setFocusedIdx((p) => (p === null ? 0 : Math.max(p - 1, 0)));
+        setFocusedIdx(p === null ? 0 : Math.max(p - 1, 0));
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
         const cols = getColCount();
-        setFocusedIdx((p) => (p === null ? 0 : Math.min(p + cols, list.length - 1)));
+        setFocusedIdx(p === null ? 0 : Math.min(p + cols, list.length - 1));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
         const cols = getColCount();
-        setFocusedIdx((p) => (p === null ? 0 : Math.max(p - cols, 0)));
+        setFocusedIdx(p === null ? 0 : Math.max(p - cols, 0));
       } else if (e.key === "Enter") {
-        setFocusedIdx((p) => {
-          if (p !== null && list[p]) navigate(refPath(list[p].id, list[p].title));
-          return p;
-        });
+        // Default to first card if nothing is focused yet
+        const idx = p ?? 0;
+        if (list[idx]) navigate(refPath(list[idx].id, list[idx].title));
+        if (p === null) setFocusedIdx(0);
       } else if (e.key === "b" || e.key === "B") {
-        setFocusedIdx((p) => {
-          if (p !== null && list[p]) toggleBookmark(list[p].id);
-          return p;
-        });
+        if (p !== null && list[p]) toggleBookmark(list[p].id);
       } else if (e.key === "Escape") {
         setFocusedIdx(null);
       }
@@ -536,18 +538,35 @@ const Index = () => {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && search.trim().length >= 3) {
+                  e.preventDefault();
+                  runBriefMatch(search.trim());
+                }
+              }}
               placeholder="Search client, brand, tag…"
-              className="pl-9 pr-9 bg-secondary border-0 font-mono text-xs uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
+              className="pl-9 pr-16 bg-secondary border-0 font-mono text-xs uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
             />
             {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <X className="h-3.5 w-3.5" strokeWidth={1.5} />
-              </button>
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => runBriefMatch(search.trim())}
+                  aria-label="AI search"
+                  title="Search with AI"
+                  className="p-1 rounded-sm text-primary hover:text-primary/80 hover:bg-muted transition-colors"
+                >
+                  <Sparkles className="h-3.5 w-3.5" strokeWidth={1.5} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  aria-label="Clear search"
+                  className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                </button>
+              </div>
             )}
           </div>
 

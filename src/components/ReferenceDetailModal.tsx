@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -36,6 +36,8 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const [reportField, setReportField] = useState("brand");
   const [reportMsg, setReportMsg] = useState("");
   const [reportSending, setReportSending] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -192,8 +194,18 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "ArrowLeft") goPrev();
-      else if (e.key === "ArrowRight") goNext();
+      if (e.key === "ArrowLeft") { goPrev(); return; }
+      if (e.key === "ArrowRight") { goNext(); return; }
+      if (e.key === " " || e.key === "Enter") {
+        const tag = (e.target as HTMLElement).tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON" || tag === "SELECT") return;
+        e.preventDefault();
+        if (iframeRef.current) {
+          iframeRef.current.focus();
+        } else if (videoRef.current) {
+          videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause();
+        }
+      }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -367,7 +379,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
           <div className="p-6 md:p-10">
             <div className="flex items-center justify-end">
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-                ← / → to navigate
+                ← / → navigate · Space / Enter play
               </p>
             </div>
 
@@ -377,6 +389,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   {currentIsEmbed && embedUrl ? (
                     <div className="aspect-video bg-black">
                       <iframe
+                        ref={iframeRef}
                         src={embedUrl}
                         title={r.title}
                         className="w-full h-full"
@@ -387,6 +400,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   ) : current ? (
                     current.kind === "video" ? (
                       <video
+                        ref={videoRef}
                         src={current.url}
                         controls
                         className="w-full bg-black object-contain max-h-[calc(95vh-16rem)]"
