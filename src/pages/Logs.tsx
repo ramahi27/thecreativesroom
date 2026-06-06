@@ -74,13 +74,15 @@ const Logs = () => {
       const r = pending[i];
       setBackfillProgress(`${i + 1}/${pending.length} · ${r.title}`);
       try {
+        const before = rows.find((x) => x.id === r.id);
         await enrichReferenceMetadata(r.id);
         // Re-fetch to verify completeness
-        const { data: fresh } = await supabase
+        const { data: fresh, error: freshError } = await supabase
           .from("references")
           .select("brand,agency,year,editing_style,visual_summary")
           .eq("id", r.id)
           .maybeSingle();
+        if (freshError) throw freshError;
         const complete = hasCompleteMetadata({
           brand: fresh?.brand ?? null,
           agency: fresh?.agency ?? null,
@@ -107,9 +109,27 @@ const Logs = () => {
             ),
           );
         } else {
+          if (before && fresh) {
+            setRows((prev) =>
+              prev.map((x) =>
+                x.id === r.id
+                  ? {
+                      ...x,
+                      brand: fresh.brand ?? x.brand,
+                      agency: fresh.agency ?? x.agency,
+                      year: fresh.year ?? x.year,
+                      editing_style: (fresh as any)?.editing_style ?? x.editing_style,
+                      visual_summary: (fresh as any)?.visual_summary ?? x.visual_summary,
+                      has_ai_metadata: false,
+                    }
+                  : x,
+              ),
+            );
+          }
           failed++;
         }
-      } catch {
+      } catch (error: any) {
+        console.error("Backfill failed", r.id, error);
         failed++;
       }
       await new Promise((res) => setTimeout(res, 400));
