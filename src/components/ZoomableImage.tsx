@@ -145,7 +145,7 @@ export function ZoomableImage({ src, alt, className, scale = 2.25 }: Props) {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      className={`relative overflow-hidden ${className ?? ""}`}
+      className={`relative overflow-hidden w-full ${className ?? ""}`}
       style={{
         cursor: zoomed ? "zoom-out" : "zoom-in",
         touchAction: zoomed ? "none" : "auto",
