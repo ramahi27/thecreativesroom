@@ -207,10 +207,15 @@ const Bookmarks = () => {
 
   const activeFolderName =
     activeFolder === null
-      ? "All"
+      ? "All references"
       : activeFolder === "uncategorized"
         ? "Unsorted"
-        : folders.find((f) => f.id === activeFolder)?.name ?? "All";
+        : folders.find((f) => f.id === activeFolder)?.name ?? "All references";
+
+  const activeFolderColor =
+    activeFolder && activeFolder !== "uncategorized"
+      ? folders.find((f) => f.id === activeFolder)?.color ?? "hsl(var(--primary))"
+      : "hsl(var(--primary))";
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -268,29 +273,38 @@ const Bookmarks = () => {
         loading={profileLoading}
         onSaved={refreshProfile}
       />
-      <section className="border-b hairline">
-        <div className="container py-3 flex gap-1">
+      <section className="border-b hairline bg-background/60 backdrop-blur-xl sticky top-16 z-40">
+        <div className="container flex gap-8">
           {([
-            { k: "mine", label: `My collection · ${refs.length}` },
-            { k: "submitted", label: `Submitted · ${submissions.length}` },
-            { k: "following", label: `Following · ${followed.length}` },
-          ] as const).map((t) => (
-            <button
-              key={t.k}
-              type="button"
-              onClick={() => {
-                setTab(t.k);
-                setActiveFolder(null);
-              }}
-              className={`px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors ${
-                tab === t.k
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+            { k: "mine", label: "My collection", count: refs.length },
+            { k: "submitted", label: "Submitted", count: submissions.length },
+            { k: "following", label: "Following", count: followed.length },
+          ] as const).map((t) => {
+            const active = tab === t.k;
+            return (
+              <button
+                key={t.k}
+                type="button"
+                onClick={() => {
+                  setTab(t.k);
+                  setActiveFolder(null);
+                }}
+                className={`relative py-4 flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.2em] transition-colors ${
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t.label}
+                <span className={`tabular-nums text-[10px] ${active ? "text-primary" : "text-muted-foreground/60"}`}>
+                  {t.count}
+                </span>
+                <span
+                  className={`absolute bottom-0 left-0 right-0 h-px bg-primary transition-transform origin-left ${
+                    active ? "scale-x-100" : "scale-x-0"
+                  }`}
+                />
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -424,14 +438,20 @@ const Bookmarks = () => {
 
             <div className="flex-1 min-w-0">
               {/* Header: active folder name + controls */}
-              <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
-                <div className="flex items-baseline gap-3 min-w-0">
-                  <h2 className="font-display text-3xl font-bold tracking-tight truncate">
-                    {activeFolderName}
-                  </h2>
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
-                    {filtered.length} {filtered.length === 1 ? "ref" : "refs"}
-                  </span>
+              <div className="flex flex-wrap items-end justify-between gap-4 mb-8">
+                <div className="flex items-stretch gap-4 min-w-0">
+                  <span
+                    className="w-1 shrink-0 rounded-full"
+                    style={{ backgroundColor: activeFolderColor, boxShadow: `0 0 16px ${activeFolderColor}` }}
+                  />
+                  <div className="min-w-0">
+                    <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-1.5">
+                      {filtered.length} {filtered.length === 1 ? "reference" : "references"}
+                    </p>
+                    <h2 className="font-display text-4xl md:text-5xl font-black tracking-tighter leading-[0.9] truncate">
+                      {activeFolderName}
+                    </h2>
+                  </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2.5">
                   <Select

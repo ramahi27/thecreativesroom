@@ -51,10 +51,14 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
   }
 
   return (
-    <section className="border-b hairline">
-      <div className="container py-10 md:py-14">
+    <section className="relative overflow-hidden border-b hairline">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{ background: "var(--gradient-spotlight)" }}
+      />
+      <div className="container py-12 md:py-20 relative">
         <div className="flex flex-col md:flex-row md:items-end gap-6 md:gap-10">
-          <div className="h-20 w-20 md:h-28 md:w-28 shrink-0 bg-secondary border hairline overflow-hidden flex items-center justify-center">
+          <div className="h-20 w-20 md:h-28 md:w-28 shrink-0 bg-secondary border hairline overflow-hidden flex items-center justify-center shadow-[var(--shadow-cinema)]">
             {profile?.avatar_url ? (
               <img
                 src={profile.avatar_url}
@@ -71,7 +75,7 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
             <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-3">
               ⏵ My Collection
             </p>
-            <h1 className="font-display text-4xl md:text-6xl font-black tracking-tighter leading-[0.95]">
+            <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter leading-[0.9]">
               @{profile?.username || (loading ? "…" : "you")}
             </h1>
             {profile?.bio && (
