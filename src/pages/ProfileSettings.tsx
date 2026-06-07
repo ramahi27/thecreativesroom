@@ -33,6 +33,10 @@ const ProfileSettings = () => {
   const [cropSrc, setCropSrc] = useState<string | null>(null);
   const [cropOpen, setCropOpen] = useState(false);
 
+  const [showDeleteZone, setShowDeleteZone] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
   useEffect(() => {
     document.title = "My Profile — The Creatives Room";
     if (!authLoading && !user) navigate("/auth");
@@ -114,6 +118,25 @@ const ProfileSettings = () => {
     toast.success("Password updated.");
     setPassword("");
     setConfirm("");
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirm !== profile?.username || deleting) return;
+    setDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-account`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error ?? "Deletion failed");
+      await supabase.auth.signOut();
+      navigate("/");
+    } catch (err: any) {
+      toast.error(err.message);
+      setDeleting(false);
+    }
   }
 
   async function handleSendReset() {
@@ -275,6 +298,56 @@ const ProfileSettings = () => {
                   </Button>
                 </div>
               </form>
+            </section>
+            <div className="border-t hairline" />
+
+            <section className="space-y-4">
+              <h2 className="font-display text-2xl font-bold tracking-tight text-destructive">Danger zone</h2>
+              <p className="font-body text-sm text-muted-foreground">
+                Permanently delete your account and all associated data. This cannot be undone.
+                Your submitted references will stay in the archive but will be anonymised.
+              </p>
+              {!showDeleteZone ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowDeleteZone(true)}
+                  className="font-mono text-[10px] uppercase tracking-widest border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  Delete my account
+                </Button>
+              ) : (
+                <div className="border hairline border-destructive/30 rounded-lg p-4 space-y-3">
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-destructive">
+                    Type <strong className="font-black">{profile?.username}</strong> to confirm deletion
+                  </p>
+                  <Input
+                    value={deleteConfirm}
+                    onChange={(e) => setDeleteConfirm(e.target.value)}
+                    placeholder={profile?.username}
+                    className="bg-secondary border-0 font-mono"
+                    autoComplete="off"
+                  />
+                  <div className="flex items-center gap-3">
+                    <Button
+                      type="button"
+                      onClick={handleDeleteAccount}
+                      disabled={deleteConfirm !== profile?.username || deleting}
+                      className="font-mono text-[10px] uppercase tracking-widest bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {deleting ? "Deleting…" : "Permanently delete"}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => { setShowDeleteZone(false); setDeleteConfirm(""); }}
+                      className="font-mono text-[10px] uppercase tracking-widest"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
             </section>
           </div>
         )}

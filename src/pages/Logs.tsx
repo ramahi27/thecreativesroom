@@ -7,7 +7,7 @@ import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Sparkles, Check, X as XIcon } from "lucide-react";
+import { Search, Sparkles, Check, X as XIcon, Link2, Link2Off } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { rememberModalReturn, setModalNavOrder } from "@/lib/modalReturn";
@@ -63,6 +63,40 @@ const Logs = () => {
   const [search, setSearch] = useState("");
   const [backfilling, setBackfilling] = useState(false);
   const [backfillProgress, setBackfillProgress] = useState<string>("");
+
+  const [linkChecking, setLinkChecking] = useState(false);
+  const [linkResults, setLinkResults] = useState<{ checked: number; ok: number; dead: number; errored: number; message: string } | null>(null);
+  const [deadLinks, setDeadLinks] = useState<Array<{ id: string; title: string; source_url: string | null; link_status: string; link_checked_at: string }>>([]);
+
+  async function loadDeadLinks() {
+    const { data } = await supabase
+      .from("references")
+      .select("id,title,source_url,link_status,link_checked_at")
+      .eq("link_status", "dead")
+      .order("link_checked_at", { ascending: false })
+      .limit(100);
+    setDeadLinks((data as any) || []);
+  }
+
+  async function handleCheckLinks() {
+    setLinkChecking(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-links`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Link check failed");
+      setLinkResults(json);
+      toast.success(json.message);
+      await loadDeadLinks();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLinkChecking(false);
+    }
+  }
 
   type Report = {
     id: string;
@@ -201,6 +235,7 @@ const Logs = () => {
   useEffect(() => {
     if (!isAdmin) return;
     loadReports();
+    loadDeadLinks();
     (async () => {
       setLoading(true);
       const { data, error } = await supabase.rpc("get_reference_logs");
@@ -334,6 +369,69 @@ const Logs = () => {
           </div>
         </section>
       )}
+
+      <section className="container py-8 border-b hairline">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
+            ⏵ Link health
+          </p>
+          <Button
+            type="button"
+            onClick={handleCheckLinks}
+            disabled={linkChecking}
+            variant="outline"
+            className="font-mono text-[11px] uppercase tracking-widest h-9"
+          >
+            <Link2 className="h-3.5 w-3.5 mr-2" strokeWidth={1.8} />
+            {linkChecking ? "Checking…" : "Check links (batch of 40)"}
+          </Button>
+        </div>
+        {linkResults && (
+          <p className="font-mono text-xs text-muted-foreground mb-4">{linkResults.message}</p>
+        )}
+        {deadLinks.length > 0 ? (
+          <div className="border hairline">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">Reference</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">URL</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">Checked at</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {deadLinks.map((ref) => (
+                  <TableRow key={ref.id}>
+                    <TableCell>
+                      <Link to={refPath(ref.id, ref.title)} className="flex items-center gap-2 hover:opacity-80">
+                        <Link2Off className="h-3.5 w-3.5 text-destructive shrink-0" strokeWidth={1.8} />
+                        <span className="font-mono text-xs truncate max-w-[260px]">{ref.title}</span>
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      {ref.source_url ? (
+                        <a href={ref.source_url} target="_blank" rel="noopener noreferrer"
+                          className="font-mono text-xs text-muted-foreground hover:text-foreground truncate max-w-[300px] block">
+                          {ref.source_url}
+                        </a>
+                      ) : (
+                        <span className="font-mono text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {formatDate(ref.link_checked_at)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <p className="font-mono text-xs text-muted-foreground">
+            No dead links detected. Run a check to scan up to 40 stale references.
+          </p>
+        )}
+      </section>
 
       <section className="container py-8">
         {loading ? (
