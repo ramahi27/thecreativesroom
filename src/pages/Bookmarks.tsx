@@ -562,6 +562,7 @@ const Bookmarks = () => {
                         onDragEnd={() => setDragging(false)}
                         orderedIds={order}
                         masonry
+                        activeFolderId={activeFolder}
                       />
                     </div>
                   ));

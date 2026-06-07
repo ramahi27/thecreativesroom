@@ -29,6 +29,7 @@ interface Props {
   onDragEnd: () => void;
   orderedIds?: string[];
   masonry?: boolean;
+  activeFolderId?: string | null;
 }
 
 export function CollectionCard({
@@ -45,6 +46,7 @@ export function CollectionCard({
   onDragEnd,
   orderedIds,
   masonry,
+  activeFolderId,
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -130,9 +132,9 @@ export function CollectionCard({
 
       <ReferenceCard reference={r} orderedIds={orderedIds} masonry={masonry} />
 
-      {inFolderIds.length > 0 && (
+      {inFolderIds.filter((id) => id !== activeFolderId).length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5">
-          {inFolderIds.map((fid) => {
+          {inFolderIds.filter((id) => id !== activeFolderId).map((fid) => {
             const f = folders.find((x) => x.id === fid);
             if (!f) return null;
             return (
