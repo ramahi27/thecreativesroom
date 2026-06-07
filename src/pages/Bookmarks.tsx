@@ -75,6 +75,7 @@ const Bookmarks = () => {
   const { folders: followed, loading: followedLoading } = useFollowedFolders();
   const [tab, setTab] = useState<"mine" | "following" | "submitted">("mine");
   const [submissions, setSubmissions] = useState<Reference[]>([]);
+  const [submissionsLoaded, setSubmissionsLoaded] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
 
   // Selection
@@ -133,18 +134,21 @@ const Bookmarks = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || tab !== "submitted" || submissionsLoaded) return;
     let cancelled = false;
     (async () => {
       const { data } = await supabase
         .from("references")
-        .select("*")
+        .select("id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,categories,published,media_items,created_at")
         .eq("created_by", user.id)
         .order("created_at", { ascending: false });
-      if (!cancelled) setSubmissions((data as unknown as Reference[]) || []);
+      if (!cancelled) {
+        setSubmissions((data as unknown as Reference[]) || []);
+        setSubmissionsLoaded(true);
+      }
     })();
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user, tab, submissionsLoaded]);
 
   const availableCategories = useMemo(() => {
     if (mediaFilter === "videos") return VIDEO_CATEGORIES;
@@ -324,7 +328,9 @@ const Bookmarks = () => {
 
       <main className="container py-12">
         {tab === "submitted" ? (
-          submissions.length === 0 ? (
+          !submissionsLoaded ? (
+            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
+          ) : submissions.length === 0 ? (
             <div className="py-20 text-center">
               <p className="font-display text-3xl text-muted-foreground italic">
                 You haven't submitted any references yet.
