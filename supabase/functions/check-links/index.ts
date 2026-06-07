@@ -43,9 +43,10 @@ Deno.serve(async (req) => {
     .not("source_url", "is", null)
     .limit(BATCH_SIZE);
 
-  if (error) return Response.json({ error: error.message }, { status: 500 });
+  const cors = { "Access-Control-Allow-Origin": "*" };
+  if (error) return Response.json({ error: error.message }, { status: 500, headers: cors });
   if (!refs || refs.length === 0) {
-    return Response.json({ checked: 0, dead: 0, ok: 0, message: "All links are up to date." });
+    return Response.json({ checked: 0, dead: 0, ok: 0, message: "All links are up to date." }, { headers: cors });
   }
 
   let ok = 0;
