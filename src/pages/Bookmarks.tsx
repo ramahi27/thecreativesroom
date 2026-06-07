@@ -45,12 +45,18 @@ import type { Reference } from "@/lib/references";
 
 type MediaFilter = "all" | "videos" | "photos";
 
+// Module-level cache — survives React remounts (navigation away and back)
+let _refsCache: { uid: string; data: Reference[] } | null = null;
+
 const Bookmarks = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [refs, setRefs] = useState<Reference[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [refs, setRefs] = useState<Reference[]>(() => {
+    // Seed from cache immediately so the page shows content without a flash
+    return _refsCache?.data ?? [];
+  });
+  const [loading, setLoading] = useState(() => _refsCache === null);
 
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -102,7 +108,8 @@ const Bookmarks = () => {
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
-    const fetchRefs = async () => {
+    const fetchRefs = async (silent = false) => {
+      if (!silent) setLoading(true);
       const { data: marks } = await supabase
         .from("bookmarks")
         .select("reference_id, created_at")
@@ -111,6 +118,7 @@ const Bookmarks = () => {
       const ids = (marks || []).map((m: any) => m.reference_id);
       if (ids.length === 0) {
         if (!cancelled) {
+          _refsCache = { uid: user.id, data: [] };
           setRefs([]);
           setLoading(false);
         }
@@ -120,11 +128,14 @@ const Bookmarks = () => {
       const byId = new Map((list || []).map((r: any) => [r.id, r as Reference]));
       const ordered = ids.map((i) => byId.get(i)).filter(Boolean) as Reference[];
       if (!cancelled) {
+        _refsCache = { uid: user.id, data: ordered };
         setRefs(ordered);
         setLoading(false);
       }
     };
-    fetchRefs();
+    // If we already have cached data for this user, do a silent background refresh
+    const hasCached = _refsCache?.uid === user.id;
+    fetchRefs(!hasCached);
     const handler = () => fetchRefs();
     window.addEventListener("bookmarks:refresh", handler);
     return () => {
@@ -217,15 +228,6 @@ const Bookmarks = () => {
       : activeFolder === "uncategorized"
         ? "Unsorted"
         : folders.find((f) => f.id === activeFolder)?.name ?? "All references";
-
-  // Thumbnails for the active folder hero strip
-  const folderThumbs = useMemo(() => {
-    if (!activeFolder || activeFolder === "uncategorized") return [];
-    return filtered
-      .map((r) => r.thumbnail_url || r.media_url)
-      .filter(Boolean)
-      .slice(0, 9) as string[];
-  }, [activeFolder, filtered]);
 
   // References that belong to a given folder (for the folder index rows)
   const refsInFolder = (folderId: string) =>
@@ -451,28 +453,17 @@ const Bookmarks = () => {
               <ChevronLeft className="h-3.5 w-3.5" strokeWidth={2} /> My collection
             </button>
 
-            {/* Pinterest-style folder hero */}
-            <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-12 pb-8 border-b hairline">
-              <div className="shrink-0 md:max-w-[260px]">
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-3">
-                  Collection
-                </p>
-                <h2 className="font-display text-4xl md:text-6xl font-black tracking-tighter leading-[0.9] mb-4">
-                  {activeFolderName}
-                </h2>
-                <p className="font-mono text-sm text-muted-foreground">
-                  {filtered.length} {filtered.length === 1 ? "reference" : "references"}
-                </p>
-              </div>
-              {folderThumbs.length > 0 && (
-                <div className="flex gap-2.5 overflow-x-auto flex-1 pb-1 [scrollbar-width:thin]">
-                  {folderThumbs.map((thumb, i) => (
-                    <div key={i} className="h-36 w-28 shrink-0 rounded-2xl overflow-hidden bg-secondary">
-                      <img src={thumb} alt="" loading="lazy" className="h-full w-full object-cover" />
-                    </div>
-                  ))}
-                </div>
-              )}
+            {/* Folder hero */}
+            <div className="pb-8 border-b hairline">
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-3">
+                Collection
+              </p>
+              <h2 className="font-display text-4xl md:text-6xl font-black tracking-tighter leading-[0.9] mb-4">
+                {activeFolderName}
+              </h2>
+              <p className="font-mono text-sm text-muted-foreground">
+                {filtered.length} {filtered.length === 1 ? "reference" : "references"}
+              </p>
             </div>
 
             {/* Filter controls */}
