@@ -63,6 +63,7 @@ const Bookmarks = () => {
     countForFolder,
     foldersForReference,
     items,
+    loading: foldersLoading,
     createFolder,
     renameFolder,
     deleteFolder,
@@ -414,7 +415,7 @@ const Bookmarks = () => {
               })}
             </div>
           )
-        ) : loading ? (
+        ) : loading || foldersLoading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
             Loading…
           </p>
