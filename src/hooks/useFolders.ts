@@ -15,20 +15,24 @@ export type FolderItem = {
   reference_id: string;
 };
 
+// Module-level cache — persists across remounts
+let _foldersCache: { uid: string; folders: Folder[]; items: FolderItem[] } | null = null;
+
 export function useFolders() {
   const { user } = useAuth();
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [items, setItems] = useState<FolderItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [folders, setFolders] = useState<Folder[]>(() => _foldersCache?.folders ?? []);
+  const [items, setItems] = useState<FolderItem[]>(() => _foldersCache?.items ?? []);
+  const [loading, setLoading] = useState(() => _foldersCache === null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (silent = false) => {
     if (!user) {
+      _foldersCache = null;
       setFolders([]);
       setItems([]);
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!silent) setLoading(true);
     const [{ data: f }, { data: i }] = await Promise.all([
       supabase
         .from("folders")
@@ -41,17 +45,22 @@ export function useFolders() {
         .select("folder_id,reference_id")
         .eq("user_id", user.id),
     ]);
-    setFolders((f as Folder[]) || []);
-    setItems((i as FolderItem[]) || []);
+    const newFolders = (f as Folder[]) || [];
+    const newItems = (i as FolderItem[]) || [];
+    _foldersCache = { uid: user.id, folders: newFolders, items: newItems };
+    setFolders(newFolders);
+    setItems(newItems);
     setLoading(false);
   }, [user]);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    // Silent if we already have cached data for this user; otherwise show loader
+    const hasCached = !!user && _foldersCache?.uid === user.id;
+    refresh(!hasCached);
+  }, [refresh, user]);
 
   useEffect(() => {
-    const handler = () => refresh();
+    const handler = () => refresh(true); // always silent — data is already shown
     window.addEventListener("folders:refresh", handler);
     return () => window.removeEventListener("folders:refresh", handler);
   }, [refresh]);
