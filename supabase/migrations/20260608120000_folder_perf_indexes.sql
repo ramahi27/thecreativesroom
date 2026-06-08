@@ -17,7 +17,7 @@ security definer
 as $$
   select json_build_object(
     'folders', coalesce((
-      select json_agg(f order by f.position asc, f.created_at asc)
+      select json_agg(f order by f.position asc)
       from (
         select id, name, color, position, is_public
         from folders
