@@ -105,7 +105,7 @@ const Index = () => {
         supabase.from("brief_usages").select("count").eq("user_id", user.id).eq("usage_date", today).maybeSingle(),
       ]);
       const plan = (profileData?.plan as string) || "free";
-      const limit = plan === "paid" ? 20 : 3;
+      const limit = plan === "paid" ? 50 : 3;
       setBriefUsage({ used: usageData?.count ?? 0, limit, plan });
     })();
   }, [user]);
@@ -152,14 +152,14 @@ const Index = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-display text-base font-black tracking-tight leading-snug">
-                  {isAnon ? "You've used your free match" : isFree ? "Daily limit reached" : "All done for today"}
+                  {isAnon ? "You've used your free match" : isFree ? "Daily limit reached" : "Fair use limit reached"}
                 </p>
                 <p className="font-body text-sm text-muted-foreground mt-0.5 leading-snug">
                   {isAnon
                     ? "Sign up free to get 3 brief matches every day."
                     : isFree
-                    ? "Upgrade to Pro for 20 matches a day."
-                    : "Your 20 Pro matches reset at midnight."}
+                    ? "Upgrade to Pro for 50 matches a day."
+                    : "You've reached today's fair use limit. Come back tomorrow."}
                 </p>
               </div>
               <button
@@ -575,14 +575,14 @@ const Index = () => {
                 <div className="rounded-xl border hairline bg-secondary/40 px-4 py-3 flex items-center justify-between gap-3">
                   <div>
                     <p className="font-body text-sm font-semibold">
-                      {briefUsage.plan === "anon" ? "You've used your 1 free match" : "Daily limit reached"}
+                      {briefUsage.plan === "anon" ? "You've used your 1 free match" : briefUsage.plan === "free" ? "Daily limit reached" : "Fair use limit reached"}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {briefUsage.plan === "anon"
                         ? "Sign up free to get 3 matches every day."
                         : briefUsage.plan === "free"
-                        ? "Upgrade to Pro for 20 matches a day."
-                        : "Resets at midnight."}
+                        ? "Upgrade to Pro for 50 matches a day."
+                        : "You've reached today's fair use limit. Come back tomorrow."}
                     </p>
                   </div>
                   {briefUsage.plan !== "paid" && (
@@ -634,7 +634,7 @@ const Index = () => {
               >
                 {matching ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching…</> : "Match brief"}
               </Button>
-              {briefUsage && (
+              {briefUsage && briefUsage.plan !== "paid" && (
                 <span className={`font-mono text-[9px] uppercase tracking-widest pl-1 ${briefUsage.used >= briefUsage.limit ? "text-destructive" : "text-muted-foreground"}`}>
                   {briefUsage.used}/{briefUsage.limit} today
                 </span>
