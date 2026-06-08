@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { profileUrl, validateUsername } from "@/lib/username";
+import { Switch } from "@/components/ui/switch";
 import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 
 const ProfileSettings = () => {
@@ -40,6 +41,9 @@ const ProfileSettings = () => {
   const [showDeleteZone, setShowDeleteZone] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
+
+  const [subsPublic, setSubsPublic] = useState<boolean>(true);
+  const [savingVisibility, setSavingVisibility] = useState(false);
 
   useEffect(() => {
     document.title = "My Profile — The Creatives Room";
@@ -80,6 +84,7 @@ const ProfileSettings = () => {
       setUsername(profile.username);
       setBio(profile.bio || "");
       setAvatarUrl(profile.avatar_url || "");
+      setSubsPublic(profile.submissions_public !== false);
     }
   }, [profile]);
 
@@ -172,6 +177,19 @@ const ProfileSettings = () => {
     }
   }
 
+  async function handleToggleVisibility(v: boolean) {
+    if (!user) return;
+    setSavingVisibility(true);
+    setSubsPublic(v);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ submissions_public: v })
+      .eq("user_id", user.id);
+    setSavingVisibility(false);
+    if (error) { toast.error(error.message); setSubsPublic(!v); }
+    else toast.success(v ? "Submissions are now public" : "Submissions are now private");
+  }
+
   async function handleSendReset() {
     if (!user?.email) return;
     const { error } = await supabase.auth.resetPasswordForEmail(user.email, {
@@ -181,16 +199,17 @@ const ProfileSettings = () => {
     else toast.success("Password reset email sent.");
   }
 
-  type SettingsSection = "profile" | "billing" | "security" | "danger";
+  type SettingsSection = "profile" | "account" | "visibility" | "billing" | "security";
   const [activeSection, setActiveSection] = useState<SettingsSection>("profile");
 
   if (authLoading || !user) return null;
 
   const navItems: { key: SettingsSection; label: string }[] = [
     { key: "profile", label: "Edit profile" },
+    { key: "account", label: "Account management" },
+    { key: "visibility", label: "Profile visibility" },
     { key: "billing", label: "Plan & billing" },
     { key: "security", label: "Security" },
-    { key: "danger", label: "Account" },
   ];
 
   return (
@@ -369,95 +388,151 @@ const ProfileSettings = () => {
                   </div>
                 )}
 
-                {/* ── Security ── */}
-                {activeSection === "security" && (
+                {/* ── Account Management ── */}
+                {activeSection === "account" && (
                   <div className="space-y-6">
-                    <h2 className="font-display text-2xl font-black tracking-tight">Security</h2>
-                    <form onSubmit={handleChangePassword} className="space-y-4">
-                      <div className="space-y-1.5">
-                        <Label className="font-body text-sm font-semibold">New password</Label>
-                        <Input
-                          type="password"
-                          required
-                          minLength={6}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          className="rounded-xl border-border bg-secondary/50"
-                        />
+                    <div>
+                      <h2 className="font-display text-2xl font-black tracking-tight">Account management</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Make changes to your personal information or account type.</p>
+                    </div>
+
+                    {/* Your account */}
+                    <div className="space-y-3">
+                      <h3 className="font-body text-base font-semibold">Your account</h3>
+                      <div className="rounded-xl border hairline bg-secondary/30 px-4 py-3">
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Email · Private</p>
+                        <p className="text-sm mt-0.5">{user.email}</p>
+                        <span className="inline-block mt-1.5 font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary/10 text-primary">Confirmed</span>
                       </div>
-                      <div className="space-y-1.5">
-                        <Label className="font-body text-sm font-semibold">Confirm password</Label>
-                        <Input
-                          type="password"
-                          required
-                          minLength={6}
-                          value={confirm}
-                          onChange={(e) => setConfirm(e.target.value)}
-                          className="rounded-xl border-border bg-secondary/50"
-                        />
+                    </div>
+
+                    {/* Deactivation and deletion */}
+                    <div className="space-y-3">
+                      <h3 className="font-body text-base font-semibold">Deactivation and deletion</h3>
+                      <div className="rounded-2xl border border-destructive/20 p-5 space-y-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="font-body text-sm font-semibold">Delete your data and account</p>
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              Permanently deletes your account and all data. Submitted references stay but are anonymised.
+                            </p>
+                          </div>
+                          {!showDeleteZone && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setShowDeleteZone(true)}
+                              className="shrink-0 rounded-full font-mono text-[10px] uppercase tracking-widest border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                            >
+                              Delete account
+                            </Button>
+                          )}
+                        </div>
+                        {showDeleteZone && (
+                          <div className="space-y-3 pt-1">
+                            <p className="font-mono text-[10px] uppercase tracking-widest text-destructive">
+                              Type <strong>{profile?.username}</strong> to confirm
+                            </p>
+                            <Input
+                              value={deleteConfirm}
+                              onChange={(e) => setDeleteConfirm(e.target.value)}
+                              placeholder={profile?.username}
+                              className="rounded-xl border-destructive/30 bg-secondary/50"
+                              autoComplete="off"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                type="button"
+                                onClick={handleDeleteAccount}
+                                disabled={deleteConfirm !== profile?.username || deleting}
+                                className="rounded-full font-mono text-[10px] uppercase tracking-widest bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {deleting ? "Deleting…" : "Permanently delete"}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                onClick={() => { setShowDeleteZone(false); setDeleteConfirm(""); }}
+                                className="rounded-full font-mono text-[10px] uppercase tracking-widest"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex gap-3">
-                        <Button type="submit" disabled={savingPw} className="rounded-full font-mono text-xs uppercase tracking-widest px-6">
-                          {savingPw ? "Saving…" : "Update password"}
-                        </Button>
-                        <Button type="button" variant="ghost" onClick={handleSendReset} className="rounded-full font-mono text-xs uppercase tracking-widest">
-                          Send reset email
-                        </Button>
-                      </div>
-                    </form>
+                    </div>
                   </div>
                 )}
 
-                {/* ── Account / Danger ── */}
-                {activeSection === "danger" && (
+                {/* ── Profile Visibility ── */}
+                {activeSection === "visibility" && (
                   <div className="space-y-6">
-                    <h2 className="font-display text-2xl font-black tracking-tight">Account</h2>
-                    <div className="rounded-2xl border border-destructive/20 p-5 space-y-3">
-                      <p className="font-body text-sm font-semibold text-destructive">Delete account</p>
-                      <p className="text-sm text-muted-foreground">
-                        Permanently deletes your account and all data. Submitted references stay but are anonymised.
-                      </p>
-                      {!showDeleteZone ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setShowDeleteZone(true)}
-                          className="rounded-full font-mono text-[10px] uppercase tracking-widest border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                        >
-                          Delete my account
-                        </Button>
-                      ) : (
-                        <div className="space-y-3">
-                          <p className="font-mono text-[10px] uppercase tracking-widest text-destructive">
-                            Type <strong>{profile?.username}</strong> to confirm
+                    <div>
+                      <h2 className="font-display text-2xl font-black tracking-tight">Profile visibility</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Manage how your profile can be viewed by others.</p>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="rounded-2xl border hairline p-5 flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-body text-sm font-semibold">Public submissions</p>
+                          <p className="text-sm text-muted-foreground mt-0.5 max-w-sm">
+                            When enabled, your submitted references are visible on your public profile. Disable to keep them private.
                           </p>
-                          <Input
-                            value={deleteConfirm}
-                            onChange={(e) => setDeleteConfirm(e.target.value)}
-                            placeholder={profile?.username}
-                            className="rounded-xl border-destructive/30 bg-secondary/50"
-                            autoComplete="off"
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              type="button"
-                              onClick={handleDeleteAccount}
-                              disabled={deleteConfirm !== profile?.username || deleting}
-                              className="rounded-full font-mono text-[10px] uppercase tracking-widest bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              {deleting ? "Deleting…" : "Permanently delete"}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              onClick={() => { setShowDeleteZone(false); setDeleteConfirm(""); }}
-                              className="rounded-full font-mono text-[10px] uppercase tracking-widest"
-                            >
-                              Cancel
-                            </Button>
-                          </div>
                         </div>
-                      )}
+                        <Switch
+                          checked={subsPublic}
+                          disabled={savingVisibility}
+                          onCheckedChange={handleToggleVisibility}
+                          className="mt-0.5 shrink-0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Security ── */}
+                {activeSection === "security" && (
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="font-display text-2xl font-black tracking-tight">Security</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Manage your password and account access.</p>
+                    </div>
+
+                    <div className="rounded-2xl border hairline p-5 space-y-4">
+                      <h3 className="font-body text-base font-semibold">Password</h3>
+                      <form onSubmit={handleChangePassword} className="space-y-4">
+                        <div className="space-y-1.5">
+                          <Label className="font-body text-sm font-semibold">New password</Label>
+                          <Input
+                            type="password"
+                            required
+                            minLength={6}
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="rounded-xl border-border bg-secondary/50"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="font-body text-sm font-semibold">Confirm password</Label>
+                          <Input
+                            type="password"
+                            required
+                            minLength={6}
+                            value={confirm}
+                            onChange={(e) => setConfirm(e.target.value)}
+                            className="rounded-xl border-border bg-secondary/50"
+                          />
+                        </div>
+                        <div className="flex gap-3">
+                          <Button type="submit" disabled={savingPw} className="rounded-full font-mono text-xs uppercase tracking-widest px-6">
+                            {savingPw ? "Saving…" : "Change"}
+                          </Button>
+                          <Button type="button" variant="ghost" onClick={handleSendReset} className="rounded-full font-mono text-xs uppercase tracking-widest">
+                            Send reset email
+                          </Button>
+                        </div>
+                      </form>
                     </div>
                   </div>
                 )}
