@@ -225,10 +225,6 @@ const Pricing = () => {
             </div>
           </div>
 
-          {/* Footnote */}
-          <p className="text-center font-mono text-[9px] text-muted-foreground/50 mt-5 tracking-wide">
-            * Fair use applies — up to 50 AI brief matches per day to keep the service fast for everyone.
-          </p>
         </div>
 
         {/* FAQ */}

@@ -46,6 +46,7 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
     : (r.thumbnail_url || null);
   const platform = detectPlatform(r.source_url);
   const [pos, setPos] = useState<string>("center 35%");
+  const [thumbError, setThumbError] = useState(false);
 
   const Icon = r.type === "video" ? Play : r.type === "image" ? ImageIcon : Link2;
 
@@ -62,7 +63,7 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
       <div className={`relative overflow-hidden bg-muted ${masonry ? "" : "aspect-video"}`}>
         <BookmarkButton referenceId={r.id} />
         <FolderPickerButton referenceId={r.id} />
-        {thumb ? (
+        {thumb && !thumbError ? (
           <img
             src={thumb}
             alt={r.title}
@@ -72,6 +73,7 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
               const img = e.currentTarget;
               setPos(smartPosition(img.naturalWidth, img.naturalHeight));
             }}
+            onError={() => setThumbError(true)}
             className={masonry ? "w-full h-auto block" : "h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"}
             style={masonry ? undefined : { objectPosition: pos }}
           />

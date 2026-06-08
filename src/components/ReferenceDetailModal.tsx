@@ -38,11 +38,13 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const [reportSending, setReportSending] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [embedError, setEmbedError] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     setLoading(true);
     setActiveMedia(0);
+    setEmbedError(false);
     let cancelled = false;
     const cols =
       "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,media_items,categories,published,source";
@@ -378,15 +380,33 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
               <div className="lg:col-span-2 min-w-0">
                 <div className="rounded-2xl bg-card border hairline overflow-hidden">
                   {currentIsEmbed && embedUrl ? (
-                    <div className="aspect-video bg-black">
-                      <iframe
-                        ref={iframeRef}
-                        src={embedUrl}
-                        title={r.title}
-                        className="w-full h-full"
-                        allow="autoplay; fullscreen; picture-in-picture"
-                        allowFullScreen
-                      />
+                    <div className="aspect-video bg-black relative">
+                      {embedError ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-secondary/60">
+                          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Video unavailable</p>
+                          {r.source_url && (
+                            <a
+                              href={r.source_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:opacity-90 transition-opacity"
+                            >
+                              <ExternalLink className="h-3 w-3" />
+                              Watch on {platform || "source"}
+                            </a>
+                          )}
+                        </div>
+                      ) : (
+                        <iframe
+                          ref={iframeRef}
+                          src={embedUrl}
+                          title={r.title}
+                          className="w-full h-full"
+                          allow="autoplay; fullscreen; picture-in-picture"
+                          allowFullScreen
+                          onError={() => setEmbedError(true)}
+                        />
+                      )}
                     </div>
                   ) : current ? (
                     current.kind === "video" ? (

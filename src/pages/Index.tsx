@@ -831,7 +831,7 @@ const Index = () => {
       {/* Pro upgrade banner — shown only to free / anon users */}
       {briefUsage && briefUsage.plan !== "paid" && briefUsage.plan !== "admin" && (
         <div className="border-t hairline mt-16">
-          <div className="container py-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+          <div className="container py-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-start gap-4">
               <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                 <Zap className="h-4.5 w-4.5 text-primary" strokeWidth={1.8} />
