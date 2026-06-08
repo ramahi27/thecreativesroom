@@ -29,7 +29,7 @@ const FILTERS_KEY = "archive:filters";
 const PAGE_SIZE = 100;
 
 const Index = () => {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { id: rawId } = useParams();
   const openId = rawId ? extractId(rawId) : undefined;
   const navigate = useNavigate();
@@ -84,6 +84,24 @@ const Index = () => {
   const [matching, setMatching] = useState(false);
   const [matches, setMatches] = useState<Array<{ ref: Reference; reason: string }>>([]);
   const [briefUsage, setBriefUsage] = useState<{ used: number; limit: number; plan: string } | null>(null);
+
+  // Fetch today's usage on load so counter always shows
+  useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
+    if (!user) {
+      setBriefUsage({ used: 0, limit: 1, plan: "anon" });
+      return;
+    }
+    (async () => {
+      const [{ data: profileData }, { data: usageData }] = await Promise.all([
+        supabase.from("profiles").select("plan").eq("user_id", user.id).maybeSingle(),
+        supabase.from("brief_usages").select("count").eq("user_id", user.id).eq("usage_date", today).maybeSingle(),
+      ]);
+      const plan = (profileData?.plan as string) || "free";
+      const limit = plan === "paid" ? 20 : 3;
+      setBriefUsage({ used: usageData?.count ?? 0, limit, plan });
+    })();
+  }, [user]);
 
   const runBriefMatch = async (overrideText?: string) => {
     const text = (overrideText ?? brief).trim();
@@ -526,45 +544,72 @@ const Index = () => {
             <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-1.5 shrink-0">
               <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Brief
             </span>
-            <div className="relative flex-1 min-w-[240px]">
-              <CyclingPlaceholder active={!briefFocused && !brief.trim()} className="items-start" />
-              <Textarea
-                value={brief}
-                onChange={(e) => setBrief(e.target.value)}
-                onFocus={() => setBriefFocused(true)}
-                onBlur={() => setBriefFocused(false)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    runBriefMatch();
-                  }
-                }}
-                rows={2}
-                placeholder=""
-                className="pr-9 rounded-xl bg-secondary/60 border-border font-mono text-sm leading-snug placeholder:normal-case resize-none py-3 focus:bg-background transition-colors"
-                disabled={matching}
-              />
-              {brief && !matching && (
-                <button
-                  type="button"
-                  onClick={clearMatches}
-                  aria-label="Clear brief"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                >
-                  <X className="h-3.5 w-3.5" strokeWidth={1.5} />
-                </button>
+            <div className="relative flex-1 min-w-[240px] flex flex-col gap-2">
+              {briefUsage && briefUsage.used >= briefUsage.limit ? (
+                <div className="rounded-xl border hairline bg-secondary/40 px-4 py-3 flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-body text-sm font-semibold">
+                      {briefUsage.plan === "anon" ? "You've used your 1 free match" : "Daily limit reached"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {briefUsage.plan === "anon"
+                        ? "Sign up free to get 3 matches every day."
+                        : briefUsage.plan === "free"
+                        ? "Upgrade to Pro for 20 matches a day."
+                        : "Resets at midnight."}
+                    </p>
+                  </div>
+                  {briefUsage.plan !== "paid" && (
+                    <a
+                      href={briefUsage.plan === "anon" ? "/auth" : "/pricing"}
+                      className="shrink-0 rounded-full bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-4 py-2 hover:opacity-90 transition-opacity"
+                    >
+                      {briefUsage.plan === "anon" ? "Sign up" : "Go Pro"}
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <CyclingPlaceholder active={!briefFocused && !brief.trim()} className="items-start" />
+                  <Textarea
+                    value={brief}
+                    onChange={(e) => setBrief(e.target.value)}
+                    onFocus={() => setBriefFocused(true)}
+                    onBlur={() => setBriefFocused(false)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        runBriefMatch();
+                      }
+                    }}
+                    rows={2}
+                    placeholder=""
+                    className="pr-9 rounded-xl bg-secondary/60 border-border font-mono text-sm leading-snug placeholder:normal-case resize-none py-3 focus:bg-background transition-colors"
+                    disabled={matching}
+                  />
+                  {brief && !matching && (
+                    <button
+                      type="button"
+                      onClick={clearMatches}
+                      aria-label="Clear brief"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    </button>
+                  )}
+                </>
               )}
             </div>
             <div className="flex flex-col items-start gap-1">
               <Button
                 type="submit"
-                disabled={matching}
+                disabled={matching || (briefUsage ? briefUsage.used >= briefUsage.limit : false)}
                 className="rounded-full font-mono text-xs uppercase tracking-widest"
               >
                 {matching ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching…</> : "Match brief"}
               </Button>
               {briefUsage && (
-                <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground pl-1">
+                <span className={`font-mono text-[9px] uppercase tracking-widest pl-1 ${briefUsage.used >= briefUsage.limit ? "text-destructive" : "text-muted-foreground"}`}>
                   {briefUsage.used}/{briefUsage.limit} today
                 </span>
               )}
