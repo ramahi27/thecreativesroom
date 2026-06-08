@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PageMeta } from "@/components/PageMeta";
 import { CyclingPlaceholder } from "@/components/CyclingPlaceholder";
-import { SeasonalChips } from "@/components/SeasonalChips";
 
 type MediaFilter = "all" | "videos" | "photos";
 type SortBy = "default" | "newest" | "oldest" | "campaign_newest" | "campaign_oldest" | "title";
@@ -654,9 +653,6 @@ const Index = () => {
               ))}
           </div>
         )}
-        <SeasonalChips
-          onSelect={(term) => setSearch(term)}
-        />
       </section>
 
       {/* Matched for your brief */}
