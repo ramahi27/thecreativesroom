@@ -33,20 +33,10 @@ export function useFolders() {
       return;
     }
     if (!silent) setLoading(true);
-    const [{ data: f }, { data: i }] = await Promise.all([
-      supabase
-        .from("folders")
-        .select("id,name,color,position,is_public")
-        .eq("user_id", user.id)
-        .order("position", { ascending: true })
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("folder_items")
-        .select("folder_id,reference_id")
-        .eq("user_id", user.id),
-    ]);
-    const newFolders = (f as Folder[]) || [];
-    const newItems = (i as FolderItem[]) || [];
+    const { data, error } = await supabase.rpc("get_my_folders", { p_user_id: user.id });
+    const result = error ? null : (data as { folders: Folder[]; items: FolderItem[] } | null);
+    const newFolders = result?.folders ?? [];
+    const newItems = result?.items ?? [];
     _foldersCache = { uid: user.id, folders: newFolders, items: newItems };
     setFolders(newFolders);
     setItems(newItems);
