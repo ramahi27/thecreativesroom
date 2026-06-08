@@ -196,14 +196,15 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     function onKey(e: KeyboardEvent) {
       if (e.key === "ArrowLeft") { goPrev(); return; }
       if (e.key === "ArrowRight") { goNext(); return; }
-      if (e.key === " " || e.key === "Enter") {
+      if (e.key === " ") {
         const tag = (e.target as HTMLElement).tagName;
         if (tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON" || tag === "SELECT") return;
         e.preventDefault();
-        if (iframeRef.current) {
-          iframeRef.current.focus();
-        } else if (videoRef.current) {
+        e.stopPropagation();
+        if (videoRef.current) {
           videoRef.current.paused ? videoRef.current.play() : videoRef.current.pause();
+        } else if (iframeRef.current) {
+          iframeRef.current.focus();
         }
       }
     }
@@ -346,7 +347,10 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
           ogImage={r.thumbnail_url || r.media_url || undefined}
         />
       )}
-      <DialogContent className="max-w-[1600px] w-[96vw] max-h-[95vh] overflow-x-hidden overflow-y-auto p-0 bg-background grain">
+      <DialogContent
+        className="max-w-[1600px] w-[96vw] max-h-[95vh] overflow-x-hidden overflow-y-auto p-0 bg-background grain"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         {/* Prev / Next side arrows */}
         {prev && (
           <button
@@ -379,7 +383,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
           <div className="p-6 md:p-10">
             <div className="flex items-center justify-end">
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-                ← / → navigate · Space / Enter play
+                ← / → navigate
               </p>
             </div>
 
