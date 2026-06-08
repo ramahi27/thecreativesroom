@@ -68,6 +68,13 @@ export default {
         body: ['Inter', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
+      fontSize: {
+        xs:   ['0.75rem',   { lineHeight: '1.125rem' }],  // 12px — unchanged
+        sm:   ['0.9375rem', { lineHeight: '1.5rem'   }],  // 15px (was 14px)
+        base: ['1.0625rem', { lineHeight: '1.6875rem'}],  // 17px (was 16px)
+        lg:   ['1.1875rem', { lineHeight: '1.75rem'  }],  // 19px (was 18px)
+        xl:   ['1.3125rem', { lineHeight: '1.875rem' }],  // 21px (was 20px)
+      },
       backgroundImage: {
         'gradient-spotlight': 'var(--gradient-spotlight)',
         'gradient-fade': 'var(--gradient-fade)',
