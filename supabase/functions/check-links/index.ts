@@ -5,9 +5,6 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-// Stale after 7 days
-const STALE_DAYS = 7;
-
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, {
@@ -34,13 +31,12 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!role) return new Response("Forbidden", { status: 403 });
 
-  // Pick references that haven't been checked yet or are stale
-  const staleDate = new Date(Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  // Check every reference that has a source URL
   const { data: refs, error } = await supabase
     .from("references")
     .select("id, source_url, link_status, link_checked_at")
-    .or(`link_checked_at.is.null,link_checked_at.lt.${staleDate}`)
-    .not("source_url", "is", null);
+    .not("source_url", "is", null)
+    .limit(10000);
 
   const cors = { "Access-Control-Allow-Origin": "*" };
   if (error) return Response.json({ error: error.message }, { status: 500, headers: cors });
