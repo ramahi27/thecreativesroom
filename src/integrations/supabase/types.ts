@@ -393,6 +393,33 @@ export type Database = {
         }
         Relationships: []
       }
+      search_usages: {
+        Row: {
+          count: number
+          created_at: string
+          id: string
+          ip_hash: string
+          updated_at: string
+          usage_date: string
+        }
+        Insert: {
+          count?: number
+          created_at?: string
+          id?: string
+          ip_hash: string
+          updated_at?: string
+          usage_date?: string
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          id?: string
+          ip_hash?: string
+          updated_at?: string
+          usage_date?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
