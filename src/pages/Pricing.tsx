@@ -38,7 +38,7 @@ const FAQ = [
   {
     icon: HelpCircle,
     q: "What's the fair use limit?",
-    a: "Unlimited means we don't count - but to keep the service fast for everyone, we apply a soft cap of 50 AI brief matches per day. If you need more, reach out and we're happy to sort you out.",
+    a: "Unlimited means we don't count - but to keep the service fast for everyone, we apply a soft cap of 50 AI brief matches per day. If you need more, reach out and we're happy to give you extra credits at no cost.",
   },
 ];
 
