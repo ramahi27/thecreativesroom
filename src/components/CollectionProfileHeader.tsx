@@ -27,10 +27,7 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
   async function handleShare() {
     if (!profile?.username) return;
     const url = profileUrl(profile.username);
-    try {
-      if (navigator.share) { await navigator.share({ url, title: `@${profile.username}` }); return; }
-    } catch {}
-    try { await navigator.clipboard.writeText(url); toast.success("Profile link copied"); } catch {}
+    try { await navigator.clipboard.writeText(url); toast.success("Profile link copied"); } catch { toast.error("Could not copy link"); }
   }
 
   async function handleSendReset() {

@@ -258,24 +258,11 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   async function handleShare() {
     if (!r) return;
     const url = `${window.location.origin}${refPath(r.id, r.title)}`;
-    const shareData = {
-      title: r.title,
-      text: `${r.title} — on The Creatives Room`,
-      url,
-    };
-    try {
-      if (navigator.share && typeof navigator.canShare === "function" ? navigator.canShare(shareData) : !!navigator.share) {
-        await navigator.share(shareData);
-        return;
-      }
-    } catch (err: any) {
-      if (err?.name === "AbortError") return;
-    }
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Link copied to clipboard");
+      toast.success("Link copied");
     } catch {
-      toast.error("Could not share link");
+      toast.error("Could not copy link");
     }
   }
 
