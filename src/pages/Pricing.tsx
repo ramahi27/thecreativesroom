@@ -228,7 +228,7 @@ const Pricing = () => {
         </div>
 
         {/* FAQ */}
-        <div className="container max-w-3xl mt-20 mb-4">
+        <div className="container max-w-5xl mt-20 mb-4">
           <div className="grid md:grid-cols-3 gap-px bg-border rounded-3xl overflow-hidden border hairline">
             {FAQ.map(({ icon: Icon, q, a }) => (
               <div key={q} className="bg-background p-7">

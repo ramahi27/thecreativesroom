@@ -365,11 +365,43 @@ const Index = () => {
       return s;
     };
 
+    // Score using ONLY the original query (no expansion terms).
+    const qScore = (r: Reference): number => {
+      const fields = {
+        title: (r.title || "").toLowerCase(),
+        brand: (r.brand || "").toLowerCase(),
+        agency: (r.agency || "").toLowerCase(),
+        tags: (r.tags || []).join(" ").toLowerCase(),
+        categories: (r.categories || []).join(" ").toLowerCase(),
+        syn: ((r as any).tag_synonyms || []).join(" ").toLowerCase(),
+        notes: (r.notes || "").toLowerCase(),
+      };
+      let s = 0;
+      s += hit(fields.title, q, 100, 60);
+      s += hit(fields.brand, q, 80, 40);
+      s += hit(fields.agency, q, 50, 25);
+      s += hit(fields.tags, q, 60, 30);
+      s += hit(fields.categories, q, 55, 28);
+      s += hit(fields.syn, q, 35, 18);
+      s += hit(fields.notes, q, 20, 10);
+      return s;
+    };
+
     const list = refs.filter((r) => {
       if (mediaFilter === "videos" && !(r.type === "video" || r.type === "link")) return false;
       if (mediaFilter === "photos" && r.type !== "image") return false;
       if (categoryFilter !== "all" && !(r.categories || []).includes(categoryFilter)) return false;
-      if (q && score(r) === 0) return false;
+      if (q) {
+        if (qScore(r) > 0) return true; // original query matched — always include
+        // Expansion-only: only include when the synonym hits a curated tag/synonym
+        // field — prevents generic words like "celebration" matching unrelated titles
+        const tagFields = [
+          (r.tags || []).join(" ").toLowerCase(),
+          ((r as any).tag_synonyms || []).join(" ").toLowerCase(),
+          (r.categories || []).join(" ").toLowerCase(),
+        ];
+        return exp.some((t) => tagFields.some((f) => f.includes(t)));
+      }
       return true;
     });
 

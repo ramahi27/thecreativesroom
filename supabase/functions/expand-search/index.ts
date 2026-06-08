@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: `Given the search term "${cleanTerm}", return 6–10 synonyms and closely related terms a creative professional might use when searching an advertising, film, and photography archive. Include the original term. Return ONLY a JSON array of lowercase strings, no explanation. Example for "cars": ["car","cars","automobile","vehicle","automotive","road","driving"]`,
+            content: `Given the search term "${cleanTerm}", return 4–6 direct synonyms and alternate names ONLY — the same concept expressed differently (abbreviations, spelling variants, equivalent words, direct translations). Do NOT include loosely associated themes, actions, or topics. Return ONLY a JSON array of lowercase strings, no explanation.\nExamples:\n- "christmas" → ["xmas","noel","yuletide","holiday season","festive season"]\n- "car" → ["automobile","vehicle","auto","motor"]\n- "woman" → ["women","female","girl","lady"]\n- "sport" → ["sports","athletic","athletics"]`,
           },
         ],
         max_tokens: 150,
