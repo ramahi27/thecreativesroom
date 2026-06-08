@@ -105,7 +105,7 @@ const Index = () => {
         supabase.from("brief_usages").select("count").eq("user_id", user.id).eq("usage_date", today).maybeSingle(),
       ]);
       const plan = (profileData?.plan as string) || "free";
-      const limit = plan === "paid" ? 50 : 3;
+      const limit = (plan === "paid" || plan === "admin") ? 50 : 3;
       setBriefUsage({ used: usageData?.count ?? 0, limit, plan });
     })();
   }, [user]);
@@ -585,7 +585,7 @@ const Index = () => {
                         : "You've reached today's fair use limit. Come back tomorrow."}
                     </p>
                   </div>
-                  {briefUsage.plan !== "paid" && (
+                  {briefUsage.plan !== "paid" && briefUsage.plan !== "admin" && (
                     <a
                       href={briefUsage.plan === "anon" ? "/auth" : "/pricing"}
                       className="shrink-0 rounded-full bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-4 py-2 hover:opacity-90 transition-opacity"
@@ -634,7 +634,7 @@ const Index = () => {
               >
                 {matching ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching…</> : "Match brief"}
               </Button>
-              {briefUsage && briefUsage.plan !== "paid" && (
+              {briefUsage && briefUsage.plan !== "paid" && briefUsage.plan !== "admin" && (
                 <span className={`font-mono text-[9px] uppercase tracking-widest pl-1 ${briefUsage.used >= briefUsage.limit ? "text-destructive" : "text-muted-foreground"}`}>
                   {briefUsage.used}/{briefUsage.limit} today
                 </span>

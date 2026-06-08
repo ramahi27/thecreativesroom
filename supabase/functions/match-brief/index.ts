@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const LIMITS = { anon: 1, free: 3, paid: 50 } as const;
+const LIMITS = { anon: 1, free: 3, paid: 50, admin: 50 } as const;
 type Plan = keyof typeof LIMITS;
 const MAX_BRIEF_LEN = 2000;
 
@@ -66,11 +66,12 @@ Deno.serve(async (req) => {
     let usedToday = 0;
 
     if (userId) {
-      const [{ data: profile }, { data: usageRow }] = await Promise.all([
+      const [{ data: profile }, { data: usageRow }, { data: adminRow }] = await Promise.all([
         supabase.from("profiles").select("plan").eq("user_id", userId).maybeSingle(),
         supabase.from("brief_usages").select("count").eq("user_id", userId).eq("usage_date", today).maybeSingle(),
+        supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
       ]);
-      plan = (profile?.plan as Plan) || "free";
+      plan = adminRow ? "admin" : ((profile?.plan as Plan) || "free");
       usedToday = usageRow?.count ?? 0;
     } else {
       const { data: usageRow } = await supabase
@@ -93,16 +94,7 @@ Deno.serve(async (req) => {
     // ── End rate limiting ────────────────────────────────────────────────────
 
     // Only admins can have brief reasoning persisted back into reference metadata.
-    let isAdmin = false;
-    if (userId) {
-      const { data: adminRow } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", userId)
-        .eq("role", "admin")
-        .maybeSingle();
-      isAdmin = !!adminRow;
-    }
+    const isAdmin = plan === "admin";
 
     // Fetch all published refs (compact)
     const { data: refs, error } = await supabase
