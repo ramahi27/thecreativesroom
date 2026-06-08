@@ -5,7 +5,6 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
-const BATCH_SIZE = 40;
 // Stale after 7 days
 const STALE_DAYS = 7;
 
@@ -41,8 +40,7 @@ Deno.serve(async (req) => {
     .from("references")
     .select("id, source_url, link_status, link_checked_at")
     .or(`link_checked_at.is.null,link_checked_at.lt.${staleDate}`)
-    .not("source_url", "is", null)
-    .limit(BATCH_SIZE);
+    .not("source_url", "is", null);
 
   const cors = { "Access-Control-Allow-Origin": "*" };
   if (error) return Response.json({ error: error.message }, { status: 500, headers: cors });

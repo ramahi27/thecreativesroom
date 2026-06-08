@@ -383,7 +383,7 @@ const Logs = () => {
             className="font-mono text-[11px] uppercase tracking-widest h-9"
           >
             <Link2 className="h-3.5 w-3.5 mr-2" strokeWidth={1.8} />
-            {linkChecking ? "Checking…" : "Check links (batch of 40)"}
+            {linkChecking ? "Checking…" : "Check all links"}
           </Button>
         </div>
         {linkResults && (
