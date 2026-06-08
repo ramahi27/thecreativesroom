@@ -28,7 +28,7 @@ const FAQ = [
   {
     icon: RefreshCw,
     q: "Cancel anytime?",
-    a: "Yes. No lock-in — cancel from your account settings and you keep Pro until the period ends.",
+    a: "Yes. No lock-in - cancel from your account settings and you keep Pro until the period ends.",
   },
   {
     icon: Lock,
@@ -38,7 +38,7 @@ const FAQ = [
   {
     icon: HelpCircle,
     q: "What's the fair use limit?",
-    a: "Unlimited means we don't count — but to keep the service fast for everyone, we apply a soft cap of 50 AI brief matches per day.",
+    a: "Unlimited means we don't count - but to keep the service fast for everyone, we apply a soft cap of 50 AI brief matches per day. If you need more, reach out and we're happy to sort you out.",
   },
 ];
 
@@ -186,7 +186,7 @@ const Pricing = () => {
                 </div>
                 {interval === "yearly" ? (
                   <p className="font-body text-sm text-muted-foreground">
-                    Billed ${yearlyPrice.toFixed(2)}/year — {yearlySaving}% off.
+                    Billed ${yearlyPrice.toFixed(2)}/year - {yearlySaving}% off.
                   </p>
                 ) : (
                   <p className="font-body text-sm text-muted-foreground">For power users and professionals.</p>

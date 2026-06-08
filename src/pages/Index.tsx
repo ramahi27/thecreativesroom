@@ -847,7 +847,7 @@ const Index = () => {
               to={briefUsage.plan === "anon" ? "/auth?next=/pricing" : "/pricing"}
               className="shrink-0 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest px-5 py-2.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
             >
-              {briefUsage.plan === "anon" ? "Sign up free" : "Upgrade — $7.99/mo"}
+              {briefUsage.plan === "anon" ? "Sign up free" : "Upgrade - $7.99/mo"}
               <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
             </Link>
           </div>
