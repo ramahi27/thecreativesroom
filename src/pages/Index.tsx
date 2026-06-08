@@ -729,18 +729,6 @@ const Index = () => {
             )}
           </div>
         </div>
-        {search && expandedTerms.length > 0 && (
-          <div className="container pb-3 flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground">Also searching:</span>
-            {expandedTerms
-              .filter((t) => t.toLowerCase() !== search.trim().toLowerCase())
-              .map((t) => (
-                <span key={t} className="font-mono text-[9px] uppercase tracking-widest bg-secondary/60 border hairline rounded-full px-2.5 py-0.5 text-muted-foreground">
-                  {t}
-                </span>
-              ))}
-          </div>
-        )}
       </section>
 
       {/* Matched for your brief */}
