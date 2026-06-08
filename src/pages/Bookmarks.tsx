@@ -423,7 +423,7 @@ const Bookmarks = () => {
               })}
             </div>
           )
-        ) : loading || foldersLoading ? (
+        ) : loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
             Loading…
           </p>
@@ -566,7 +566,7 @@ const Bookmarks = () => {
           <div className="space-y-10">
             <div className="flex items-center justify-between gap-4">
               <h2 className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-                {folders.length} {folders.length === 1 ? "folder" : "folders"}
+                {foldersLoading ? "…" : `${folders.length} ${folders.length === 1 ? "folder" : "folders"}`}
               </h2>
               <Button
                 size="sm"
@@ -579,7 +579,14 @@ const Bookmarks = () => {
             </div>
 
             {/* Folder rows, stacked */}
-            {folders.length > 0 && (
+            {foldersLoading && (
+              <div className="space-y-4">
+                {[1, 2].map((i) => (
+                  <div key={i} className="border hairline h-24 animate-pulse bg-secondary/40 rounded-sm" />
+                ))}
+              </div>
+            )}
+            {!foldersLoading && folders.length > 0 && (
               <div className="space-y-4">
                 {folders.map((f) => (
                   <FolderRow
@@ -599,7 +606,7 @@ const Bookmarks = () => {
               </div>
             )}
 
-            {folders.length === 0 && (
+            {!foldersLoading && folders.length === 0 && (
               <button
                 type="button"
                 onClick={() => openCreateFolderDialog([])}
