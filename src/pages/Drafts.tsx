@@ -40,6 +40,25 @@ const Drafts = () => {
   const [sources, setSources] = useState<{ value: string; count: number }[]>([]);
   const [scrapeUrl, setScrapeUrl] = useState("");
   const [scraping, setScraping] = useState(false);
+  const [linkChecking, setLinkChecking] = useState(false);
+
+  async function handleCheckLinks() {
+    setLinkChecking(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-links`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Link check failed");
+      toast.success(json.message);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLinkChecking(false);
+    }
+  }
   
 
   
@@ -333,6 +352,17 @@ const Drafts = () => {
               <Link to="/drafts/uncategorized">
                 <Tag className="h-3.5 w-3.5 mr-2" /> Uncategorized
               </Link>
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCheckLinks}
+              disabled={linkChecking}
+              className="font-mono text-xs uppercase tracking-widest"
+            >
+              <Link2 className="h-3.5 w-3.5 mr-2" strokeWidth={1.8} />
+              {linkChecking ? "Checking…" : "Check all links"}
             </Button>
           </div>
         </div>
