@@ -144,13 +144,13 @@ const Index = () => {
         }
         const isAnon = plan === "anon";
         const isFree = plan === "free";
-        toast.custom(() => (
-          <div className="w-[360px] rounded-2xl bg-card border hairline shadow-2xl p-5 flex flex-col gap-3">
+        toast.custom((t) => (
+          <div className="w-[360px] rounded-2xl bg-background border hairline shadow-xl p-5 flex flex-col gap-3">
             <div className="flex items-start gap-3">
               <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                 <Sparkles className="h-4 w-4 text-primary" strokeWidth={1.8} />
               </div>
-              <div>
+              <div className="flex-1 min-w-0">
                 <p className="font-display text-base font-black tracking-tight leading-snug">
                   {isAnon ? "You've used your free match" : isFree ? "Daily limit reached" : "All done for today"}
                 </p>
@@ -162,6 +162,13 @@ const Index = () => {
                     : "Your 20 Pro matches reset at midnight."}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => toast.dismiss(t)}
+                className="shrink-0 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+              >
+                <X className="h-4 w-4" strokeWidth={1.5} />
+              </button>
             </div>
             {(isAnon || isFree) && (
               <a
