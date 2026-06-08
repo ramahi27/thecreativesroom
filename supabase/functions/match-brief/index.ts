@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const LIMITS = { anon: 1, free: 3, paid: 20 } as const;
+const LIMITS = { anon: 1, free: 3, paid: 50 } as const;
 type Plan = keyof typeof LIMITS;
 const MAX_BRIEF_LEN = 2000;
 
