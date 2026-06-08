@@ -37,11 +37,17 @@ Deno.serve(async (req) => {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("stripe_customer_id, username")
+    .select("username")
     .eq("user_id", user.id)
     .single();
 
-  let customerId = (profile as any)?.stripe_customer_id as string | undefined;
+  const { data: billing } = await supabase
+    .from("billing_customers")
+    .select("stripe_customer_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  let customerId = (billing as any)?.stripe_customer_id as string | undefined;
   if (!customerId) {
     const customer = await stripe.customers.create({
       email: user.email,
@@ -50,9 +56,8 @@ Deno.serve(async (req) => {
     });
     customerId = customer.id;
     await supabase
-      .from("profiles")
-      .update({ stripe_customer_id: customerId } as any)
-      .eq("user_id", user.id);
+      .from("billing_customers")
+      .upsert({ user_id: user.id, stripe_customer_id: customerId } as any, { onConflict: "user_id" });
   }
 
   const origin = req.headers.get("origin") || "https://thecreativesroom.com";

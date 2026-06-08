@@ -40,34 +40,54 @@ Deno.serve(async (req) => {
       if (!userId) break;
       await supabase
         .from("profiles")
-        .update({
-          plan: "paid",
+        .update({ plan: "paid" } as any)
+        .eq("user_id", userId);
+      await supabase
+        .from("billing_customers")
+        .upsert({
+          user_id: userId,
           stripe_customer_id: session.customer as string,
           stripe_subscription_id: session.subscription as string,
-        } as any)
-        .eq("user_id", userId);
+        } as any, { onConflict: "user_id" });
       break;
     }
 
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
       const isActive = ["active", "trialing"].includes(sub.status);
+      const { data: billing } = await supabase
+        .from("billing_customers")
+        .select("user_id")
+        .eq("stripe_customer_id", sub.customer as string)
+        .maybeSingle();
+      if (!billing) break;
+      await supabase
+        .from("billing_customers")
+        .update({ stripe_subscription_id: sub.id } as any)
+        .eq("user_id", (billing as any).user_id);
       await supabase
         .from("profiles")
-        .update({
-          plan: isActive ? "paid" : "free",
-          stripe_subscription_id: sub.id,
-        } as any)
-        .eq("stripe_customer_id" as any, sub.customer as string);
+        .update({ plan: isActive ? "paid" : "free" } as any)
+        .eq("user_id", (billing as any).user_id);
       break;
     }
 
     case "customer.subscription.deleted": {
       const sub = event.data.object as Stripe.Subscription;
+      const { data: billing } = await supabase
+        .from("billing_customers")
+        .select("user_id")
+        .eq("stripe_customer_id", sub.customer as string)
+        .maybeSingle();
+      if (!billing) break;
+      await supabase
+        .from("billing_customers")
+        .update({ stripe_subscription_id: null } as any)
+        .eq("user_id", (billing as any).user_id);
       await supabase
         .from("profiles")
-        .update({ plan: "free", stripe_subscription_id: null } as any)
-        .eq("stripe_customer_id" as any, sub.customer as string);
+        .update({ plan: "free" } as any)
+        .eq("user_id", (billing as any).user_id);
       break;
     }
   }
