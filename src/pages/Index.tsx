@@ -100,18 +100,24 @@ const Index = () => {
         body: { brief: text },
       });
 
+      // Parse body from FunctionsHttpError (non-2xx responses put body in error.context)
+      let payload = data;
+      if (!payload && error) {
+        try { payload = await (error as any).context?.json?.(); } catch {}
+      }
+
       // Rate limit hit
-      if (error?.status === 429 || data?.error === "limit_reached") {
-        const payload = data || {};
-        const plan: string = payload.plan ?? "anon";
+      const isRateLimit = (error as any)?.context?.status === 429 || payload?.error === "limit_reached";
+      if (isRateLimit) {
+        const plan: string = payload?.plan ?? "anon";
         const msg =
           plan === "anon"
-            ? "You've used your free try. Sign in for 3 matches a day."
+            ? "You've used your 1 free match. Sign up for 3 per day — it's free."
             : plan === "free"
-            ? "You've reached your 3 daily matches. Upgrade for 20 a day."
+            ? "You've used all 3 daily matches. Upgrade to Pro for 20 a day."
             : "Daily limit reached. Resets at midnight.";
-        toast.error(msg, { duration: 6000 });
-        if (payload.used !== undefined) setBriefUsage({ used: payload.used, limit: payload.limit, plan });
+        toast.error(msg, { duration: 8000 });
+        if (payload?.used !== undefined) setBriefUsage({ used: payload.used, limit: payload.limit, plan });
         return;
       }
 
