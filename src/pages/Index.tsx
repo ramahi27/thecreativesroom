@@ -839,7 +839,7 @@ const Index = () => {
               <div>
                 <p className="font-display text-xl font-black tracking-tight">Go Pro</p>
                 <p className="font-body text-sm text-muted-foreground mt-0.5 max-w-sm">
-                  50 AI brief matches a day, unlimited folders, and early access to new features.
+                  Unlimited AI brief matches, unlimited folders, and early access to new features.
                 </p>
               </div>
             </div>
