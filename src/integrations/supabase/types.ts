@@ -61,6 +61,30 @@ export type Database = {
           },
         ]
       }
+      brief_usages: {
+        Row: {
+          count: number
+          id: string
+          ip_address: string | null
+          usage_date: string
+          user_id: string | null
+        }
+        Insert: {
+          count?: number
+          id?: string
+          ip_address?: string | null
+          usage_date?: string
+          user_id?: string | null
+        }
+        Update: {
+          count?: number
+          id?: string
+          ip_address?: string | null
+          usage_date?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       duplicate_dismissals: {
         Row: {
           created_at: string
@@ -263,6 +287,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
+          plan: string
           submissions_public: boolean
           updated_at: string
           user_id: string
@@ -272,6 +297,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          plan?: string
           submissions_public?: boolean
           updated_at?: string
           user_id: string
@@ -281,6 +307,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          plan?: string
           submissions_public?: boolean
           updated_at?: string
           user_id?: string
