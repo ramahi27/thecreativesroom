@@ -494,6 +494,7 @@ export type Database = {
     }
     Functions: {
       get_admin_stats: { Args: never; Returns: Json }
+      get_my_folders: { Args: { p_user_id: string }; Returns: Json }
       get_profile_by_username: { Args: { _username: string }; Returns: Json }
       get_reference_logs: {
         Args: never
