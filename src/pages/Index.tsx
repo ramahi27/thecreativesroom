@@ -655,10 +655,7 @@ const Index = () => {
           </div>
         )}
         <SeasonalChips
-          onSelect={(briefText) => {
-            setBrief(briefText);
-            runBriefMatch(briefText);
-          }}
+          onSelect={(term) => setSearch(term)}
         />
       </section>
 
