@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
-import { Search, MessageSquare, Lightbulb, Bug } from "lucide-react";
+import { Search, MessageSquare, Lightbulb, Bug, Reply } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Row = {
@@ -274,8 +274,19 @@ const Users = () => {
                       </span>
                     </div>
                     <p className="font-body text-sm leading-relaxed">{f.message}</p>
-                    {f.email && f.username && (
-                      <p className="font-mono text-[10px] text-muted-foreground/60 mt-1">{f.email}</p>
+                    {f.email && (
+                      <div className="flex items-center gap-3 mt-3">
+                        {f.username && (
+                          <span className="font-mono text-[10px] text-muted-foreground/60">{f.email}</span>
+                        )}
+                        <a
+                          href={`mailto:${f.email}?subject=Re: your message on The Creatives Room&body=%0A%0A---%0AOriginal message:%0A"${encodeURIComponent(f.message)}"`}
+                          className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-primary hover:underline ml-auto"
+                        >
+                          <Reply className="h-3 w-3" strokeWidth={2} />
+                          Reply
+                        </a>
+                      </div>
                     )}
                   </div>
                 </div>
