@@ -312,8 +312,6 @@ export type Database = {
           bio: string | null
           created_at: string
           plan: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
           submissions_public: boolean
           updated_at: string
           user_id: string
@@ -324,8 +322,6 @@ export type Database = {
           bio?: string | null
           created_at?: string
           plan?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           submissions_public?: boolean
           updated_at?: string
           user_id: string
@@ -336,8 +332,6 @@ export type Database = {
           bio?: string | null
           created_at?: string
           plan?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           submissions_public?: boolean
           updated_at?: string
           user_id?: string
