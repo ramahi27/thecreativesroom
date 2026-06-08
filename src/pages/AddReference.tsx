@@ -368,25 +368,26 @@ const AddReference = () => {
     }
   }
 
-  const inputCls = "bg-secondary border-0 font-mono";
-  const labelCls = "font-mono text-[10px] uppercase tracking-widest text-muted-foreground";
+  const inputCls = "rounded-xl bg-secondary/60 border-border focus:bg-background transition-colors";
+  const labelCls = "font-body text-sm font-semibold";
 
   return (
-    <div className="min-h-screen grain">
+    <div className="min-h-screen grain flex flex-col">
       <PageMeta title={isEdit ? "Edit reference — The Creatives Room" : "Add reference — The Creatives Room"} description="Add or edit a creative reference." noindex />
       <SiteHeader />
-      <main className="container max-w-2xl py-12">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">
+      <main className="flex-1 container max-w-2xl py-12">
+        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-4">
           ⏵ {isEdit ? "Edit entry" : "New entry"}
         </p>
         <h1 className="font-display text-5xl font-black tracking-tighter mb-10">
           {isEdit ? "Edit reference." : "Add reference."}
         </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
+        <form onSubmit={handleSubmit} className="space-y-7">
+          {/* Type */}
+          <div className="space-y-2">
             <Label className={labelCls}>Type</Label>
-            <div className="mt-2 flex gap-2">
+            <div className="flex gap-2">
               {(["video", "image"] as RefType[]).map((t) => (
                 <button
                   key={t}
@@ -396,8 +397,10 @@ const AddReference = () => {
                     const allowed = t === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES;
                     setCategories((prev) => prev.filter((c) => (allowed as readonly string[]).includes(c)));
                   }}
-                  className={`px-4 py-2 font-mono text-xs uppercase tracking-widest border hairline transition-colors ${
-                    type === t ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
+                  className={`px-5 py-2 rounded-full font-mono text-[11px] uppercase tracking-widest border transition-all ${
+                    type === t
+                      ? "bg-foreground text-background border-foreground"
+                      : "hairline hover:border-foreground/40 text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {t}
@@ -406,9 +409,10 @@ const AddReference = () => {
             </div>
           </div>
 
-          <div>
-            <Label className={labelCls}>Categories (multi-select)</Label>
-            <div className="mt-2 flex flex-wrap gap-2">
+          {/* Categories */}
+          <div className="space-y-2">
+            <Label className={labelCls}>Categories <span className="font-normal text-muted-foreground text-xs">(multi-select)</span></Label>
+            <div className="flex flex-wrap gap-2">
               {(type === "video" ? VIDEO_CATEGORIES : PHOTO_CATEGORIES).map((c) => {
                 const active = categories.includes(c);
                 return (
@@ -416,8 +420,10 @@ const AddReference = () => {
                     key={c}
                     type="button"
                     onClick={() => setCategories((prev) => (active ? prev.filter((x) => x !== c) : [...prev, c]))}
-                    className={`px-3 py-1.5 font-mono text-[11px] uppercase tracking-widest border hairline transition-colors ${
-                      active ? "bg-primary text-primary-foreground border-primary" : "hover:bg-secondary"
+                    className={`px-4 py-1.5 rounded-full font-mono text-[11px] uppercase tracking-widest border transition-all ${
+                      active
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "hairline hover:border-foreground/40 text-muted-foreground hover:text-foreground"
                     }`}
                   >
                     {c}
@@ -427,14 +433,18 @@ const AddReference = () => {
             </div>
           </div>
 
+          {/* Title */}
           <div className="space-y-2">
-            <Label className={labelCls}>Title *</Label>
+            <Label className={labelCls}>Title <span className="text-primary">*</span></Label>
             <Input required value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
           </div>
 
+          {/* Source URL */}
           <div className="space-y-2">
             <Label className={labelCls}>
-              {type === "video" ? "Video link (YouTube, Vimeo, IG…) *" : "External link (YouTube, Vimeo, IG…)"}
+              {type === "video" ? "Video link" : "External link"}
+              {type === "video" && <span className="text-primary"> *</span>}
+              <span className="font-normal text-muted-foreground text-xs ml-1">(YouTube, Vimeo, IG…)</span>
             </Label>
             <Input
               type="url"
@@ -445,18 +455,19 @@ const AddReference = () => {
               className={inputCls}
             />
             {type === "video" && (
-              <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Videos can only be added via link. Uploads are photo-only.
               </p>
             )}
           </div>
 
+          {/* Existing media */}
           {existingMedia.length > 0 && (
             <div className="space-y-2">
               <Label className={labelCls}>
-                Current media{existingMedia.length > 1 ? " · drag to reorder" : ""}
+                Current media{existingMedia.length > 1 ? <span className="font-normal text-muted-foreground text-xs ml-1">· drag to reorder</span> : ""}
               </Label>
-              <ul className="space-y-1">
+              <ul className="space-y-2">
                 {existingMedia.map((m, i) => (
                   <li
                     key={`${m.url}-${i}`}
@@ -476,48 +487,31 @@ const AddReference = () => {
                       const from = Number(e.dataTransfer.getData("text/plain"));
                       if (!Number.isNaN(from)) reorderExisting(from, i);
                     }}
-                    className={`flex items-center justify-between gap-3 bg-secondary px-3 py-2 ${existingMedia.length > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
+                    className={`flex items-center justify-between gap-3 bg-secondary/60 rounded-xl px-3 py-2.5 ${existingMedia.length > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       {m.kind === "image" ? (
-                        <img src={m.url} alt="" className="h-10 w-10 object-cover shrink-0" />
+                        <img src={m.url} alt="" className="h-10 w-10 object-cover shrink-0 rounded-lg" />
                       ) : (
-                        <span className="h-10 w-10 grid place-items-center bg-background text-xs">🎬</span>
+                        <span className="h-10 w-10 rounded-lg grid place-items-center bg-background text-xs">🎬</span>
                       )}
-                      <span className="font-mono text-[11px] truncate">
+                      <span className="font-mono text-[11px] truncate text-muted-foreground">
                         {i + 1}. {m.url.split("/").pop()}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
                       {existingMedia.length > 1 && (
                         <>
-                          <button
-                            type="button"
-                            onClick={() => moveExisting(i, -1)}
-                            disabled={i === 0}
-                            className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                            aria-label="Move up"
-                          >
+                          <button type="button" onClick={() => moveExisting(i, -1)} disabled={i === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-30 p-1" aria-label="Move up">
                             <ArrowUp className="h-3 w-3" />
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => moveExisting(i, 1)}
-                            disabled={i === existingMedia.length - 1}
-                            className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                            aria-label="Move down"
-                          >
+                          <button type="button" onClick={() => moveExisting(i, 1)} disabled={i === existingMedia.length - 1} className="text-muted-foreground hover:text-foreground disabled:opacity-30 p-1" aria-label="Move down">
                             <ArrowDown className="h-3 w-3" />
                           </button>
                         </>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => removeExisting(i)}
-                        className="text-muted-foreground hover:text-foreground ml-1"
-                        aria-label="Remove"
-                      >
-                        <X className="h-3 w-3" />
+                      <button type="button" onClick={() => removeExisting(i)} className="text-muted-foreground hover:text-foreground p-1 ml-1" aria-label="Remove">
+                        <X className="h-3.5 w-3.5" />
                       </button>
                     </div>
                   </li>
@@ -526,22 +520,22 @@ const AddReference = () => {
             </div>
           )}
 
+          {/* Photo upload */}
           {type === "image" && (
             <div className="space-y-2">
               <Label className={labelCls}>
-                {isEdit ? "Add more photos" : "Upload photos (multiple allowed)"}
+                {isEdit ? "Add more photos" : "Upload photos"}
+                <span className="font-normal text-muted-foreground text-xs ml-1">(multiple allowed)</span>
               </Label>
               <label
                 htmlFor="reference-files"
                 onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; }}
                 onDrop={handleExternalDrop}
-                className="relative flex flex-col items-center justify-center gap-2 cursor-pointer bg-secondary hairline border border-dashed border-muted-foreground/40 hover:border-muted-foreground/70 hover:bg-secondary/70 transition-colors px-6 py-12 text-center"
+                className="relative flex flex-col items-center justify-center gap-2 cursor-pointer rounded-2xl bg-secondary/40 border border-dashed border-border hover:border-foreground/30 hover:bg-secondary/60 transition-colors px-6 py-12 text-center"
               >
-                <span className="font-mono text-xs uppercase tracking-widest text-foreground">
-                  Click, drop a file, or drag an image from another website.
-                </span>
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Photos only · multiple allowed
+                <span className="font-body text-sm font-medium">Click or drop photos here</span>
+                <span className="text-xs text-muted-foreground">
+                  Photos only · You can also drag images from another website
                 </span>
                 <input
                   id="reference-files"
@@ -553,25 +547,21 @@ const AddReference = () => {
                 />
               </label>
               {files.length > 0 && (
-                <ul className="mt-2 space-y-1">
+                <ul className="mt-2 space-y-2">
                   {files.map((f, i) => (
-                    <li key={i} className="flex items-center justify-between gap-3 bg-secondary px-3 py-2">
-                      <span className="font-mono text-[11px] truncate">🖼 {f.name}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(i)}
-                        className="text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="h-3 w-3" />
+                    <li key={i} className="flex items-center justify-between gap-3 bg-secondary/60 rounded-xl px-3 py-2.5">
+                      <span className="font-mono text-[11px] truncate text-muted-foreground">🖼 {f.name}</span>
+                      <button type="button" onClick={() => removeFile(i)} className="text-muted-foreground hover:text-foreground p-1">
+                        <X className="h-3.5 w-3.5" />
                       </button>
                     </li>
                   ))}
                 </ul>
               )}
-
             </div>
           )}
 
+          {/* Brand / Agency / Year */}
           {(() => {
             const isFilmTv = categories.includes("Film and TV scenes");
             return (
@@ -592,8 +582,9 @@ const AddReference = () => {
             );
           })()}
 
+          {/* Tags */}
           <div className="space-y-2">
-            <Label className={labelCls}>Tags (comma separated)</Label>
+            <Label className={labelCls}>Tags <span className="font-normal text-muted-foreground text-xs">(comma separated)</span></Label>
             <Input
               placeholder="cinematic, automotive, slow-motion"
               value={tags}
@@ -602,25 +593,26 @@ const AddReference = () => {
             />
           </div>
 
-
+          {/* Submit for review checkbox */}
           {!isAdmin && !isEdit && (
-            <label className="flex items-start gap-3 pt-2 cursor-pointer select-none">
+            <label className="flex items-start gap-3 cursor-pointer select-none rounded-2xl bg-secondary/40 border hairline px-4 py-3">
               <Checkbox
                 checked={allowMainPage}
                 onCheckedChange={(v) => setAllowMainPage(v === true)}
-                className="mt-0.5"
+                className="mt-0.5 rounded"
               />
-              <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground leading-relaxed">
+              <span className="text-sm text-muted-foreground leading-relaxed">
                 It's OK for admins to consider adding this project to the main archive.
               </span>
             </label>
           )}
 
-          <div className="flex items-center gap-3 pt-4">
+          {/* Actions */}
+          <div className="flex items-center gap-3 pt-2">
             <Button
               type="submit"
               disabled={submitting}
-              className="font-mono text-xs uppercase tracking-widest h-12 px-8"
+              className="rounded-full font-mono text-xs uppercase tracking-widest h-11 px-8"
             >
               {submitting ? progress || "Saving…" : isEdit ? "Save changes" : isAdmin ? "Add to archive" : "Submit for review"}
             </Button>
@@ -628,7 +620,7 @@ const AddReference = () => {
               type="button"
               variant="ghost"
               onClick={() => navigate(isEdit ? refPath(editId!, title) : "/")}
-              className="font-mono text-xs uppercase tracking-widest h-12"
+              className="rounded-full font-mono text-xs uppercase tracking-widest h-11"
             >
               Cancel
             </Button>
