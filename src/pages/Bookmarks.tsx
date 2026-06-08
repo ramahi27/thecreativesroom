@@ -587,7 +587,7 @@ const Bookmarks = () => {
               </div>
             )}
             {!foldersLoading && folders.length > 0 && (
-              <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {folders.map((f) => (
                   <FolderRow
                     key={f.id}

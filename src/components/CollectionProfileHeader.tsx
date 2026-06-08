@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { Profile } from "@/hooks/useProfile";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Share2, LogOut, KeyRound } from "lucide-react";
+import { MoreHorizontal, Pencil, Share2, LogOut, KeyRound, Settings } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { profileUrl } from "@/lib/username";
@@ -29,15 +28,9 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
     if (!profile?.username) return;
     const url = profileUrl(profile.username);
     try {
-      if (navigator.share) {
-        await navigator.share({ url, title: `@${profile.username}` });
-        return;
-      }
+      if (navigator.share) { await navigator.share({ url, title: `@${profile.username}` }); return; }
     } catch {}
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.success("Profile link copied");
-    } catch {}
+    try { await navigator.clipboard.writeText(url); toast.success("Profile link copied"); } catch {}
   }
 
   async function handleSendReset() {
@@ -52,79 +45,86 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
   const initials = (profile?.username || "?").slice(0, 2).toUpperCase();
 
   return (
-    <section className="relative overflow-hidden border-b hairline">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{ background: "var(--gradient-spotlight)" }}
-      />
+    <section className="border-b hairline">
+      <div className="container py-10 flex flex-col items-center text-center gap-4">
 
-      {/* ── MOBILE layout (< md) ── clean settings-list style */}
-      <div className="md:hidden container py-6 relative space-y-4">
-        {/* Row 1: avatar + name + actions */}
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 shrink-0 rounded-full bg-secondary border hairline overflow-hidden flex items-center justify-center">
+        {/* Avatar */}
+        <div className="relative">
+          <div className="h-24 w-24 rounded-full overflow-hidden bg-secondary border-2 border-border">
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt={profile?.username} className="h-full w-full object-cover" />
             ) : (
-              <span className="font-display text-sm font-black">{initials}</span>
+              <div className="h-full w-full flex items-center justify-center bg-primary/5">
+                <span className="font-display text-3xl font-black text-primary/50">{initials}</span>
+              </div>
             )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-mono text-[9px] uppercase tracking-widest text-primary">My Collection</p>
-            <p className="font-display text-xl font-black tracking-tight truncate">
-              @{profile?.username || (loading ? "…" : "you")}
-            </p>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => navigate("/account/edit")}
-              className="h-8 w-8 p-0"
-              aria-label="Edit profile"
-            >
-              <Pencil className="h-3.5 w-3.5" strokeWidth={1.8} />
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="ghost" className="h-8 w-8 p-0" aria-label="More">
-                  <MoreHorizontal className="h-4 w-4" strokeWidth={1.8} />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="font-mono text-xs uppercase tracking-widest">
-                <DropdownMenuItem onClick={handleShare} disabled={!profile?.username}>
-                  <Share2 className="h-3 w-3 mr-2" strokeWidth={1.8} /> Share profile
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSendReset}>
-                  <KeyRound className="h-3 w-3 mr-2" strokeWidth={1.8} /> Reset password
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <LogOut className="h-3 w-3 mr-2" strokeWidth={1.8} /> Sign out
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
 
-        {/* Bio */}
-        {profile?.bio && (
-          <p className="font-body text-sm text-foreground/70 leading-relaxed">
-            {profile.bio}
-          </p>
-        )}
+        {/* Name + bio */}
+        <div>
+          <h1 className="font-display text-3xl md:text-4xl font-black tracking-tight">
+            @{profile?.username || (loading ? "…" : "you")}
+          </h1>
+          {profile?.bio && (
+            <p className="mt-2 max-w-md mx-auto font-body text-sm text-muted-foreground leading-relaxed">
+              {profile.bio}
+            </p>
+          )}
+        </div>
 
-        {/* Submissions toggle row */}
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 flex-wrap justify-center">
+          <button
+            type="button"
+            onClick={() => navigate("/account/edit")}
+            className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest px-4 py-2 border hairline hover:border-foreground/40 transition-colors rounded-full"
+          >
+            <Pencil className="h-3 w-3" strokeWidth={1.8} />
+            Edit profile
+          </button>
+          <button
+            type="button"
+            onClick={handleShare}
+            disabled={!profile?.username}
+            className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest px-4 py-2 border hairline hover:border-foreground/40 transition-colors rounded-full disabled:opacity-40"
+          >
+            <Share2 className="h-3 w-3" strokeWidth={1.8} />
+            Share
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center justify-center h-9 w-9 border hairline rounded-full hover:border-foreground/40 transition-colors"
+                aria-label="More"
+              >
+                <MoreHorizontal className="h-4 w-4" strokeWidth={1.8} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="font-mono text-xs uppercase tracking-widest">
+              <DropdownMenuItem onClick={() => navigate("/account/edit")}>
+                <Settings className="h-3 w-3 mr-2" strokeWidth={1.8} /> Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSendReset}>
+                <KeyRound className="h-3 w-3 mr-2" strokeWidth={1.8} /> Reset password
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}
+                className="text-destructive focus:text-destructive"
+              >
+                <LogOut className="h-3 w-3 mr-2" strokeWidth={1.8} /> Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        {/* Submissions toggle */}
         {profile && (
-          <div className="flex items-center justify-between gap-3 border hairline rounded-xl px-4 py-3">
-            <label htmlFor="subs-public-mobile" className="font-mono text-[10px] uppercase tracking-widest cursor-pointer">
-              Public submissions
-            </label>
+          <div className="flex items-center gap-2.5 mt-1">
             <Switch
-              id="subs-public-mobile"
+              id="subs-public"
               checked={profile.submissions_public !== false}
               onCheckedChange={async (v) => {
                 if (!user) return;
@@ -139,97 +139,11 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
                 }
               }}
             />
+            <label htmlFor="subs-public" className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground cursor-pointer">
+              Public submissions
+            </label>
           </div>
         )}
-      </div>
-
-      {/* ── DESKTOP layout (≥ md) ── cinematic */}
-      <div className="hidden md:block container py-20 relative">
-        <div className="flex md:flex-row md:items-end gap-10">
-          <div className="h-28 w-28 shrink-0 bg-secondary border hairline overflow-hidden flex items-center justify-center shadow-[var(--shadow-cinema)]">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={profile?.username} className="h-full w-full object-cover" />
-            ) : (
-              <span className="font-display text-3xl font-black">{initials}</span>
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-3">
-              ⏵ My Collection
-            </p>
-            <h1 className="font-display text-7xl font-black tracking-tighter leading-[0.9]">
-              @{profile?.username || (loading ? "…" : "you")}
-            </h1>
-            {profile?.bio && (
-              <p className="mt-3 max-w-2xl font-body text-base text-foreground/80 leading-relaxed">
-                {profile.bio}
-              </p>
-            )}
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => navigate("/account/edit")}
-                className="font-mono text-[10px] uppercase tracking-widest h-8 gap-1.5"
-              >
-                <Pencil className="h-3 w-3" strokeWidth={1.8} /> Edit profile
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleShare}
-                disabled={!profile?.username}
-                className="font-mono text-[10px] uppercase tracking-widest h-8 gap-1.5"
-              >
-                <Share2 className="h-3 w-3" strokeWidth={1.8} /> Share profile
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button size="sm" variant="ghost" className="h-8 px-2" aria-label="More">
-                    <MoreHorizontal className="h-4 w-4" strokeWidth={1.8} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="font-mono text-xs uppercase tracking-widest">
-                  <DropdownMenuItem onClick={() => navigate("/account/edit")}>
-                    Edit profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleSendReset}>
-                    Send reset email
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}
-                  >
-                    Sign out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            {profile && (
-              <div className="mt-4 flex items-center gap-3 border hairline px-3 py-2 w-fit">
-                <Switch
-                  id="subs-public"
-                  checked={profile.submissions_public !== false}
-                  onCheckedChange={async (v) => {
-                    if (!user) return;
-                    const { error } = await supabase
-                      .from("profiles")
-                      .update({ submissions_public: v })
-                      .eq("user_id", user.id);
-                    if (error) toast.error(error.message);
-                    else {
-                      toast.success(v ? "Submissions are public" : "Submissions are private");
-                      await onSaved();
-                    }
-                  }}
-                />
-                <label htmlFor="subs-public" className="font-mono text-[10px] uppercase tracking-widest cursor-pointer">
-                  Show submissions on public profile
-                </label>
-              </div>
-            )}
-          </div>
-        </div>
       </div>
     </section>
   );

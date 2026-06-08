@@ -181,246 +181,290 @@ const ProfileSettings = () => {
     else toast.success("Password reset email sent.");
   }
 
+  type SettingsSection = "profile" | "billing" | "security" | "danger";
+  const [activeSection, setActiveSection] = useState<SettingsSection>("profile");
+
   if (authLoading || !user) return null;
+
+  const navItems: { key: SettingsSection; label: string }[] = [
+    { key: "profile", label: "Edit profile" },
+    { key: "billing", label: "Plan & billing" },
+    { key: "security", label: "Security" },
+    { key: "danger", label: "Account" },
+  ];
 
   return (
     <div className="min-h-screen grain flex flex-col">
       <PageMeta title="My Profile — The Creatives Room" description="Manage your profile settings." noindex />
       <SiteHeader />
-      <main className="container py-12 md:py-16 flex-1 max-w-2xl">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-3">⏵ My Profile</p>
-        <h1 className="font-display text-4xl md:text-5xl font-black tracking-tighter mb-10">
-          Edit profile
-        </h1>
+      <main className="flex-1">
+        <div className="container py-10 flex gap-0 md:gap-12 max-w-4xl">
 
-        {loading ? (
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
-        ) : (
-          <div className="space-y-10">
-            <section className="space-y-6">
-              <div className="flex items-center gap-5">
-                <div className="h-24 w-24 bg-secondary border hairline overflow-hidden flex items-center justify-center shrink-0">
-                  {avatarUrl ? (
-                    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-                  ) : (
-                    <span className="font-mono text-[10px] text-muted-foreground">No avatar</span>
-                  )}
-                </div>
-                <div>
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handlePickAvatar}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileRef.current?.click()}
-                    className="font-mono text-[10px] uppercase tracking-widest"
-                  >
-                    {uploadingAvatar ? "Uploading…" : avatarUrl ? "Change photo" : "Upload photo"}
-                  </Button>
-                  {avatarUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setAvatarUrl("")}
-                      className="ml-3 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive"
-                    >
-                      Remove
-                    </button>
-                  )}
-                </div>
-              </div>
+          {/* Left nav — Pinterest style */}
+          <aside className="hidden md:flex flex-col gap-1 w-52 shrink-0 pt-2">
+            {navItems.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setActiveSection(item.key)}
+                className={`text-left px-3 py-2.5 rounded-xl font-body text-sm font-semibold transition-colors ${
+                  activeSection === item.key
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </aside>
 
-              <div className="space-y-2">
-                <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Username
-                </Label>
-                <Input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value.toLowerCase())}
-                  pattern="^[a-z0-9_-]{3,24}$"
-                  className="bg-secondary border-0 font-mono"
-                />
-                <p className="font-mono text-[10px] text-muted-foreground">
-                  {profileUrl(username || "you")}
-                </p>
-              </div>
+          {/* Mobile nav — horizontal tabs */}
+          <div className="flex md:hidden gap-1 mb-6 overflow-x-auto w-full pb-1">
+            {navItems.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => setActiveSection(item.key)}
+                className={`shrink-0 px-3 py-2 rounded-full font-mono text-[10px] uppercase tracking-widest transition-colors ${
+                  activeSection === item.key
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground border hairline hover:text-foreground"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
 
-              <div className="space-y-2">
-                <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Bio
-                </Label>
-                <Textarea
-                  value={bio}
-                  maxLength={200}
-                  rows={3}
-                  onChange={(e) => setBio(e.target.value)}
-                  className="bg-secondary border-0 font-mono"
-                />
-                <p className="font-mono text-[10px] text-muted-foreground">{bio.length}/200</p>
-              </div>
+          {/* Right content */}
+          <div className="flex-1 min-w-0">
+            {loading ? (
+              <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
+            ) : (
+              <>
+                {/* ── Edit Profile ── */}
+                {activeSection === "profile" && (
+                  <div className="space-y-6">
+                    <h2 className="font-display text-2xl font-black tracking-tight">Edit profile</h2>
 
-              <div>
-                <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                  Email
-                </Label>
-                <p className="font-mono text-sm mt-1">{user.email}</p>
-              </div>
+                    {/* Avatar */}
+                    <div className="flex flex-col items-center gap-3 pb-2">
+                      <div className="relative group/av">
+                        <div className="h-24 w-24 rounded-full overflow-hidden bg-secondary border-2 border-border">
+                          {avatarUrl ? (
+                            <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center bg-primary/5">
+                              <span className="font-display text-3xl font-black text-primary/40">
+                                {(username || "?").slice(0, 2).toUpperCase()}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => fileRef.current?.click()}
+                          className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover/av:opacity-100 transition-opacity flex items-center justify-center"
+                        >
+                          <span className="font-mono text-[9px] uppercase tracking-widest text-white">Change</span>
+                        </button>
+                      </div>
+                      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePickAvatar} />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileRef.current?.click()}
+                          className="font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 border hairline rounded-full hover:border-foreground/40 transition-colors"
+                        >
+                          {uploadingAvatar ? "Uploading…" : "Change photo"}
+                        </button>
+                        {avatarUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setAvatarUrl("")}
+                            className="font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 border hairline rounded-full text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
-              <div className="flex items-center gap-3">
-                <Button
-                  onClick={handleSaveProfile}
-                  disabled={savingProfile}
-                  className="font-mono text-xs uppercase tracking-widest"
-                >
-                  {savingProfile ? "Saving…" : "Save changes"}
-                </Button>
-              </div>
-            </section>
+                    {/* Fields */}
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="font-body text-sm font-semibold">Username</Label>
+                        <Input
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value.toLowerCase())}
+                          pattern="^[a-z0-9_-]{3,24}$"
+                          className="rounded-xl border-border bg-secondary/50 focus:bg-background"
+                        />
+                        <p className="text-xs text-muted-foreground">{profileUrl(username || "you")}</p>
+                      </div>
 
-            <div className="border-t hairline" />
+                      <div className="space-y-1.5">
+                        <Label className="font-body text-sm font-semibold">About</Label>
+                        <Textarea
+                          value={bio}
+                          maxLength={200}
+                          rows={3}
+                          placeholder="Tell your story"
+                          onChange={(e) => setBio(e.target.value)}
+                          className="rounded-xl border-border bg-secondary/50 focus:bg-background resize-none"
+                        />
+                        <p className="text-xs text-muted-foreground text-right">{bio.length}/200</p>
+                      </div>
 
-            {/* Billing */}
-            <section className="space-y-4">
-              <h2 className="font-display text-2xl font-bold tracking-tight">Plan & Billing</h2>
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Current plan</span>
-                <span className={`font-mono text-[10px] uppercase tracking-widest px-2 py-0.5 ${isPro ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>
-                  {isPro ? "Pro" : "Free"}
-                </span>
-              </div>
-              {isPro ? (
-                <div className="flex items-center gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleManageBilling}
-                    disabled={portalLoading}
-                    className="font-mono text-[10px] uppercase tracking-widest"
-                  >
-                    {portalLoading ? "Loading…" : "Manage billing"}
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <p className="font-body text-sm text-muted-foreground">
-                    Upgrade to Pro for 20 AI brief matches per day and unlimited folders.
-                  </p>
-                  <Link to="/pricing">
-                    <Button className="font-mono text-[10px] uppercase tracking-widest">
-                      Upgrade to Pro
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </section>
+                      <div className="space-y-1.5">
+                        <Label className="font-body text-sm font-semibold">Email</Label>
+                        <p className="text-sm text-muted-foreground px-3 py-2 rounded-xl bg-secondary/30">{user.email}</p>
+                      </div>
+                    </div>
 
-            <div className="border-t hairline" />
-
-            <section className="space-y-4">
-              <h2 className="font-display text-2xl font-bold tracking-tight">Change password</h2>
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                    New password
-                  </Label>
-                  <Input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="bg-secondary border-0 font-mono"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                    Confirm password
-                  </Label>
-                  <Input
-                    type="password"
-                    required
-                    minLength={6}
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    className="bg-secondary border-0 font-mono"
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <Button
-                    type="submit"
-                    disabled={savingPw}
-                    className="font-mono text-xs uppercase tracking-widest"
-                  >
-                    {savingPw ? "Saving…" : "Update password"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={handleSendReset}
-                    className="font-mono text-xs uppercase tracking-widest"
-                  >
-                    Send reset email
-                  </Button>
-                </div>
-              </form>
-            </section>
-            <div className="border-t hairline" />
-
-            <section className="space-y-4">
-              <h2 className="font-display text-2xl font-bold tracking-tight text-destructive">Danger zone</h2>
-              <p className="font-body text-sm text-muted-foreground">
-                Permanently delete your account and all associated data. This cannot be undone.
-                Your submitted references will stay in the archive but will be anonymised.
-              </p>
-              {!showDeleteZone ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowDeleteZone(true)}
-                  className="font-mono text-[10px] uppercase tracking-widest border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  Delete my account
-                </Button>
-              ) : (
-                <div className="border hairline border-destructive/30 rounded-lg p-4 space-y-3">
-                  <p className="font-mono text-[10px] uppercase tracking-widest text-destructive">
-                    Type <strong className="font-black">{profile?.username}</strong> to confirm deletion
-                  </p>
-                  <Input
-                    value={deleteConfirm}
-                    onChange={(e) => setDeleteConfirm(e.target.value)}
-                    placeholder={profile?.username}
-                    className="bg-secondary border-0 font-mono"
-                    autoComplete="off"
-                  />
-                  <div className="flex items-center gap-3">
                     <Button
-                      type="button"
-                      onClick={handleDeleteAccount}
-                      disabled={deleteConfirm !== profile?.username || deleting}
-                      className="font-mono text-[10px] uppercase tracking-widest bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={handleSaveProfile}
+                      disabled={savingProfile}
+                      className="rounded-full font-mono text-xs uppercase tracking-widest px-6"
                     >
-                      {deleting ? "Deleting…" : "Permanently delete"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => { setShowDeleteZone(false); setDeleteConfirm(""); }}
-                      className="font-mono text-[10px] uppercase tracking-widest"
-                    >
-                      Cancel
+                      {savingProfile ? "Saving…" : "Save"}
                     </Button>
                   </div>
-                </div>
-              )}
-            </section>
+                )}
+
+                {/* ── Plan & Billing ── */}
+                {activeSection === "billing" && (
+                  <div className="space-y-6">
+                    <h2 className="font-display text-2xl font-black tracking-tight">Plan & billing</h2>
+                    <div className="rounded-2xl border hairline p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-body text-sm font-semibold">Current plan</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {isPro ? "20 AI briefs/day · Unlimited folders" : "3 AI briefs/day · Up to 5 folders"}
+                          </p>
+                        </div>
+                        <span className={`font-mono text-[10px] uppercase tracking-widest px-3 py-1 rounded-full ${isPro ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>
+                          {isPro ? "Pro" : "Free"}
+                        </span>
+                      </div>
+                      {isPro ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleManageBilling}
+                          disabled={portalLoading}
+                          className="rounded-full font-mono text-xs uppercase tracking-widest"
+                        >
+                          {portalLoading ? "Loading…" : "Manage billing"}
+                        </Button>
+                      ) : (
+                        <Link to="/pricing">
+                          <Button className="rounded-full font-mono text-xs uppercase tracking-widest">
+                            Upgrade to Pro
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Security ── */}
+                {activeSection === "security" && (
+                  <div className="space-y-6">
+                    <h2 className="font-display text-2xl font-black tracking-tight">Security</h2>
+                    <form onSubmit={handleChangePassword} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="font-body text-sm font-semibold">New password</Label>
+                        <Input
+                          type="password"
+                          required
+                          minLength={6}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="rounded-xl border-border bg-secondary/50"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="font-body text-sm font-semibold">Confirm password</Label>
+                        <Input
+                          type="password"
+                          required
+                          minLength={6}
+                          value={confirm}
+                          onChange={(e) => setConfirm(e.target.value)}
+                          className="rounded-xl border-border bg-secondary/50"
+                        />
+                      </div>
+                      <div className="flex gap-3">
+                        <Button type="submit" disabled={savingPw} className="rounded-full font-mono text-xs uppercase tracking-widest px-6">
+                          {savingPw ? "Saving…" : "Update password"}
+                        </Button>
+                        <Button type="button" variant="ghost" onClick={handleSendReset} className="rounded-full font-mono text-xs uppercase tracking-widest">
+                          Send reset email
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                )}
+
+                {/* ── Account / Danger ── */}
+                {activeSection === "danger" && (
+                  <div className="space-y-6">
+                    <h2 className="font-display text-2xl font-black tracking-tight">Account</h2>
+                    <div className="rounded-2xl border border-destructive/20 p-5 space-y-3">
+                      <p className="font-body text-sm font-semibold text-destructive">Delete account</p>
+                      <p className="text-sm text-muted-foreground">
+                        Permanently deletes your account and all data. Submitted references stay but are anonymised.
+                      </p>
+                      {!showDeleteZone ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowDeleteZone(true)}
+                          className="rounded-full font-mono text-[10px] uppercase tracking-widest border-destructive/50 text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                        >
+                          Delete my account
+                        </Button>
+                      ) : (
+                        <div className="space-y-3">
+                          <p className="font-mono text-[10px] uppercase tracking-widest text-destructive">
+                            Type <strong>{profile?.username}</strong> to confirm
+                          </p>
+                          <Input
+                            value={deleteConfirm}
+                            onChange={(e) => setDeleteConfirm(e.target.value)}
+                            placeholder={profile?.username}
+                            className="rounded-xl border-destructive/30 bg-secondary/50"
+                            autoComplete="off"
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              onClick={handleDeleteAccount}
+                              disabled={deleteConfirm !== profile?.username || deleting}
+                              className="rounded-full font-mono text-[10px] uppercase tracking-widest bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              {deleting ? "Deleting…" : "Permanently delete"}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => { setShowDeleteZone(false); setDeleteConfirm(""); }}
+                              className="rounded-full font-mono text-[10px] uppercase tracking-widest"
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        )}
+        </div>
       </main>
       <SiteFooter />
       <AvatarCropDialog
