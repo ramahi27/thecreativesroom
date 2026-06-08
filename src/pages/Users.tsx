@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Search, MessageSquare, Lightbulb, Bug } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Row = {
@@ -17,6 +17,22 @@ type Row = {
   references_added: number;
   references_approved: number;
   time_spent_seconds: number;
+};
+
+type FeedbackRow = {
+  id: string;
+  type: string;
+  message: string;
+  email: string | null;
+  user_id: string | null;
+  created_at: string;
+  username?: string;
+};
+
+const FEEDBACK_ICONS: Record<string, React.ElementType> = {
+  question:   MessageSquare,
+  suggestion: Lightbulb,
+  bug:        Bug,
 };
 
 const formatDate = (s: string) => {
@@ -41,6 +57,8 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
+  const [feedbackLoading, setFeedbackLoading] = useState(true);
 
   useEffect(() => {
     document.title = "Admin · Users — The Creatives Room";
@@ -98,6 +116,28 @@ const Users = () => {
 
       setRows(built);
       setLoading(false);
+
+      // Fetch feedback messages
+      setFeedbackLoading(true);
+      const { data: fbData } = await supabase
+        .from("feedback" as any)
+        .select("id, type, message, email, user_id, created_at")
+        .order("created_at", { ascending: false })
+        .limit(200);
+
+      if (fbData) {
+        const userIds = [...new Set((fbData as any[]).filter((f) => f.user_id).map((f) => f.user_id))];
+        let usernameMap: Record<string, string> = {};
+        if (userIds.length) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("user_id, username")
+            .in("user_id", userIds);
+          for (const p of profiles || []) usernameMap[p.user_id] = p.username;
+        }
+        setFeedback((fbData as any[]).map((f) => ({ ...f, username: f.user_id ? usernameMap[f.user_id] : undefined })));
+      }
+      setFeedbackLoading(false);
     })();
   }, [isAdmin]);
 
@@ -191,6 +231,56 @@ const Users = () => {
                 ))}
               </TableBody>
             </Table>
+          </div>
+        )}
+      </section>
+
+      {/* Feedback */}
+      <section className="container py-8 border-t hairline mt-4">
+        <div className="flex items-baseline gap-3 mb-6">
+          <h2 className="font-display text-2xl font-bold tracking-tight">Feedback</h2>
+          {!feedbackLoading && (
+            <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+              {feedback.length} message{feedback.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+
+        {feedbackLoading ? (
+          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
+        ) : feedback.length === 0 ? (
+          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">No messages yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {feedback.map((f) => {
+              const Icon = FEEDBACK_ICONS[f.type] || MessageSquare;
+              return (
+                <div key={f.id} className="border hairline rounded-2xl p-5 flex gap-4">
+                  <div className="shrink-0 mt-0.5">
+                    <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2 flex-wrap">
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-primary">
+                        {f.type}
+                      </span>
+                      {(f.username || f.email) && (
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {f.username ? `@${f.username}` : f.email}
+                        </span>
+                      )}
+                      <span className="font-mono text-[10px] text-muted-foreground/50 ml-auto">
+                        {formatDate(f.created_at)}
+                      </span>
+                    </div>
+                    <p className="font-body text-sm leading-relaxed">{f.message}</p>
+                    {f.email && f.username && (
+                      <p className="font-mono text-[10px] text-muted-foreground/60 mt-1">{f.email}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
