@@ -352,18 +352,18 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
           <button
             onClick={goPrev}
             aria-label="Previous reference"
-            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 flex items-center justify-center bg-background/70 hover:bg-background border hairline backdrop-blur-md transition-colors"
+            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
         )}
         {next && (
           <button
             onClick={goNext}
             aria-label="Next reference"
-            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-50 h-12 w-12 flex items-center justify-center bg-background/70 hover:bg-background border hairline backdrop-blur-md transition-colors"
+            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors"
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-4 w-4" />
           </button>
         )}
 
@@ -385,7 +385,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
             <div className="grid lg:grid-cols-3 gap-10 mt-4">
               <div className="lg:col-span-2 min-w-0">
-                <div className="bg-card border hairline overflow-hidden">
+                <div className="rounded-2xl bg-card border hairline overflow-hidden">
                   {currentIsEmbed && embedUrl ? (
                     <div className="aspect-video bg-black">
                       <iframe
@@ -461,7 +461,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                             toast.error(error.message);
                           }
                         }}
-                        className={`relative shrink-0 aspect-video w-28 overflow-hidden border hairline ${
+                        className={`relative shrink-0 aspect-video w-28 rounded-xl overflow-hidden border hairline ${
                           safeIdx === i ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"
                         } ${isAdmin && uploaded.length > 1 ? "cursor-grab active:cursor-grabbing" : ""}`}
                       >
@@ -475,7 +475,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     {hasEmbed && (
                       <button
                         onClick={() => setActiveMedia(uploaded.length)}
-                        className={`shrink-0 aspect-video w-28 flex items-center justify-center bg-secondary border hairline font-mono text-[10px] uppercase tracking-widest ${
+                        className={`shrink-0 aspect-video w-28 rounded-xl flex items-center justify-center bg-secondary border hairline font-mono text-[10px] uppercase tracking-widest ${
                           currentIsEmbed ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"
                         }`}
                       >
@@ -489,7 +489,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   {embedUrl && !currentIsEmbed && (
                     <button
                       onClick={() => setActiveMedia(uploaded.length)}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground font-mono text-[11px] uppercase tracking-widest hover:opacity-90"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-mono text-[11px] uppercase tracking-widest hover:opacity-90 transition-opacity"
                     >
                       ▶ Watch here
                     </button>
@@ -499,7 +499,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       href={r.source_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary transition-colors"
                     >
                       <ExternalLink className="h-3 w-3" />
                       Open on {platform || "source"}
@@ -508,7 +508,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   <BookmarkButton referenceId={r.id} variant="detail" />
                   <button
                     onClick={handleShare}
-                    className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary transition-colors"
                     aria-label="Share this reference"
                   >
                     <Share2 className="h-3 w-3" />
@@ -547,14 +547,14 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     Report a mistake
                   </button>
                 ) : (
-                  <form onSubmit={handleReport} className="border hairline p-4 space-y-3">
+                  <form onSubmit={handleReport} className="rounded-2xl border hairline p-4 space-y-3">
                     <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
                       ⏵ Report a mistake
                     </p>
                     <select
                       value={reportField}
                       onChange={(e) => setReportField(e.target.value)}
-                      className="w-full bg-secondary border-0 font-mono text-xs px-3 py-2 focus:outline-none"
+                      className="w-full rounded-xl bg-secondary/60 border border-border font-mono text-xs px-3 py-2 focus:outline-none"
                     >
                       <option value="brand">Wrong brand</option>
                       <option value="agency">Wrong agency / director</option>
@@ -570,20 +570,20 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       placeholder="What's correct? e.g. 'Agency should be Droga5, not BBDO'"
                       value={reportMsg}
                       onChange={(e) => setReportMsg(e.target.value)}
-                      className="w-full bg-secondary border-0 font-mono text-xs px-3 py-2 resize-none focus:outline-none placeholder:text-muted-foreground"
+                      className="w-full rounded-xl bg-secondary/60 border border-border font-mono text-xs px-3 py-2 resize-none focus:outline-none placeholder:text-muted-foreground"
                     />
                     <div className="flex gap-2">
                       <button
                         type="submit"
                         disabled={reportSending || !reportMsg.trim()}
-                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 bg-foreground text-background hover:opacity-80 disabled:opacity-40 transition-opacity"
+                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 rounded-full bg-foreground text-background hover:opacity-80 disabled:opacity-40 transition-opacity"
                       >
                         {reportSending ? "Sending…" : "Submit"}
                       </button>
                       <button
                         type="button"
                         onClick={() => { setReportOpen(false); setReportMsg(""); }}
-                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 border hairline hover:bg-secondary transition-colors"
+                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 rounded-full border hairline hover:bg-secondary transition-colors"
                       >
                         Cancel
                       </button>
@@ -603,7 +603,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                           <button
                             key={c}
                             onClick={() => toggleCategory(c)}
-                            className={`font-mono text-[11px] uppercase tracking-widest px-2 py-1 border hairline transition-colors ${
+                            className={`font-mono text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full border hairline transition-colors ${
                               active
                                 ? "bg-primary text-primary-foreground border-primary"
                                 : "bg-transparent text-muted-foreground hover:bg-secondary"
@@ -626,7 +626,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                         {r.categories.map((c) => (
                           <span
                             key={c}
-                            className="font-mono text-[11px] uppercase tracking-widest px-2 py-1 bg-primary/10 text-primary"
+                            className="font-mono text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full bg-primary/10 text-primary"
                           >
                             {c}
                           </span>
@@ -643,7 +643,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       {(r.tags || []).map((t: string) => (
                         <span
                           key={t}
-                          className="group inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest px-2 py-1 bg-muted text-muted-foreground"
+                          className="group inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-secondary text-muted-foreground"
                         >
                           {t}
                           <button
@@ -668,7 +668,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                           }
                         }}
                         placeholder="Add tag(s), comma-separated"
-                        className="flex-1 h-8 px-2 bg-background border hairline font-mono text-[11px] uppercase tracking-widest placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="flex-1 h-8 px-3 rounded-xl bg-secondary/60 border border-border font-mono text-[11px] uppercase tracking-widest placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
                       />
                       <Button
                         type="button"
@@ -677,7 +677,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                           addTag(tagInput);
                           setTagInput("");
                         }}
-                        className="h-8 font-mono text-[10px] uppercase tracking-widest"
+                        className="h-8 rounded-full font-mono text-[10px] uppercase tracking-widest"
                       >
                         Add
                       </Button>
@@ -690,29 +690,27 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                 {isAdmin && (
                   <div className="border-t hairline pt-6 flex flex-wrap gap-3">
                     {r.published === false && (
-                      <Button onClick={handleApprove} className="font-mono text-xs uppercase tracking-widest bg-primary">
+                      <Button onClick={handleApprove} className="rounded-full font-mono text-xs uppercase tracking-widest bg-primary">
                         <Check className="h-3.5 w-3.5 mr-1.5" />
                         Approve & publish
                       </Button>
                     )}
                     {r.published !== false && (
-                      <span className="inline-flex items-center px-3 py-1 font-mono text-[10px] uppercase tracking-widest bg-primary/10 text-primary">
+                      <span className="inline-flex items-center px-3 py-1 rounded-full font-mono text-[10px] uppercase tracking-widest bg-primary/10 text-primary">
                         ✓ Live
                       </span>
                     )}
                     <Button
                       variant="outline"
-                      onClick={() => {
-                        navigate(`/edit/${r.id}`);
-                      }}
-                      className="font-mono text-xs uppercase tracking-widest"
+                      onClick={() => navigate(`/edit/${r.id}`)}
+                      className="rounded-full font-mono text-xs uppercase tracking-widest"
                     >
                       Edit
                     </Button>
                     <Button
                       variant="destructive"
                       onClick={handleDelete}
-                      className="font-mono text-xs uppercase tracking-widest"
+                      className="rounded-full font-mono text-xs uppercase tracking-widest"
                     >
                       Delete
                     </Button>
@@ -735,7 +733,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                         onClick={() => navigate(refPath(rel.id, rel.title))}
                         className="group text-left"
                       >
-                        <div className="relative aspect-video overflow-hidden bg-secondary border hairline">
+                        <div className="relative aspect-video overflow-hidden rounded-xl bg-secondary border hairline">
                           {thumb ? (
                             <img
                               src={thumb}
