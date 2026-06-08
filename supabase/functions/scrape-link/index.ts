@@ -331,10 +331,13 @@ async function verifyImageUrl(url: string): Promise<{ ok: boolean; size: number 
   try {
     const u = new URL(url);
     if (isBlockedHost(u.hostname)) return { ok: false, size: 0 };
-    const r = await fetch(url, { method: "HEAD", redirect: "follow" });
+    // SSRF guard: never follow redirects — an allowed host could 3xx to an internal address.
+    const r = await fetch(url, { method: "HEAD", redirect: "manual" });
+    if (r.status >= 300 && r.status < 400) return { ok: false, size: 0 };
     if (!r.ok) {
-      // some CDNs reject HEAD — try a tiny GET
-      const r2 = await fetch(url, { method: "GET", redirect: "follow", headers: { Range: "bytes=0-1024" } });
+      // some CDNs reject HEAD — try a tiny GET, still no redirect following
+      const r2 = await fetch(url, { method: "GET", redirect: "manual", headers: { Range: "bytes=0-1024" } });
+      if (r2.status >= 300 && r2.status < 400) return { ok: false, size: 0 };
       if (!r2.ok) return { ok: false, size: 0 };
       const ct2 = r2.headers.get("content-type") || "";
       if (!ct2.toLowerCase().startsWith("image/")) return { ok: false, size: 0 };
@@ -346,6 +349,7 @@ async function verifyImageUrl(url: string): Promise<{ ok: boolean; size: number 
     return { ok: true, size: parseInt(r.headers.get("content-length") || "0") };
   } catch { return { ok: false, size: 0 }; }
 }
+
 
 /**
  * Build an ordered list of image candidates following the priority pipeline:
