@@ -110,14 +110,38 @@ const Index = () => {
       const isRateLimit = (error as any)?.context?.status === 429 || payload?.error === "limit_reached";
       if (isRateLimit) {
         const plan: string = payload?.plan ?? "anon";
-        const msg =
-          plan === "anon"
-            ? "You've used your 1 free match. Sign up for 3 per day — it's free."
-            : plan === "free"
-            ? "You've used all 3 daily matches. Upgrade to Pro for 20 a day."
-            : "Daily limit reached. Resets at midnight.";
-        toast.error(msg, { duration: 8000 });
         if (payload?.used !== undefined) setBriefUsage({ used: payload.used, limit: payload.limit, plan });
+        const isAnon = plan === "anon";
+        const isFree = plan === "free";
+        toast.custom(() => (
+          <div className="w-[360px] rounded-2xl bg-card border hairline shadow-2xl p-5 flex flex-col gap-3">
+            <div className="flex items-start gap-3">
+              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                <Sparkles className="h-4 w-4 text-primary" strokeWidth={1.8} />
+              </div>
+              <div>
+                <p className="font-display text-base font-black tracking-tight leading-snug">
+                  {isAnon ? "You've used your free match" : isFree ? "Daily limit reached" : "All done for today"}
+                </p>
+                <p className="font-body text-sm text-muted-foreground mt-0.5 leading-snug">
+                  {isAnon
+                    ? "Sign up free to get 3 brief matches every day."
+                    : isFree
+                    ? "Upgrade to Pro for 20 matches a day."
+                    : "Your 20 Pro matches reset at midnight."}
+                </p>
+              </div>
+            </div>
+            {(isAnon || isFree) && (
+              <a
+                href={isAnon ? "/auth" : "/pricing"}
+                className="w-full text-center rounded-full bg-primary text-primary-foreground font-mono text-[11px] uppercase tracking-widest py-2.5 hover:opacity-90 transition-opacity"
+              >
+                {isAnon ? "Sign up — it's free" : "Upgrade to Pro"}
+              </a>
+            )}
+          </div>
+        ), { duration: 8000 });
         return;
       }
 
