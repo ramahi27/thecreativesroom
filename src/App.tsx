@@ -28,6 +28,7 @@ const Users = lazy(() => import("./pages/Users.tsx"));
 const Welcome = lazy(() => import("./pages/Welcome.tsx"));
 const ProfileSettings = lazy(() => import("./pages/ProfileSettings.tsx"));
 const Pricing = lazy(() => import("./pages/Pricing.tsx"));
+const Contact = lazy(() => import("./pages/Contact.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/welcome" element={<Welcome />} />
             <Route path="/account/edit" element={<ProfileSettings />} />
             <Route path="/pricing" element={<Pricing />} />
+            <Route path="/contact" element={<Contact />} />
 
             {/* Unified profile + folder routes */}
             <Route path="/u/:username" element={<UserProfile />} />
