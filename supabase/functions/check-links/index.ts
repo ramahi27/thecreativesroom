@@ -26,13 +26,14 @@ Deno.serve(async (req) => {
   const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
   if (authErr || !user) return new Response("Unauthorized", { status: 401 });
 
-  // Check admin
-  const { data: profile } = await supabase
-    .from("profiles")
+  // Check admin via user_roles (same table useAuth checks on the client)
+  const { data: role } = await supabase
+    .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
-    .single();
-  if (profile?.role !== "admin") return new Response("Forbidden", { status: 403 });
+    .eq("role", "admin")
+    .maybeSingle();
+  if (!role) return new Response("Forbidden", { status: 403 });
 
   // Pick references that haven't been checked yet or are stale
   const staleDate = new Date(Date.now() - STALE_DAYS * 24 * 60 * 60 * 1000).toISOString();
