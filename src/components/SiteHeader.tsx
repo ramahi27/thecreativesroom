@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User as UserIcon, Sun, Moon } from "lucide-react";
+import { Settings, LayoutDashboard, ScrollText, Users, LogOut, Sun, Moon } from "lucide-react";
 
 export function SiteHeader() {
   const { user, isAdmin } = useAuth();
@@ -66,38 +66,66 @@ export function SiteHeader() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest gap-1.5">
-                  <UserIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  Account
-                </Button>
+                <button
+                  type="button"
+                  className="h-8 w-8 rounded-full overflow-hidden ring-2 ring-transparent hover:ring-border transition-all focus-visible:outline-none focus-visible:ring-border"
+                  aria-label="Account menu"
+                >
+                  {profile?.avatar_url ? (
+                    <img src={profile.avatar_url} alt={profile.username} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="h-full w-full flex items-center justify-center bg-primary/10 text-primary font-display font-black text-xs">
+                      {(profile?.username || user.email || "?").slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                </button>
               </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="font-mono text-xs uppercase tracking-widest">
-                <DropdownMenuItem onClick={() => navigate("/account/edit")}>
-                  Edit profile
+              <DropdownMenuContent align="end" className="w-56 p-1.5">
+                {/* User info header */}
+                <div className="flex items-center gap-3 px-2 py-2 mb-1">
+                  <div className="h-9 w-9 rounded-full overflow-hidden shrink-0 bg-primary/10">
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center font-display font-black text-sm text-primary">
+                        {(profile?.username || user.email || "?").slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-body text-sm font-semibold truncate">@{profile?.username || "…"}</p>
+                    <p className="font-mono text-[10px] text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                </div>
+                <DropdownMenuSeparator className="mb-1" />
+                <DropdownMenuItem onClick={() => navigate("/account/edit")} className="rounded-lg gap-2.5">
+                  <Settings className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
+                  <span className="font-body text-sm">Settings</span>
                 </DropdownMenuItem>
                 {isAdmin && (
-                  <DropdownMenuItem onClick={() => navigate("/settings")}>
-                    Admin settings
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuSeparator className="my-1" />
+                    <DropdownMenuItem onClick={() => navigate("/settings")} className="rounded-lg gap-2.5">
+                      <LayoutDashboard className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
+                      <span className="font-body text-sm">Admin settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/logs")} className="rounded-lg gap-2.5">
+                      <ScrollText className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
+                      <span className="font-body text-sm">Logs</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/users")} className="rounded-lg gap-2.5">
+                      <Users className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
+                      <span className="font-body text-sm">Users</span>
+                    </DropdownMenuItem>
+                  </>
                 )}
-                {isAdmin && (
-                  <DropdownMenuItem onClick={() => navigate("/logs")}>
-                    Logs
-                  </DropdownMenuItem>
-                )}
-                {isAdmin && (
-                  <DropdownMenuItem onClick={() => navigate("/users")}>
-                    Users
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="my-1" />
                 <DropdownMenuItem
-                  onClick={async () => {
-                    await supabase.auth.signOut();
-                    navigate("/");
-                  }}
+                  onClick={async () => { await supabase.auth.signOut(); navigate("/"); }}
+                  className="rounded-lg gap-2.5 text-destructive focus:text-destructive"
                 >
-                  Sign out
+                  <LogOut className="h-3.5 w-3.5" strokeWidth={1.8} />
+                  <span className="font-body text-sm">Sign out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
