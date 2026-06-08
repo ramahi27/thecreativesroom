@@ -19,6 +19,12 @@ export function SiteFooter() {
         </div>
         <div className="flex flex-col gap-2 md:items-end">
           <Link
+            to="/pricing"
+            className="font-mono text-[11px] uppercase tracking-widest hover:text-primary transition-colors"
+          >
+            Pricing
+          </Link>
+          <Link
             to="/privacy"
             className="font-mono text-[11px] uppercase tracking-widest hover:text-primary transition-colors"
           >

@@ -15,7 +15,7 @@ import { usePageView } from "@/hooks/usePageView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Plus, Bookmark, Compass, ArrowUpRight, X, Sparkles, Loader2 } from "lucide-react";
+import { Search, Plus, Bookmark, Compass, ArrowUpRight, X, Sparkles, Loader2, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -827,6 +827,32 @@ const Index = () => {
       </main>
 
       {openId && <ReferenceDetailModal id={openId} onClose={() => navigate("/")} />}
+
+      {/* Pro upgrade banner — shown only to free / anon users */}
+      {briefUsage && briefUsage.plan !== "paid" && briefUsage.plan !== "admin" && (
+        <div className="border-t hairline mt-16">
+          <div className="container py-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                <Zap className="h-4.5 w-4.5 text-primary" strokeWidth={1.8} />
+              </div>
+              <div>
+                <p className="font-display text-xl font-black tracking-tight">Go Pro</p>
+                <p className="font-body text-sm text-muted-foreground mt-0.5 max-w-sm">
+                  50 AI brief matches a day, unlimited folders, and early access to new features.
+                </p>
+              </div>
+            </div>
+            <Link
+              to={briefUsage.plan === "anon" ? "/auth?next=/pricing" : "/pricing"}
+              className="shrink-0 flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest px-5 py-2.5 rounded-full bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+            >
+              {briefUsage.plan === "anon" ? "Sign up free" : "Upgrade — $7.99/mo"}
+              <ArrowUpRight className="h-3 w-3" strokeWidth={2} />
+            </Link>
+          </div>
+        </div>
+      )}
 
       <BackToTop />
 

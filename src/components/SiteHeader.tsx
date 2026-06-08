@@ -12,10 +12,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings, LayoutDashboard, ScrollText, Users, LogOut, Sun, Moon } from "lucide-react";
+import { Settings, LayoutDashboard, ScrollText, Users, LogOut, Sun, Moon, Zap } from "lucide-react";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export function SiteHeader() {
   const { user, isAdmin } = useAuth();
+  const { isPro } = useSubscription();
   const { profile, loading: profileLoading } = useMyProfile();
   const navigate = useNavigate();
   const location = useLocation();
@@ -48,6 +50,15 @@ export function SiteHeader() {
             {theme === "dark" ? <Sun className="h-3.5 w-3.5" strokeWidth={1.5} /> : <Moon className="h-3.5 w-3.5" strokeWidth={1.5} />}
             {theme === "dark" ? "Day" : "Night"}
           </button>
+          {user && !isPro && !isAdmin && (
+            <Link
+              to="/pricing"
+              className="hidden sm:flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border hairline text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            >
+              <Zap className="h-3 w-3" strokeWidth={1.8} />
+              Upgrade
+            </Link>
+          )}
           {user && profile?.username && (
             <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
               <Link to={`/u/${profile.username}`}>My Collection</Link>
@@ -98,6 +109,15 @@ export function SiteHeader() {
                   </div>
                 </div>
                 <DropdownMenuSeparator className="mb-1" />
+                {!isPro && !isAdmin && (
+                  <>
+                    <DropdownMenuItem onClick={() => navigate("/pricing")} className="rounded-lg gap-2.5 text-primary focus:text-primary">
+                      <Zap className="h-3.5 w-3.5" strokeWidth={1.8} />
+                      <span className="font-body text-sm font-semibold">Upgrade to Pro</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="mb-1" />
+                  </>
+                )}
                 <DropdownMenuItem onClick={() => navigate("/account/edit")} className="rounded-lg gap-2.5">
                   <Settings className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
                   <span className="font-body text-sm">Settings</span>

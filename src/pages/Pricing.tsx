@@ -8,7 +8,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { PageMeta } from "@/components/PageMeta";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Check } from "lucide-react";
+import { Check, Zap } from "lucide-react";
 
 const FREE_FEATURES = [
   "Browse the full archive",
@@ -19,7 +19,7 @@ const FREE_FEATURES = [
 
 const PRO_FEATURES = [
   "Everything in Free",
-  "20 AI brief matches per day",
+  "50 AI brief matches per day",
   "Unlimited folders",
   "Early access to new features",
 ];
@@ -67,7 +67,7 @@ const Pricing = () => {
     <div className="min-h-screen grain flex flex-col">
       <PageMeta
         title="Pricing — The Creatives Room"
-        description="Upgrade to Pro and unlock 20 AI brief matches per day plus unlimited folders."
+        description="Upgrade to Pro and unlock 50 AI brief matches per day plus unlimited folders."
       />
       <SiteHeader />
 
@@ -84,14 +84,14 @@ const Pricing = () => {
         </div>
 
         {/* Interval toggle */}
-        <div className="flex items-center justify-center gap-3 mb-10">
+        <div className="flex items-center justify-center gap-2 mb-10">
           <button
             type="button"
             onClick={() => setInterval("monthly")}
-            className={`font-mono text-[10px] uppercase tracking-[0.3em] px-4 py-2 border transition-colors ${
+            className={`font-mono text-[10px] uppercase tracking-[0.3em] px-4 py-2 rounded-full border transition-colors ${
               interval === "monthly"
                 ? "border-primary text-primary bg-primary/5"
-                : "border-border text-muted-foreground hover:text-foreground"
+                : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
             }`}
           >
             Monthly
@@ -99,27 +99,26 @@ const Pricing = () => {
           <button
             type="button"
             onClick={() => setInterval("yearly")}
-            className={`font-mono text-[10px] uppercase tracking-[0.3em] px-4 py-2 border transition-colors relative ${
+            className={`font-mono text-[10px] uppercase tracking-[0.3em] px-4 py-2 rounded-full border transition-colors relative ${
               interval === "yearly"
                 ? "border-primary text-primary bg-primary/5"
-                : "border-border text-muted-foreground hover:text-foreground"
+                : "border-border text-muted-foreground hover:text-foreground hover:border-foreground/30"
             }`}
           >
             Yearly
-            <span className="absolute -top-2.5 -right-2 font-mono text-[8px] bg-primary text-primary-foreground px-1.5 py-0.5 uppercase tracking-wider">
+            <span className="absolute -top-2.5 -right-2 font-mono text-[8px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded-full uppercase tracking-wider">
               -{yearlySaving}%
             </span>
           </button>
         </div>
 
         {/* Cards */}
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-5">
           {/* Free */}
-          <div className="border hairline p-8 relative">
-            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-border" />
-            <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Plan</p>
-            <h2 className="font-display text-3xl font-black tracking-tight mb-2">Free</h2>
-            <p className="font-display text-4xl font-black tracking-tighter mb-6">$0</p>
+          <div className="rounded-2xl border hairline p-8">
+            <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-muted-foreground mb-1">Free</p>
+            <p className="font-display text-4xl font-black tracking-tighter mb-1">$0</p>
+            <p className="font-body text-sm text-muted-foreground mb-8">For browsing and saving references.</p>
 
             <ul className="space-y-3 mb-8">
               {FREE_FEATURES.map((f) => (
@@ -132,7 +131,7 @@ const Pricing = () => {
 
             <Button
               variant="outline"
-              className="w-full font-mono text-[10px] uppercase tracking-widest"
+              className="w-full rounded-full font-mono text-[10px] uppercase tracking-widest"
               disabled
             >
               {isPro ? "Previous plan" : "Current plan"}
@@ -140,21 +139,24 @@ const Pricing = () => {
           </div>
 
           {/* Pro */}
-          <div className="border border-primary/40 p-8 relative bg-primary/[0.02]">
-            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-primary" />
-            <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-primary mb-1">Plan</p>
-            <h2 className="font-display text-3xl font-black tracking-tight mb-2">Pro</h2>
-            <div className="mb-6">
+          <div className="rounded-2xl border border-primary/50 p-8 bg-primary/[0.03] relative overflow-hidden">
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-widest text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+              <Zap className="h-2.5 w-2.5" strokeWidth={2} /> Pro
+            </div>
+            <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-primary mb-1">Pro</p>
+            <div className="mb-1">
               <span className="font-display text-4xl font-black tracking-tighter">
                 ${interval === "monthly" ? monthlyPrice.toFixed(2) : (yearlyPrice / 12).toFixed(2)}
               </span>
               <span className="font-mono text-xs text-muted-foreground ml-2">/mo</span>
-              {interval === "yearly" && (
-                <p className="font-mono text-[9px] text-muted-foreground mt-1 uppercase tracking-widest">
-                  billed ${yearlyPrice.toFixed(2)}/year
-                </p>
-              )}
             </div>
+            {interval === "yearly" ? (
+              <p className="font-body text-sm text-muted-foreground mb-8">
+                Billed ${yearlyPrice.toFixed(2)}/year — save {yearlySaving}%.
+              </p>
+            ) : (
+              <p className="font-body text-sm text-muted-foreground mb-8">For the full creative toolkit.</p>
+            )}
 
             <ul className="space-y-3 mb-8">
               {PRO_FEATURES.map((f) => (
@@ -168,7 +170,7 @@ const Pricing = () => {
             {isPro ? (
               <Button
                 variant="outline"
-                className="w-full font-mono text-[10px] uppercase tracking-widest border-primary/40"
+                className="w-full rounded-full font-mono text-[10px] uppercase tracking-widest border-primary/40"
                 disabled
               >
                 Current plan
@@ -177,7 +179,7 @@ const Pricing = () => {
               <Button
                 onClick={handleUpgrade}
                 disabled={loading}
-                className="w-full font-mono text-[10px] uppercase tracking-widest"
+                className="w-full rounded-full font-mono text-[10px] uppercase tracking-widest"
               >
                 {loading ? "Redirecting…" : "Upgrade to Pro"}
               </Button>
