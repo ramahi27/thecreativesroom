@@ -89,7 +89,14 @@ const Index = () => {
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
     if (!user) {
-      setBriefUsage({ used: 0, limit: 1, plan: "anon" });
+      // Anon: read from localStorage (written after each use)
+      try {
+        const stored = JSON.parse(localStorage.getItem("brief_usage_anon") || "{}");
+        const used = stored.date === today ? (stored.used ?? 0) : 0;
+        setBriefUsage({ used, limit: 1, plan: "anon" });
+      } catch {
+        setBriefUsage({ used: 0, limit: 1, plan: "anon" });
+      }
       return;
     }
     (async () => {
@@ -128,7 +135,13 @@ const Index = () => {
       const isRateLimit = (error as any)?.context?.status === 429 || payload?.error === "limit_reached";
       if (isRateLimit) {
         const plan: string = payload?.plan ?? "anon";
-        if (payload?.used !== undefined) setBriefUsage({ used: payload.used, limit: payload.limit, plan });
+        if (payload?.used !== undefined) {
+          setBriefUsage({ used: payload.used, limit: payload.limit, plan });
+          if (plan === "anon") {
+            const today = new Date().toISOString().split("T")[0];
+            try { localStorage.setItem("brief_usage_anon", JSON.stringify({ date: today, used: payload.used })); } catch {}
+          }
+        }
         const isAnon = plan === "anon";
         const isFree = plan === "free";
         toast.custom(() => (
@@ -166,7 +179,13 @@ const Index = () => {
       if (error) throw error;
 
       // Store usage info returned by the server
-      if (data?.used !== undefined) setBriefUsage({ used: data.used, limit: data.limit, plan: data.plan });
+      if (data?.used !== undefined) {
+        setBriefUsage({ used: data.used, limit: data.limit, plan: data.plan });
+        if (data.plan === "anon") {
+          const today = new Date().toISOString().split("T")[0];
+          try { localStorage.setItem("brief_usage_anon", JSON.stringify({ date: today, used: data.used })); } catch {}
+        }
+      }
 
       const list = (data?.matches || []) as Array<{ id: string; reason: string }>;
       if (list.length === 0) {
