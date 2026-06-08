@@ -315,6 +315,47 @@ export type Database = {
         }
         Relationships: []
       }
+      reference_reports: {
+        Row: {
+          created_at: string
+          field: string
+          id: string
+          message: string
+          reference_id: string
+          reporter_id: string | null
+          resolved: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          field: string
+          id?: string
+          message: string
+          reference_id: string
+          reporter_id?: string | null
+          resolved?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          field?: string
+          id?: string
+          message?: string
+          reference_id?: string
+          reporter_id?: string | null
+          resolved?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reference_reports_reference_id_fkey"
+            columns: ["reference_id"]
+            isOneToOne: false
+            referencedRelation: "references"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       references: {
         Row: {
           agency: string | null
@@ -326,6 +367,8 @@ export type Database = {
           created_by: string | null
           editing_style: string | null
           id: string
+          link_checked_at: string | null
+          link_status: string | null
           media_items: Json
           media_url: string | null
           notes: string | null
@@ -351,6 +394,8 @@ export type Database = {
           created_by?: string | null
           editing_style?: string | null
           id?: string
+          link_checked_at?: string | null
+          link_status?: string | null
           media_items?: Json
           media_url?: string | null
           notes?: string | null
@@ -376,6 +421,8 @@ export type Database = {
           created_by?: string | null
           editing_style?: string | null
           id?: string
+          link_checked_at?: string | null
+          link_status?: string | null
           media_items?: Json
           media_url?: string | null
           notes?: string | null
