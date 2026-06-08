@@ -23,3 +23,13 @@ create policy "admins can read feedback"
       where user_id = auth.uid() and role = 'admin'
     )
   );
+
+-- Only admins can delete feedback
+create policy "admins can delete feedback"
+  on public.feedback for delete
+  using (
+    exists (
+      select 1 from public.user_roles
+      where user_id = auth.uid() and role = 'admin'
+    )
+  );

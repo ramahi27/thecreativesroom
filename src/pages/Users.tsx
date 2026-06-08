@@ -6,7 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
-import { Search, MessageSquare, Lightbulb, Bug, Reply } from "lucide-react";
+import { Search, MessageSquare, Lightbulb, Bug, Reply, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type Row = {
@@ -59,6 +59,14 @@ const Users = () => {
   const [search, setSearch] = useState("");
   const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDeleteFeedback(id: string) {
+    setDeletingId(id);
+    await supabase.from("feedback" as any).delete().eq("id", id);
+    setFeedback((prev) => prev.filter((f) => f.id !== id));
+    setDeletingId(null);
+  }
 
   useEffect(() => {
     document.title = "Admin · Users — The Creatives Room";
@@ -274,20 +282,30 @@ const Users = () => {
                       </span>
                     </div>
                     <p className="font-body text-sm leading-relaxed">{f.message}</p>
-                    {f.email && (
-                      <div className="flex items-center gap-3 mt-3">
-                        {f.username && (
-                          <span className="font-mono text-[10px] text-muted-foreground/60">{f.email}</span>
+                    <div className="flex items-center gap-3 mt-3">
+                      {f.email && f.username && (
+                        <span className="font-mono text-[10px] text-muted-foreground/60">{f.email}</span>
+                      )}
+                      <div className="flex items-center gap-3 ml-auto">
+                        {f.email && (
+                          <a
+                            href={`mailto:${f.email}?subject=Re: your message on The Creatives Room&body=%0A%0A---%0AOriginal message:%0A"${encodeURIComponent(f.message)}"`}
+                            className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-primary hover:underline"
+                          >
+                            <Reply className="h-3 w-3" strokeWidth={2} />
+                            Reply
+                          </a>
                         )}
-                        <a
-                          href={`mailto:${f.email}?subject=Re: your message on The Creatives Room&body=%0A%0A---%0AOriginal message:%0A"${encodeURIComponent(f.message)}"`}
-                          className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-primary hover:underline ml-auto"
+                        <button
+                          onClick={() => handleDeleteFeedback(f.id)}
+                          disabled={deletingId === f.id}
+                          className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors disabled:opacity-40"
                         >
-                          <Reply className="h-3 w-3" strokeWidth={2} />
-                          Reply
-                        </a>
+                          <Trash2 className="h-3 w-3" strokeWidth={2} />
+                          {deletingId === f.id ? "Deleting…" : "Delete"}
+                        </button>
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               );
