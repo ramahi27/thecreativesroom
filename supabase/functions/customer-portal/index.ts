@@ -26,13 +26,13 @@ Deno.serve(async (req) => {
   const { data: { user }, error } = await supabase.auth.getUser(token);
   if (error || !user) return new Response("Unauthorized", { status: 401, headers: cors });
 
-  const { data: profile } = await supabase
-    .from("profiles")
+  const { data: billing } = await supabase
+    .from("billing_customers")
     .select("stripe_customer_id")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
-  const customerId = (profile as any)?.stripe_customer_id as string | undefined;
+  const customerId = (billing as any)?.stripe_customer_id as string | undefined;
   if (!customerId) {
     return Response.json({ error: "No billing account found." }, { status: 404, headers: cors });
   }
