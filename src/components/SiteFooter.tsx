@@ -9,12 +9,12 @@ export function SiteFooter() {
             ⏵ Disclaimer
           </p>
           <p className="font-mono text-[11px] leading-relaxed text-muted-foreground">
-            The Creatives Room is a non-commercial archive curated for
-            educational and inspirational purposes only. All featured work,
-            trademarks, brand names and visuals are the property of their
-            respective owners. We do not claim ownership of, or any rights to,
-            the projects shown here. If you are a rights holder and would like
-            a piece removed or credited differently, please get in touch.
+            The Creatives Room is a curated reference archive for educational
+            and inspirational purposes. All featured work, trademarks, brand
+            names and visuals are the property of their respective owners. We
+            do not claim ownership of, or any rights to, the projects shown
+            here. If you are a rights holder and would like a piece removed or
+            credited differently, please get in touch.
           </p>
         </div>
         <div className="flex flex-col gap-2 md:items-end">
