@@ -399,18 +399,18 @@ const Index = () => {
 
 
           {/* Visual quad — what you can do here */}
-          <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             <button
               type="button"
               onClick={() => {
                 document.querySelector<HTMLTextAreaElement>('textarea[placeholder^="What do you need"]')?.focus();
                 window.scrollTo({ top: window.innerHeight * 0.6, behavior: "smooth" });
               }}
-              className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary text-left"
+              className="group relative overflow-hidden rounded-2xl border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-all hover:bg-secondary hover:border-foreground/20 text-left"
             >
               <div className="flex items-start justify-between">
                 <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 01 / Search by brief</span>
-                <Sparkles className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+                <Sparkles className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
                 <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
@@ -425,11 +425,11 @@ const Index = () => {
 
             <a
               href="#archive"
-              className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
+              className="group relative overflow-hidden rounded-2xl border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-all hover:bg-secondary hover:border-foreground/20"
             >
               <div className="flex items-start justify-between">
                 <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 02 / Discover</span>
-                <Compass className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+                <Compass className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
                 <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
@@ -444,11 +444,11 @@ const Index = () => {
 
             <Link
               to="/mycollection"
-              className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
+              className="group relative overflow-hidden rounded-2xl border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-all hover:bg-secondary hover:border-foreground/20"
             >
               <div className="flex items-start justify-between">
                 <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 03 / Save</span>
-                <Bookmark className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+                <Bookmark className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
                 <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
@@ -463,11 +463,11 @@ const Index = () => {
 
             <Link
               to="/add"
-              className="group relative overflow-hidden border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-colors hover:bg-secondary"
+              className="group relative overflow-hidden rounded-2xl border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-all hover:bg-secondary hover:border-foreground/20"
             >
               <div className="flex items-start justify-between">
                 <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 04 / Add</span>
-                <Plus className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+                <Plus className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
               <div>
                 <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
@@ -485,7 +485,7 @@ const Index = () => {
 
       {/* Filter bar */}
       <section id="brief-filters" className="border-b hairline bg-background/80 backdrop-blur-xl scroll-mt-0">
-        <div className="container pt-4 pb-2">
+        <div className="container pt-5 pb-3">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -493,7 +493,7 @@ const Index = () => {
             }}
             className="flex flex-wrap items-center gap-3"
           >
-            <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-1.5">
+            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-1.5 shrink-0">
               <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Brief
             </span>
             <div className="relative flex-1 min-w-[240px]">
@@ -509,9 +509,9 @@ const Index = () => {
                     runBriefMatch();
                   }
                 }}
-                rows={3}
+                rows={2}
                 placeholder=""
-                className="pr-9 bg-secondary border-0 font-mono text-sm leading-snug placeholder:normal-case resize-none py-3"
+                className="pr-9 rounded-xl bg-secondary/60 border-border font-mono text-sm leading-snug placeholder:normal-case resize-none py-3 focus:bg-background transition-colors"
                 disabled={matching}
               />
               {brief && !matching && (
@@ -519,7 +519,7 @@ const Index = () => {
                   type="button"
                   onClick={clearMatches}
                   aria-label="Clear brief"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                   <X className="h-3.5 w-3.5" strokeWidth={1.5} />
                 </button>
@@ -529,20 +529,20 @@ const Index = () => {
               <Button
                 type="submit"
                 disabled={matching}
-                className="font-mono text-xs uppercase tracking-widest"
+                className="rounded-full font-mono text-xs uppercase tracking-widest"
               >
                 {matching ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching…</> : "Match brief"}
               </Button>
               {briefUsage && (
-                <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+                <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground pl-1">
                   {briefUsage.used}/{briefUsage.limit} today
                 </span>
               )}
             </div>
           </form>
         </div>
-        <div className="container py-3 flex flex-wrap items-center gap-4">
-          <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Filter</span>
+        <div className="container py-3 flex flex-wrap items-center gap-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground shrink-0">Filter</span>
           <Select
             value={mediaFilter}
             onValueChange={(v) => {
@@ -550,40 +550,30 @@ const Index = () => {
               setCategoryFilter("all");
             }}
           >
-            <SelectTrigger className="w-[160px] bg-secondary border-0 font-mono text-xs uppercase tracking-widest">
+            <SelectTrigger className="w-[140px] rounded-xl bg-secondary/60 border-border font-mono text-xs uppercase tracking-widest">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">
-                All
-              </SelectItem>
-              <SelectItem value="videos" className="font-mono text-xs uppercase tracking-widest">
-                Videos
-              </SelectItem>
-              <SelectItem value="photos" className="font-mono text-xs uppercase tracking-widest">
-                Photos
-              </SelectItem>
+              <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">All</SelectItem>
+              <SelectItem value="videos" className="font-mono text-xs uppercase tracking-widest">Videos</SelectItem>
+              <SelectItem value="photos" className="font-mono text-xs uppercase tracking-widest">Photos</SelectItem>
             </SelectContent>
           </Select>
 
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[220px] bg-secondary border-0 font-mono text-xs uppercase tracking-widest">
+            <SelectTrigger className="w-[200px] rounded-xl bg-secondary/60 border-border font-mono text-xs uppercase tracking-widest">
               <SelectValue placeholder="All categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">
-                All categories
-              </SelectItem>
+              <SelectItem value="all" className="font-mono text-xs uppercase tracking-widest">All categories</SelectItem>
               {availableCategories.map((c) => (
-                <SelectItem key={c} value={c} className="font-mono text-xs uppercase tracking-widest">
-                  {c}
-                </SelectItem>
+                <SelectItem key={c} value={c} className="font-mono text-xs uppercase tracking-widest">{c}</SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-            <SelectTrigger className="w-[200px] bg-secondary border-0 font-mono text-xs uppercase tracking-widest">
+            <SelectTrigger className="w-[190px] rounded-xl bg-secondary/60 border-border font-mono text-xs uppercase tracking-widest">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -606,22 +596,19 @@ const Index = () => {
                 setSearch("");
                 clearMatches();
               }}
-              className="font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors"
+              className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 transition-colors px-3 py-1.5 rounded-full border hairline hover:border-foreground/30"
             >
-              <X className="h-3 w-3" strokeWidth={1.5} /> Clear filters
+              <X className="h-3 w-3" strokeWidth={1.5} /> Clear
             </button>
           )}
 
           <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
-            <Search
-              className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
-              strokeWidth={1.5}
-            />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search client, brand, tag…"
-              className="pl-9 pr-9 bg-secondary border-0 font-mono text-xs uppercase tracking-widest placeholder:normal-case placeholder:tracking-normal"
+              className="pl-9 pr-9 rounded-xl bg-secondary/60 border-border font-mono text-xs placeholder:normal-case placeholder:tracking-normal focus:bg-background transition-colors"
             />
             {(search || searchExpanding) && (
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -631,7 +618,7 @@ const Index = () => {
                     type="button"
                     onClick={() => setSearch("")}
                     aria-label="Clear search"
-                    className="p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                   >
                     <X className="h-3.5 w-3.5" strokeWidth={1.5} />
                   </button>
@@ -639,15 +626,14 @@ const Index = () => {
               </div>
             )}
           </div>
-
         </div>
         {search && expandedTerms.length > 0 && (
-          <div className="container pb-2.5 flex items-center gap-2 flex-wrap">
+          <div className="container pb-3 flex items-center gap-2 flex-wrap">
             <span className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground">Also searching:</span>
             {expandedTerms
               .filter((t) => t.toLowerCase() !== search.trim().toLowerCase())
               .map((t) => (
-                <span key={t} className="font-mono text-[9px] uppercase tracking-widest bg-secondary border hairline px-2 py-0.5 text-muted-foreground">
+                <span key={t} className="font-mono text-[9px] uppercase tracking-widest bg-secondary/60 border hairline rounded-full px-2.5 py-0.5 text-muted-foreground">
                   {t}
                 </span>
               ))}
