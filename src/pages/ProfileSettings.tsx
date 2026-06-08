@@ -45,6 +45,19 @@ const ProfileSettings = () => {
   const [subsPublic, setSubsPublic] = useState<boolean>(true);
   const [savingVisibility, setSavingVisibility] = useState(false);
 
+  const [newEmail, setNewEmail] = useState("");
+  const [savingEmail, setSavingEmail] = useState(false);
+
+  async function handleChangeEmail() {
+    if (!newEmail.trim() || newEmail === user?.email) return;
+    setSavingEmail(true);
+    const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
+    setSavingEmail(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Confirmation sent to " + newEmail.trim() + ". Check your inbox.");
+    setNewEmail("");
+  }
+
   useEffect(() => {
     document.title = "My Profile — The Creatives Room";
     if (!authLoading && !user) navigate("/auth");
@@ -400,9 +413,31 @@ const ProfileSettings = () => {
                     <div className="space-y-3">
                       <h3 className="font-body text-base font-semibold">Your account</h3>
                       <div className="rounded-xl border hairline bg-secondary/30 px-4 py-3">
-                        <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Email · Private</p>
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Current email · Private</p>
                         <p className="text-sm mt-0.5">{user.email}</p>
                         <span className="inline-block mt-1.5 font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary/10 text-primary">Confirmed</span>
+                      </div>
+                      <div className="rounded-xl border hairline p-4 space-y-3">
+                        <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">Change email</p>
+                        <div className="flex gap-2">
+                          <Input
+                            type="email"
+                            placeholder="New email address"
+                            value={newEmail}
+                            onChange={(e) => setNewEmail(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") handleChangeEmail(); }}
+                            className="rounded-xl bg-secondary/60 border-border text-sm"
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleChangeEmail}
+                            disabled={savingEmail || !newEmail.trim() || newEmail === user.email}
+                            className="shrink-0 rounded-full font-mono text-[10px] uppercase tracking-widest"
+                          >
+                            {savingEmail ? "Saving…" : "Update"}
+                          </Button>
+                        </div>
+                        <p className="font-body text-xs text-muted-foreground">A confirmation link will be sent to the new address.</p>
                       </div>
                     </div>
 
