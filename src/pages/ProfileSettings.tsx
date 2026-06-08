@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile } from "@/hooks/useProfile";
+import { useSubscription, invalidateSubscription } from "@/hooks/useSubscription";
 import { SiteHeader } from "@/components/SiteHeader";
 import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -17,7 +18,10 @@ import { AvatarCropDialog } from "@/components/AvatarCropDialog";
 const ProfileSettings = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { profile, loading, refresh } = useMyProfile();
+  const { isPro, plan } = useSubscription();
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
@@ -41,6 +45,35 @@ const ProfileSettings = () => {
     document.title = "My Profile — The Creatives Room";
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (searchParams.get("checkout") === "success") {
+      invalidateSubscription();
+      toast.success("You're now on Pro. Welcome!");
+      navigate("/account/edit", { replace: true });
+    }
+  }, [searchParams, navigate]);
+
+  async function handleManageBilling() {
+    setPortalLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/customer-portal`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({ returnUrl: window.location.href }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.url) throw new Error(json.error || "Could not open billing portal.");
+      window.location.href = json.url;
+    } catch (err: any) {
+      toast.error(err.message);
+      setPortalLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (profile) {
@@ -247,6 +280,43 @@ const ProfileSettings = () => {
                   {savingProfile ? "Saving…" : "Save changes"}
                 </Button>
               </div>
+            </section>
+
+            <div className="border-t hairline" />
+
+            {/* Billing */}
+            <section className="space-y-4">
+              <h2 className="font-display text-2xl font-bold tracking-tight">Plan & Billing</h2>
+              <div className="flex items-center gap-3">
+                <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Current plan</span>
+                <span className={`font-mono text-[10px] uppercase tracking-widest px-2 py-0.5 ${isPro ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"}`}>
+                  {isPro ? "Pro" : "Free"}
+                </span>
+              </div>
+              {isPro ? (
+                <div className="flex items-center gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleManageBilling}
+                    disabled={portalLoading}
+                    className="font-mono text-[10px] uppercase tracking-widest"
+                  >
+                    {portalLoading ? "Loading…" : "Manage billing"}
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="font-body text-sm text-muted-foreground">
+                    Upgrade to Pro for 20 AI brief matches per day and unlimited folders.
+                  </p>
+                  <Link to="/pricing">
+                    <Button className="font-mono text-[10px] uppercase tracking-widest">
+                      Upgrade to Pro
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </section>
 
             <div className="border-t hairline" />

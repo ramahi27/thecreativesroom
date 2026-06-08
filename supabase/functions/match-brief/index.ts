@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
 
     if (userId) {
       const [{ data: profile }, { data: usageRow }] = await Promise.all([
-        supabase.from("profiles").select("plan").eq("id", userId).maybeSingle(),
+        supabase.from("profiles").select("plan").eq("user_id", userId).maybeSingle(),
         supabase.from("brief_usages").select("count").eq("user_id", userId).eq("usage_date", today).maybeSingle(),
       ]);
       plan = (profile?.plan as Plan) || "free";
