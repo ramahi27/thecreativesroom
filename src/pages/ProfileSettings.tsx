@@ -330,7 +330,7 @@ const ProfileSettings = () => {
                           value={username}
                           onChange={(e) => setUsername(e.target.value.toLowerCase())}
                           pattern="^[a-z0-9_-]{3,24}$"
-                          className="rounded-xl border-border bg-secondary/50 focus:bg-background"
+                          className="rounded-xl border border-border/60 bg-secondary/50 transition-colors focus-visible:border-primary/60 focus-visible:bg-background"
                         />
                         <p className="text-xs text-muted-foreground">{profileUrl(username || "you")}</p>
                       </div>
@@ -343,7 +343,7 @@ const ProfileSettings = () => {
                           rows={3}
                           placeholder="Tell your story"
                           onChange={(e) => setBio(e.target.value)}
-                          className="rounded-xl border-border bg-secondary/50 focus:bg-background resize-none"
+                          className="rounded-xl border border-border/60 bg-secondary/50 transition-colors focus-visible:border-primary/60 focus-visible:bg-background resize-none"
                         />
                         <p className="text-xs text-muted-foreground text-right">{bio.length}/200</p>
                       </div>

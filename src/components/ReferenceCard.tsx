@@ -96,29 +96,27 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
           </div>
         )}
 
-        <div className="absolute top-3 left-3 right-3 flex flex-wrap items-center gap-1.5">
-          <div className="flex items-center gap-1.5 bg-background/80 rounded-full px-2.5 py-1 backdrop-blur-md">
-            <Icon className="h-3 w-3" strokeWidth={1.5} />
-            <span className="font-mono text-[10px] uppercase tracking-widest">{r.type}</span>
-          </div>
-          {r.categories?.map((c) => (
-            <span
-              key={c}
-              className="bg-background/80 rounded-full px-2.5 py-1 backdrop-blur-md font-mono text-[10px] uppercase tracking-widest"
-            >
-              {c}
+        <div className="absolute top-3 left-3 flex items-center gap-1.5">
+          {r.categories?.[0] ? (
+            <span className="bg-background/75 rounded-full px-2.5 py-1 backdrop-blur-md font-mono text-[10px] uppercase tracking-widest text-foreground/80">
+              {r.categories[0]}
             </span>
-          ))}
+          ) : (
+            <div className="flex items-center gap-1.5 bg-background/75 rounded-full px-2.5 py-1 backdrop-blur-md">
+              <Icon className="h-3 w-3 text-foreground/70" strokeWidth={1.5} />
+              <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/70">{r.type}</span>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="p-4 flex flex-col justify-between flex-1" style={{ minHeight: "7rem" }}>
+      <div className="p-4 flex flex-col gap-2 flex-1" style={{ minHeight: "7rem" }}>
         <div className="flex items-start justify-between gap-3">
-          <h3 className="leading-tight line-clamp-2 font-light font-serif text-xl" title={r.title}>
+          <h3 className="leading-snug line-clamp-2 font-display font-light text-xl" title={r.title}>
             {r.title}
           </h3>
           {r.year && (
-            <span className="font-mono text-xs text-muted-foreground shrink-0 mt-0.5">{r.year}</span>
+            <span className="font-mono text-[10px] text-muted-foreground/60 shrink-0 mt-1 tabular-nums">{r.year}</span>
           )}
         </div>
 
@@ -127,9 +125,9 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
           const showAgency = !isMagazine && r.agency;
           if (!r.brand && !showAgency) return null;
           return (
-            <p className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground mt-2 truncate">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 truncate">
               {r.brand}
-              {r.brand && showAgency && <span className="mx-1.5 opacity-50">/</span>}
+              {r.brand && showAgency && <span className="mx-1.5 opacity-40">·</span>}
               {showAgency && r.agency}
             </p>
           );

@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t hairline mt-20 bg-background/50">
+    <footer className="border-t hairline mt-20 bg-background/80 backdrop-blur-sm">
       <div className="container py-10 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-2 max-w-2xl">
           <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">

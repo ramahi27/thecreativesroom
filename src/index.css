@@ -140,11 +140,12 @@
   .hairline { border-color: hsl(var(--hairline)); }
 
   .reveal-card {
-    transition: transform 0.5s var(--transition-smooth), box-shadow 0.5s var(--transition-smooth);
+    transition: transform 0.4s var(--transition-smooth), box-shadow 0.4s var(--transition-smooth), border-color 0.4s var(--transition-smooth);
   }
   .reveal-card:hover {
-    transform: translateY(-4px);
+    transform: scale(1.018);
     box-shadow: var(--shadow-cinema);
+    border-color: hsl(var(--hairline) / 1.6);
   }
 }
 

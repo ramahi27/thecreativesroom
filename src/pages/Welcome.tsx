@@ -89,7 +89,7 @@ const Welcome = () => {
               value={username}
               onChange={(e) => setUsername(e.target.value.toLowerCase())}
               placeholder="yourname"
-              className="bg-secondary border-0 font-mono"
+              className="bg-secondary/50 border border-border/60 font-mono rounded-xl transition-colors focus-visible:border-primary/60 focus-visible:bg-background"
             />
           </div>
           <Button type="submit" disabled={saving} className="w-full font-mono text-xs uppercase tracking-widest h-12">

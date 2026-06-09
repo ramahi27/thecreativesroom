@@ -130,7 +130,7 @@ const Auth = () => {
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">
           ⏵ {eyebrow}
         </p>
-        <h1 className="font-display text-5xl font-black tracking-tighter mb-8">
+        <h1 className="font-display text-5xl font-black tracking-tighter mb-10">
           {heading}
         </h1>
 
@@ -147,7 +147,7 @@ const Auth = () => {
                 placeholder="yourname"
                 pattern="^[a-z0-9_-]{3,24}$"
                 title="3–24 chars: lowercase letters, numbers, _ or -"
-                className="bg-secondary border-0 font-mono"
+                className="bg-secondary/50 border border-border/60 font-mono rounded-xl transition-colors focus-visible:border-primary/60 focus-visible:bg-background"
               />
               <p className="font-mono text-[10px] text-muted-foreground">
                 Your public profile: thecreativesroom.com/u/{username || "you"}
@@ -161,7 +161,7 @@ const Auth = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="bg-secondary border-0 font-mono"
+              className="bg-secondary/50 border border-border/60 font-mono rounded-xl transition-colors focus-visible:border-primary/60 focus-visible:bg-background"
             />
           </div>
           {mode !== "forgot" && (
@@ -184,7 +184,7 @@ const Auth = () => {
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="bg-secondary border-0 font-mono"
+                className="bg-secondary/50 border border-border/60 font-mono rounded-xl transition-colors focus-visible:border-primary/60 focus-visible:bg-background"
               />
             </div>
           )}
