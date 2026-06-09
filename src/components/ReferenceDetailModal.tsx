@@ -276,38 +276,13 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!r) return;
     const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
 
-    // Embed-only (YouTube / Vimeo) — proxy through server-side download-video function
+    // Embed-only (YouTube / Vimeo) — copy URL and open cobalt.tools
     if (currentIsEmbed || !current?.url) {
       const target = r.source_url || r.media_url;
       if (!target) { toast.error("No source URL available."); return; }
-      setDownloading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-video`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${session?.access_token}`,
-            },
-            body: JSON.stringify({ url: target }),
-          }
-        );
-        const data = await res.json();
-        if (!res.ok || !data.downloadUrl) throw new Error(data.error || "Could not get download link");
-        const a = document.createElement("a");
-        a.href = data.downloadUrl;
-        a.download = `${slug}.mp4`;
-        a.rel = "noreferrer";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch (err: any) {
-        toast.error(err.message || "Download failed — the video may be private or geo-blocked.");
-      } finally {
-        setDownloading(false);
-      }
+      try { await navigator.clipboard.writeText(target); } catch { /* ignore */ }
+      window.open(`https://cobalt.tools`, "_blank", "noreferrer");
+      toast.success("Link copied — paste it into cobalt.tools to download", { duration: 6000 });
       return;
     }
 
