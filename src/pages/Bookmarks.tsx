@@ -10,6 +10,7 @@ import { useFolders } from "@/hooks/useFolders";
 import { useMyProfile } from "@/hooks/useProfile";
 import { useFollowedFolders } from "@/hooks/useFollows";
 import { useSharedFolders } from "@/hooks/useSharedFolders";
+import { useSubscription } from "@/hooks/useSubscription";
 import { FolderInviteDialog } from "@/components/FolderInviteDialog";
 import { CollectionProfileHeader } from "@/components/CollectionProfileHeader";
 import { CollectionCard } from "@/components/CollectionCard";
@@ -80,6 +81,8 @@ const Bookmarks = () => {
     setVisibility,
   } = useFolders();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useMyProfile();
+  const { isPro, plan } = useSubscription();
+  const canInvite = isPro || (plan as any) === "admin";
   const { folders: followed, loading: followedLoading } = useFollowedFolders();
   const { sharedFolders, loading: sharedLoading, loaded: sharedLoaded, load: loadShared } = useSharedFolders();
   const [tab, setTab] = useState<"mine" | "following" | "submitted" | "shared">("mine");
@@ -664,7 +667,7 @@ const Bookmarks = () => {
                     draggingActive={dragging}
                     username={profile?.username}
                     onToggleVisibility={() => setVisibility(f.id, !f.is_public)}
-                    onInvite={() => setInviteTarget({ id: f.id, name: f.name })}
+                    onInvite={canInvite ? () => setInviteTarget({ id: f.id, name: f.name }) : undefined}
                   />
                 ))}
               </div>
