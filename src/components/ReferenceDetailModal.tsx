@@ -276,12 +276,33 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!r) return;
     const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
 
-    // Embed-only (YouTube / Vimeo) — can't download directly, open source page
+    // Embed-only (YouTube / Vimeo) — use Cobalt.tools API to get a direct download link
     if (currentIsEmbed || !current?.url) {
       const target = r.source_url || r.media_url;
       if (!target) { toast.error("No source URL available."); return; }
-      window.open(target, "_blank", "noreferrer");
-      toast.info("Opening source page — use the platform's own download option if available.");
+      setDownloading(true);
+      try {
+        const cobaltRes = await fetch("https://api.cobalt.tools/", {
+          method: "POST",
+          headers: { "Accept": "application/json", "Content-Type": "application/json" },
+          body: JSON.stringify({ url: target, vQuality: "max" }),
+        });
+        const cobaltData = await cobaltRes.json();
+        if (!cobaltRes.ok || cobaltData.status === "error" || !cobaltData.url) {
+          throw new Error(cobaltData.text || cobaltData.error?.code || "Could not get download link");
+        }
+        const a = document.createElement("a");
+        a.href = cobaltData.url;
+        a.download = `${slug}.mp4`;
+        a.rel = "noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (err: any) {
+        toast.error(err.message || "Download failed — the video may be private or geo-blocked.");
+      } finally {
+        setDownloading(false);
+      }
       return;
     }
 
