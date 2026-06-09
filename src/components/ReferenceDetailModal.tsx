@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -25,6 +26,8 @@ interface Props {
 export function ReferenceDetailModal({ id, onClose }: Props) {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
+  const { isPro } = useSubscription();
+  const canDownload = isPro || isAdmin;
   const { all: ALL_CATEGORIES } = useCategories();
   const [r, setR] = useState<Reference | null>(null);
   const [allRefs, setAllRefs] = useState<Reference[]>([]);
@@ -538,7 +541,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     <Share2 className="h-3 w-3" />
                     Share
                   </button>
-                  {(current?.url || r.source_url || r.media_url) && (
+                  {canDownload && (current?.url || r.source_url || r.media_url) && (
                     <button
                       onClick={handleDownload}
                       className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary"
