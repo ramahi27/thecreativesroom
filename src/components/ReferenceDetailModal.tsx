@@ -277,15 +277,14 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!r) return;
     const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
 
-    // Embed-only (YouTube / Vimeo) — download entirely in the browser.
-    // YouTube serves video + audio separately, so we fetch both tracks from
-    // Piped (CORS-enabled) and merge them with ffmpeg.wasm. No server needed.
+    // Embed-only (YouTube / Vimeo) — download via our Cloudflare Worker proxy,
+    // which fetches the video server-side and streams a finished MP4 back.
     if (currentIsEmbed || !current?.url) {
       const target = r.source_url || r.media_url || "";
       const ytId = extractYouTubeId(target);
 
       if (!ytId) {
-        // Non-YouTube (e.g. Vimeo): can't extract client-side — hand off to cobalt
+        // Non-YouTube (e.g. Vimeo): hand off to cobalt
         if (!target) { toast.error("No source URL available."); return; }
         try { await navigator.clipboard.writeText(target); } catch { /* ignore */ }
         window.open("https://cobalt.tools", "_blank", "noreferrer");
@@ -296,7 +295,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       setDownloading(true);
       const tId = toast.loading("Preparing download…");
       try {
-        const blob = await downloadYouTubeVideo(ytId, (s) => toast.loading(s, { id: tId }));
+        const blob = await downloadYouTubeVideo(target, (s) => toast.loading(s, { id: tId }));
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = `${slug}.mp4`;
