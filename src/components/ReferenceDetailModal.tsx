@@ -276,7 +276,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!r) return;
     const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
 
-    // Embed-only (YouTube / Vimeo) — fetch the stream via public Invidious mirrors
+    // Embed-only (YouTube / Vimeo) — fetch the stream via public Piped mirrors
     // and download it directly, all client-side (no server function needed).
     if (currentIsEmbed || !current?.url) {
       const target = r.source_url || r.media_url || "";
@@ -302,52 +302,60 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         return;
       }
 
-      const INSTANCES = [
-        "https://invidious.privacydev.net",
-        "https://inv.nadeko.net",
-        "https://invidious.nerdvpn.de",
-        "https://invidious.jing.rocks",
-        "https://yewtu.be",
+      // Piped API instances — these send CORS headers so the browser can use them.
+      const PIPED_APIS = [
+        "https://pipedapi.kavin.rocks",
+        "https://pipedapi.adminforge.de",
+        "https://api.piped.yt",
+        "https://pipedapi.reallyaboring.stream",
+        "https://pipedapi.leptons.xyz",
+        "https://pipedapi.r4fo.com",
       ];
 
       setDownloading(true);
-      const tId = toast.loading("Preparing download…");
+      const tId = toast.loading("Fetching video…");
       try {
-        let dlUrl: string | null = null;
-        for (const instance of INSTANCES) {
+        let streamUrl: string | null = null;
+        for (const api of PIPED_APIS) {
           try {
-            const res = await fetch(
-              `${instance}/api/v1/videos/${ytId}?fields=formatStreams`,
-              { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000) },
-            );
+            const res = await fetch(`${api}/streams/${ytId}`, {
+              headers: { Accept: "application/json" },
+              signal: AbortSignal.timeout(8000),
+            });
             if (!res.ok) continue;
             const data = await res.json();
-            const streams: any[] = data.formatStreams || [];
-            if (!streams.length) continue;
-            // Prefer the highest combined-stream quality available
-            const order = ["1080p", "720p", "480p", "360p", "240p"];
-            const pick =
-              order.map((q) => streams.find((s) => s.qualityLabel === q)).find(Boolean) ||
-              streams[0];
-            const itag = pick?.itag;
-            if (!itag) continue;
-            // local=true proxies through the instance with Content-Disposition: attachment
-            dlUrl = `${instance}/latest_version?id=${ytId}&itag=${itag}&local=true&title=${encodeURIComponent(slug)}`;
-            break;
+            // Combined streams (video+audio) have videoOnly === false
+            const combined: any[] = (data.videoStreams || []).filter(
+              (s: any) => s.videoOnly === false,
+            );
+            if (!combined.length) continue;
+            const mp4 = combined.filter((s: any) => (s.mimeType || "").includes("mp4"));
+            const pool = mp4.length ? mp4 : combined;
+            // Highest resolution first
+            pool.sort(
+              (a: any, b: any) =>
+                (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0),
+            );
+            if (pool[0]?.url) { streamUrl = pool[0].url; break; }
           } catch {
             continue;
           }
         }
 
-        if (!dlUrl) throw new Error("All mirrors failed — the video may be private or geo-blocked.");
+        if (!streamUrl) throw new Error("Could not find a downloadable stream.");
 
+        toast.loading("Downloading…", { id: tId });
+        const fileRes = await fetch(streamUrl);
+        if (!fileRes.ok) throw new Error("Stream fetch failed.");
+        const blob = await fileRes.blob();
         const a = document.createElement("a");
-        a.href = dlUrl;
+        a.href = URL.createObjectURL(blob);
         a.download = `${slug}.mp4`;
         document.body.appendChild(a);
         a.click();
+        URL.revokeObjectURL(a.href);
         document.body.removeChild(a);
-        toast.success("Download started", { id: tId });
+        toast.success("Download complete", { id: tId });
       } catch (err: any) {
         toast.dismiss(tId);
         // Last resort: hand off to cobalt
