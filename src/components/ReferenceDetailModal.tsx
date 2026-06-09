@@ -276,13 +276,87 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!r) return;
     const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
 
-    // Embed-only (YouTube / Vimeo) — copy URL and open cobalt.tools
+    // Embed-only (YouTube / Vimeo) — fetch the stream via public Invidious mirrors
+    // and download it directly, all client-side (no server function needed).
     if (currentIsEmbed || !current?.url) {
-      const target = r.source_url || r.media_url;
-      if (!target) { toast.error("No source URL available."); return; }
-      try { await navigator.clipboard.writeText(target); } catch { /* ignore */ }
-      window.open(`https://cobalt.tools`, "_blank", "noreferrer");
-      toast.success("Link copied — paste it into cobalt.tools to download", { duration: 6000 });
+      const target = r.source_url || r.media_url || "";
+      const ytId = (() => {
+        for (const p of [
+          /[?&]v=([a-zA-Z0-9_-]{11})/,
+          /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+          /embed\/([a-zA-Z0-9_-]{11})/,
+          /shorts\/([a-zA-Z0-9_-]{11})/,
+        ]) {
+          const m = target.match(p);
+          if (m) return m[1];
+        }
+        return null;
+      })();
+
+      if (!ytId) {
+        // Non-YouTube (e.g. Vimeo): can't extract client-side — fall back to cobalt
+        if (!target) { toast.error("No source URL available."); return; }
+        try { await navigator.clipboard.writeText(target); } catch { /* ignore */ }
+        window.open("https://cobalt.tools", "_blank", "noreferrer");
+        toast.success("Link copied — paste it into cobalt.tools to download", { duration: 6000 });
+        return;
+      }
+
+      const INSTANCES = [
+        "https://invidious.privacydev.net",
+        "https://inv.nadeko.net",
+        "https://invidious.nerdvpn.de",
+        "https://invidious.jing.rocks",
+        "https://yewtu.be",
+      ];
+
+      setDownloading(true);
+      const tId = toast.loading("Preparing download…");
+      try {
+        let dlUrl: string | null = null;
+        for (const instance of INSTANCES) {
+          try {
+            const res = await fetch(
+              `${instance}/api/v1/videos/${ytId}?fields=formatStreams`,
+              { headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8000) },
+            );
+            if (!res.ok) continue;
+            const data = await res.json();
+            const streams: any[] = data.formatStreams || [];
+            if (!streams.length) continue;
+            // Prefer the highest combined-stream quality available
+            const order = ["1080p", "720p", "480p", "360p", "240p"];
+            const pick =
+              order.map((q) => streams.find((s) => s.qualityLabel === q)).find(Boolean) ||
+              streams[0];
+            const itag = pick?.itag;
+            if (!itag) continue;
+            // local=true proxies through the instance with Content-Disposition: attachment
+            dlUrl = `${instance}/latest_version?id=${ytId}&itag=${itag}&local=true&title=${encodeURIComponent(slug)}`;
+            break;
+          } catch {
+            continue;
+          }
+        }
+
+        if (!dlUrl) throw new Error("All mirrors failed — the video may be private or geo-blocked.");
+
+        const a = document.createElement("a");
+        a.href = dlUrl;
+        a.download = `${slug}.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success("Download started", { id: tId });
+      } catch (err: any) {
+        toast.dismiss(tId);
+        // Last resort: hand off to cobalt
+        try { await navigator.clipboard.writeText(target); } catch { /* ignore */ }
+        window.open("https://cobalt.tools", "_blank", "noreferrer");
+        toast.error((err.message || "Download failed") + " — opened cobalt.tools as a fallback.", { duration: 6000 });
+      } finally {
+        setDownloading(false);
+      }
       return;
     }
 
