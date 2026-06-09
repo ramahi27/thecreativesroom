@@ -97,15 +97,14 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
         )}
 
         <div className="absolute top-3 left-3 flex items-center gap-1.5">
-          {r.categories?.[0] ? (
+          <div className="flex items-center gap-1.5 bg-background/75 rounded-full px-2.5 py-1 backdrop-blur-md">
+            <Icon className="h-3 w-3 text-foreground/70" strokeWidth={1.5} />
+            <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/70">{r.type}</span>
+          </div>
+          {r.categories?.[0] && (
             <span className="bg-background/75 rounded-full px-2.5 py-1 backdrop-blur-md font-mono text-[10px] uppercase tracking-widest text-foreground/80">
               {r.categories[0]}
             </span>
-          ) : (
-            <div className="flex items-center gap-1.5 bg-background/75 rounded-full px-2.5 py-1 backdrop-blur-md">
-              <Icon className="h-3 w-3 text-foreground/70" strokeWidth={1.5} />
-              <span className="font-mono text-[10px] uppercase tracking-widest text-foreground/70">{r.type}</span>
-            </div>
           )}
         </div>
       </div>
