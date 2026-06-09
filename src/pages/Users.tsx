@@ -6,14 +6,19 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
-import { Search, MessageSquare, Lightbulb, Bug, Reply, Trash2 } from "lucide-react";
+import { Search, MessageSquare, Lightbulb, Bug, Reply, Trash2, Zap, ZapOff } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { toast } from "sonner";
+
+type Plan = "free" | "paid";
+type FilterKey = "all" | "free" | "pro" | "admin";
 
 type Row = {
   user_id: string;
   username: string;
   created_at: string;
   is_admin: boolean;
+  plan: Plan;
   references_added: number;
   references_approved: number;
   time_spent_seconds: number;
@@ -57,9 +62,25 @@ const Users = () => {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<FilterKey>("all");
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<FeedbackRow[]>([]);
   const [feedbackLoading, setFeedbackLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleTogglePlan(row: Row) {
+    if (row.is_admin) return;
+    const next: Plan = row.plan === "paid" ? "free" : "paid";
+    setTogglingId(row.user_id);
+    const { error } = await supabase
+      .from("profiles")
+      .update({ plan: next })
+      .eq("user_id", row.user_id);
+    setTogglingId(null);
+    if (error) { toast.error(error.message); return; }
+    setRows((prev) => prev.map((r) => r.user_id === row.user_id ? { ...r, plan: next } : r));
+    toast.success(next === "paid" ? `@${row.username} upgraded to Pro` : `@${row.username} downgraded to Free`);
+  }
 
   async function handleDeleteFeedback(id: string) {
     setDeletingId(id);
@@ -81,7 +102,7 @@ const Users = () => {
       // Build the overview entirely from tables the admin can already read,
       // so it doesn't depend on a server-side function.
       const [profilesRes, rolesRes, refsRes, viewsRes] = await Promise.all([
-        supabase.from("profiles").select("user_id, username, created_at").limit(500),
+        supabase.from("profiles").select("user_id, username, created_at, plan").limit(500),
         supabase.from("user_roles").select("user_id").eq("role", "admin").limit(500),
         supabase.from("references").select("created_by, approved_by").eq("published", true).limit(5000),
         supabase.from("page_views").select("user_id, duration_seconds").not("user_id", "is", null).limit(10000),
@@ -116,6 +137,7 @@ const Users = () => {
           username: p.username,
           created_at: p.created_at,
           is_admin: adminIds.has(p.user_id),
+          plan: ((p as any).plan as Plan) || "free",
           references_added: addedBy.get(p.user_id) || 0,
           references_approved: approvedBy.get(p.user_id) || 0,
           time_spent_seconds: timeBy.get(p.user_id) || 0,
@@ -150,14 +172,19 @@ const Users = () => {
   }, [isAdmin]);
 
   const filtered = useMemo(() => {
+    let result = rows;
+    if (filter === "pro")   result = result.filter((r) => r.plan === "paid" && !r.is_admin);
+    if (filter === "free")  result = result.filter((r) => r.plan === "free" && !r.is_admin);
+    if (filter === "admin") result = result.filter((r) => r.is_admin);
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => (r.username || "").toLowerCase().includes(q));
-  }, [rows, search]);
+    if (q) result = result.filter((r) => (r.username || "").toLowerCase().includes(q));
+    return result;
+  }, [rows, search, filter]);
 
   const totals = useMemo(
     () => ({
       users: rows.length,
+      pro: rows.filter((r) => r.plan === "paid" && !r.is_admin).length,
       admins: rows.filter((r) => r.is_admin).length,
       added: rows.reduce((a, r) => a + r.references_added, 0),
     }),
@@ -184,13 +211,29 @@ const Users = () => {
       </section>
 
       <section className="border-b hairline bg-background/80 backdrop-blur-xl">
-        <div className="container py-3 flex flex-wrap items-center gap-4">
-          <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
-            <span>{totals.users} users</span>
-            <span>{totals.admins} admins</span>
-            <span>{totals.added} contributions</span>
+        <div className="container py-3 flex flex-wrap items-center gap-3">
+          {/* Filter pills */}
+          <div className="flex gap-1.5 flex-wrap">
+            {([
+              { key: "all",   label: `All (${totals.users})` },
+              { key: "free",  label: `Free (${totals.users - totals.pro - totals.admins})` },
+              { key: "pro",   label: `Pro (${totals.pro})` },
+              { key: "admin", label: `Admin (${totals.admins})` },
+            ] as { key: FilterKey; label: string }[]).map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFilter(key)}
+                className={`font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full transition-all ${
+                  filter === key
+                    ? "bg-foreground text-background"
+                    : "border hairline text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
-          <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
+          <div className="relative flex-1 min-w-[180px] max-w-md ml-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
             <Input
               value={search}
@@ -216,25 +259,54 @@ const Users = () => {
                 <TableRow>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">#</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Username</TableHead>
-                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">Role</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">Plan</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Time on site</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Added</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Approved</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Joined</TableHead>
+                  <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((r, i) => (
                   <TableRow key={r.user_id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
-                    <TableCell className="text-sm truncate max-w-[280px]">{r.username || "—"}</TableCell>
-                    <TableCell className="font-mono text-[11px] uppercase tracking-widest">
-                      {r.is_admin ? <span className="text-primary">Admin</span> : <span className="text-muted-foreground">User</span>}
+                    <TableCell className="text-sm truncate max-w-[200px]">{r.username || "—"}</TableCell>
+                    <TableCell>
+                      {r.is_admin ? (
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-primary">Admin</span>
+                      ) : r.plan === "paid" ? (
+                        <span className="font-mono text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary/15 text-primary">Pro</span>
+                      ) : (
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Free</span>
+                      )}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-right">{formatDuration(r.time_spent_seconds)}</TableCell>
                     <TableCell className="font-mono text-xs text-right">{r.references_added}</TableCell>
                     <TableCell className="font-mono text-xs text-right">{r.references_approved}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">{formatDate(r.created_at)}</TableCell>
+                    <TableCell className="text-right">
+                      {!r.is_admin && (
+                        <button
+                          onClick={() => handleTogglePlan(r)}
+                          disabled={togglingId === r.user_id}
+                          title={r.plan === "paid" ? "Downgrade to Free" : "Upgrade to Pro"}
+                          className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border transition-all disabled:opacity-40 ${
+                            r.plan === "paid"
+                              ? "border-border text-muted-foreground hover:border-destructive/50 hover:text-destructive"
+                              : "border-primary/30 text-primary hover:bg-primary/10"
+                          }`}
+                        >
+                          {togglingId === r.user_id ? (
+                            "…"
+                          ) : r.plan === "paid" ? (
+                            <><ZapOff className="h-3 w-3" strokeWidth={2} /> Revoke</>
+                          ) : (
+                            <><Zap className="h-3 w-3" strokeWidth={2} /> Upgrade</>
+                          )}
+                        </button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
