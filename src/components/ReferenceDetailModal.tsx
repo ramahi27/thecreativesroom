@@ -33,6 +33,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const [allRefs, setAllRefs] = useState<Reference[]>([]);
   const [navOrder] = useState<string[]>(() => getModalNavOrder());
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [activeMedia, setActiveMedia] = useState(0);
   const [tagInput, setTagInput] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
@@ -275,11 +276,38 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!r) return;
     const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
 
-    // Embed-only (YouTube / Vimeo) — browser can't download platform videos
+    // Embed-only (YouTube / Vimeo) — route through server-side Cobalt proxy
     if (currentIsEmbed || !current?.url) {
-      toast.info("Platform videos can't be downloaded directly — opening the source page.");
-      const fallback = r.source_url || r.media_url;
-      if (fallback) window.open(fallback, "_blank", "noreferrer");
+      if (!r.source_url) { toast.error("No source URL available."); return; }
+      setDownloading(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-video`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({ url: r.source_url }),
+          }
+        );
+        const data = await res.json();
+        if (!res.ok || !data.downloadUrl) throw new Error(data.error || "Could not get download link");
+        const a = document.createElement("a");
+        a.href = data.downloadUrl;
+        a.download = slug;
+        a.target = "_blank";
+        a.rel = "noreferrer";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (err: any) {
+        toast.error(err.message || "Download failed — the video may be private or geo-blocked.");
+      } finally {
+        setDownloading(false);
+      }
       return;
     }
 
@@ -574,11 +602,12 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   {canDownload && (current?.url || r.source_url || r.media_url) && (
                     <button
                       onClick={handleDownload}
-                      className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary"
+                      disabled={downloading}
+                      className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary disabled:opacity-50 disabled:cursor-wait"
                       aria-label="Download"
                     >
-                      <Download className="h-3 w-3" />
-                      Download
+                      <Download className={`h-3 w-3 ${downloading ? "animate-pulse" : ""}`} />
+                      {downloading ? "Downloading…" : "Download"}
                     </button>
                   )}
                 </div>
