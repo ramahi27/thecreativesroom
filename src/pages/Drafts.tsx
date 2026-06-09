@@ -14,6 +14,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
+import { CannesLionsScraper } from "@/components/CannesLionsScraper";
+import { DandadScraper } from "@/components/DandadScraper";
+import { OneClubScraper } from "@/components/OneClubScraper";
+import { AdsOfTheWorldScraper } from "@/components/AdsOfTheWorldScraper";
 
 const PAGE_SIZE = 24;
 
@@ -41,6 +45,7 @@ const Drafts = () => {
   const [scrapeUrl, setScrapeUrl] = useState("");
   const [scraping, setScraping] = useState(false);
   const [linkChecking, setLinkChecking] = useState(false);
+  const [showScrapers, setShowScrapers] = useState(false);
 
   async function handleCheckLinks() {
     setLinkChecking(true);
@@ -370,6 +375,25 @@ const Drafts = () => {
 
       <main className="container py-12">
 
+        {/* Award scrapers */}
+        <div className="mb-12">
+          <button
+            onClick={() => setShowScrapers((v) => !v)}
+            className="flex items-center gap-3 font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span className={`transition-transform ${showScrapers ? "rotate-90" : ""}`}>▶</span>
+            Award Scrapers — D&AD · The One Club · Ads of the World · Cannes Lions
+          </button>
+
+          {showScrapers && (
+            <div className="mt-8 space-y-12">
+              <DandadScraper />
+              <OneClubScraper />
+              <AdsOfTheWorldScraper />
+              <CannesLionsScraper />
+            </div>
+          )}
+        </div>
 
         {loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading drafts…</p>
