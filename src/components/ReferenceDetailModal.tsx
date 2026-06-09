@@ -9,7 +9,7 @@ import type { Reference, MediaItem } from "@/lib/references";
 import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
-import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2, Flag } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2, Flag, Download } from "lucide-react";
 import { consumeModalReturn, clearModalReturn, peekModalReturn, getModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 import { ZoomableImage } from "@/components/ZoomableImage";
@@ -278,6 +278,27 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     }
   }
 
+  async function handleDownload() {
+    if (!r) return;
+    const url = current?.url ?? r.thumbnail_url ?? r.media_url;
+    if (!url) return;
+    const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
+    try {
+      const res = await fetch(url, { mode: "cors" });
+      if (!res.ok) throw new Error("fetch failed");
+      const blob = await res.blob();
+      const ext = blob.type.split("/")[1]?.split("+")[0] || "jpg";
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${slug}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      // CORS-blocked or unavailable — open in new tab so user can save manually
+      window.open(url, "_blank", "noreferrer");
+    }
+  }
+
   async function addTag(raw: string) {
     if (!r) return;
     const parts = raw
@@ -514,6 +535,16 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     <Share2 className="h-3 w-3" />
                     Share
                   </button>
+                  {(current?.url || r.thumbnail_url || r.media_url) && !currentIsEmbed && (
+                    <button
+                      onClick={handleDownload}
+                      className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary"
+                      aria-label="Download"
+                    >
+                      <Download className="h-3 w-3" />
+                      Download
+                    </button>
+                  )}
                 </div>
               </div>
 
