@@ -133,6 +133,33 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          message: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          message: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          message?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       folder_follows: {
         Row: {
           created_at: string
@@ -179,6 +206,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "folder_items_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      folder_members: {
+        Row: {
+          created_at: string
+          folder_id: string
+          id: string
+          invited_by: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          folder_id: string
+          id?: string
+          invited_by: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          folder_id?: string
+          id?: string
+          invited_by?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "folder_members_folder_id_fkey"
             columns: ["folder_id"]
             isOneToOne: false
             referencedRelation: "folders"
@@ -312,6 +371,8 @@ export type Database = {
           bio: string | null
           created_at: string
           plan: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           submissions_public: boolean
           updated_at: string
           user_id: string
@@ -322,6 +383,8 @@ export type Database = {
           bio?: string | null
           created_at?: string
           plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           submissions_public?: boolean
           updated_at?: string
           user_id: string
@@ -332,6 +395,8 @@ export type Database = {
           bio?: string | null
           created_at?: string
           plan?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           submissions_public?: boolean
           updated_at?: string
           user_id?: string
