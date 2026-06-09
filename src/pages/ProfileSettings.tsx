@@ -230,9 +230,9 @@ const ProfileSettings = () => {
       <PageMeta title="My Profile — The Creatives Room" description="Manage your profile settings." noindex />
       <SiteHeader />
       <main className="flex-1">
-        <div className="container py-10 flex gap-0 md:gap-12 max-w-4xl">
+        <div className="container py-10 flex flex-col md:flex-row gap-0 md:gap-12 max-w-4xl">
 
-          {/* Left nav — Pinterest style */}
+          {/* Left nav — desktop only */}
           <aside className="hidden md:flex flex-col gap-1 w-52 shrink-0 pt-2">
             {navItems.map((item) => (
               <button
@@ -250,8 +250,11 @@ const ProfileSettings = () => {
             ))}
           </aside>
 
-          {/* Mobile nav — horizontal tabs */}
-          <div className="flex md:hidden gap-1 mb-6 overflow-x-auto w-full pb-1">
+          {/* Right content */}
+          <div className="flex-1 min-w-0">
+
+          {/* Mobile nav — horizontal scrolling pills */}
+          <div className="flex md:hidden gap-1 mb-6 overflow-x-auto pb-1 -mx-4 px-4">
             {navItems.map((item) => (
               <button
                 key={item.key}
@@ -267,9 +270,6 @@ const ProfileSettings = () => {
               </button>
             ))}
           </div>
-
-          {/* Right content */}
-          <div className="flex-1 min-w-0">
             {loading ? (
               <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
             ) : (
