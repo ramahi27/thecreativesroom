@@ -17,6 +17,7 @@ import { ZoomableImage } from "@/components/ZoomableImage";
 import { useJsonLd } from "@/hooks/useJsonLd";
 import { PageMeta } from "@/components/PageMeta";
 import { refPath } from "@/lib/slug";
+import { extractYouTubeId, downloadYouTubeVideo } from "@/lib/youtubeDownload";
 
 interface Props {
   id: string;
@@ -276,25 +277,15 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!r) return;
     const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
 
-    // Embed-only (YouTube / Vimeo) — fetch the stream via public Piped mirrors
-    // and download it directly, all client-side (no server function needed).
+    // Embed-only (YouTube / Vimeo) — download entirely in the browser.
+    // YouTube serves video + audio separately, so we fetch both tracks from
+    // Piped (CORS-enabled) and merge them with ffmpeg.wasm. No server needed.
     if (currentIsEmbed || !current?.url) {
       const target = r.source_url || r.media_url || "";
-      const ytId = (() => {
-        for (const p of [
-          /[?&]v=([a-zA-Z0-9_-]{11})/,
-          /youtu\.be\/([a-zA-Z0-9_-]{11})/,
-          /embed\/([a-zA-Z0-9_-]{11})/,
-          /shorts\/([a-zA-Z0-9_-]{11})/,
-        ]) {
-          const m = target.match(p);
-          if (m) return m[1];
-        }
-        return null;
-      })();
+      const ytId = extractYouTubeId(target);
 
       if (!ytId) {
-        // Non-YouTube (e.g. Vimeo): can't extract client-side — fall back to cobalt
+        // Non-YouTube (e.g. Vimeo): can't extract client-side — hand off to cobalt
         if (!target) { toast.error("No source URL available."); return; }
         try { await navigator.clipboard.writeText(target); } catch { /* ignore */ }
         window.open("https://cobalt.tools", "_blank", "noreferrer");
@@ -302,52 +293,10 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         return;
       }
 
-      // Piped API instances — these send CORS headers so the browser can use them.
-      const PIPED_APIS = [
-        "https://pipedapi.kavin.rocks",
-        "https://pipedapi.adminforge.de",
-        "https://api.piped.yt",
-        "https://pipedapi.reallyaboring.stream",
-        "https://pipedapi.leptons.xyz",
-        "https://pipedapi.r4fo.com",
-      ];
-
       setDownloading(true);
-      const tId = toast.loading("Fetching video…");
+      const tId = toast.loading("Preparing download…");
       try {
-        let streamUrl: string | null = null;
-        for (const api of PIPED_APIS) {
-          try {
-            const res = await fetch(`${api}/streams/${ytId}`, {
-              headers: { Accept: "application/json" },
-              signal: AbortSignal.timeout(8000),
-            });
-            if (!res.ok) continue;
-            const data = await res.json();
-            // Combined streams (video+audio) have videoOnly === false
-            const combined: any[] = (data.videoStreams || []).filter(
-              (s: any) => s.videoOnly === false,
-            );
-            if (!combined.length) continue;
-            const mp4 = combined.filter((s: any) => (s.mimeType || "").includes("mp4"));
-            const pool = mp4.length ? mp4 : combined;
-            // Highest resolution first
-            pool.sort(
-              (a: any, b: any) =>
-                (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0),
-            );
-            if (pool[0]?.url) { streamUrl = pool[0].url; break; }
-          } catch {
-            continue;
-          }
-        }
-
-        if (!streamUrl) throw new Error("Could not find a downloadable stream.");
-
-        toast.loading("Downloading…", { id: tId });
-        const fileRes = await fetch(streamUrl);
-        if (!fileRes.ok) throw new Error("Stream fetch failed.");
-        const blob = await fileRes.blob();
+        const blob = await downloadYouTubeVideo(ytId, (s) => toast.loading(s, { id: tId }));
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
         a.download = `${slug}.mp4`;
@@ -361,7 +310,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         // Last resort: hand off to cobalt
         try { await navigator.clipboard.writeText(target); } catch { /* ignore */ }
         window.open("https://cobalt.tools", "_blank", "noreferrer");
-        toast.error((err.message || "Download failed") + " — opened cobalt.tools as a fallback.", { duration: 6000 });
+        toast.error((err.message || "Download failed") + " — opened cobalt.tools as a fallback.", { duration: 7000 });
       } finally {
         setDownloading(false);
       }
