@@ -276,23 +276,28 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!r) return;
     const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
 
-    // Embed-only (YouTube / Vimeo) — use Cobalt.tools API to get a direct download link
+    // Embed-only (YouTube / Vimeo) — proxy through server-side download-video function
     if (currentIsEmbed || !current?.url) {
       const target = r.source_url || r.media_url;
       if (!target) { toast.error("No source URL available."); return; }
       setDownloading(true);
       try {
-        const cobaltRes = await fetch("https://api.cobalt.tools/", {
-          method: "POST",
-          headers: { "Accept": "application/json", "Content-Type": "application/json" },
-          body: JSON.stringify({ url: target, vQuality: "max" }),
-        });
-        const cobaltData = await cobaltRes.json();
-        if (!cobaltRes.ok || cobaltData.status === "error" || !cobaltData.url) {
-          throw new Error(cobaltData.text || cobaltData.error?.code || "Could not get download link");
-        }
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/download-video`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({ url: target }),
+          }
+        );
+        const data = await res.json();
+        if (!res.ok || !data.downloadUrl) throw new Error(data.error || "Could not get download link");
         const a = document.createElement("a");
-        a.href = cobaltData.url;
+        a.href = data.downloadUrl;
         a.download = `${slug}.mp4`;
         a.rel = "noreferrer";
         document.body.appendChild(a);

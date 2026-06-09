@@ -1,74 +1,95 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// Download YouTube / Vimeo videos via Cobalt.tools API.
+// Pro + Admin only. Returns { downloadUrl } on success.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
-
-const cors = {
+const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { ...cors, "Content-Type": "application/json" },
-  });
-
-function isAllowedUrl(url: string): boolean {
-  try {
-    const h = new URL(url).hostname.replace("www.", "");
-    return (
-      h.includes("youtube.com") ||
-      h === "youtu.be" ||
-      h.includes("vimeo.com")
-    );
-  } catch {
-    return false;
-  }
-}
+const ALLOWED_HOSTS = ["youtube.com", "www.youtube.com", "youtu.be", "vimeo.com", "www.vimeo.com"];
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: cors });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  );
 
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return json({ error: "Unauthorized" }, 401);
-
-  const token = authHeader.replace("Bearer ", "");
-  const { data: { user }, error: authErr } = await supabase.auth.getUser(token);
-  if (authErr || !user) return json({ error: "Unauthorized" }, 401);
-
-  // Pro gate: paid plan or admin role
-  const [{ data: profile }, { data: adminRole }] = await Promise.all([
-    supabase.from("profiles").select("plan").eq("user_id", user.id).maybeSingle(),
-    supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle(),
-  ]);
-
-  if (profile?.plan !== "paid" && !adminRole) {
-    return json({ error: "Pro subscription required" }, 403);
+  if (!authHeader) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
-  const { url } = await req.json();
-  if (!url || !isAllowedUrl(url)) {
-    return json({ error: "Invalid or unsupported URL" }, 400);
+  const userClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } },
+  );
+  const { data: { user } } = await userClient.auth.getUser();
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
-  // Call Cobalt API to get a download-ready URL
-  const cobaltRes = await fetch("https://api.cobalt.tools/", {
-    method: "POST",
-    headers: {
-      "Accept": "application/json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ url, vQuality: "max" }),
-  });
-
-  const cobalt = await cobaltRes.json();
-
-  if (!cobaltRes.ok || cobalt.status === "error" || !cobalt.url) {
-    return json({ error: cobalt.text || "Could not process video" }, 502);
+  const { data: profile } = await supabase.from("profiles").select("plan").eq("id", user.id).maybeSingle();
+  const { data: isAdmin } = await userClient.rpc("has_role", { _user_id: user.id, _role: "admin" });
+  if (profile?.plan !== "paid" && !isAdmin) {
+    return new Response(JSON.stringify({ error: "Pro subscription required" }), {
+      status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
-  return json({ downloadUrl: cobalt.url });
+  const { url } = await req.json().catch(() => ({ url: "" }));
+  if (!url) {
+    return new Response(JSON.stringify({ error: "url is required" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  let parsed: URL;
+  try { parsed = new URL(url); } catch {
+    return new Response(JSON.stringify({ error: "Invalid URL" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  if (!ALLOWED_HOSTS.includes(parsed.hostname)) {
+    return new Response(JSON.stringify({ error: "Only YouTube and Vimeo URLs are supported" }), {
+      status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const cobaltApiKey = Deno.env.get("COBALT_API_KEY");
+  const cobaltHeaders: Record<string, string> = {
+    "Accept": "application/json",
+    "Content-Type": "application/json",
+  };
+  if (cobaltApiKey) cobaltHeaders["Authorization"] = `Api-Key ${cobaltApiKey}`;
+
+  try {
+    const cobaltRes = await fetch("https://api.cobalt.tools/", {
+      method: "POST",
+      headers: cobaltHeaders,
+      body: JSON.stringify({ url, vQuality: "max" }),
+    });
+    const cobaltData = await cobaltRes.json();
+    if (!cobaltRes.ok || cobaltData.status === "error" || !cobaltData.url) {
+      const msg = cobaltData.error?.code || cobaltData.text || "Could not get download link";
+      return new Response(JSON.stringify({ error: msg }), {
+        status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ downloadUrl: cobaltData.url }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (e: any) {
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 });
