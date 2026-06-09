@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, UserPlus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +23,7 @@ interface Props {
   draggingActive: boolean;
   username?: string | null;
   onToggleVisibility: () => void;
+  onInvite?: () => void;
 }
 
 export function FolderRow({
@@ -36,6 +37,7 @@ export function FolderRow({
   draggingActive,
   username,
   onToggleVisibility,
+  onInvite,
 }: Props) {
   const [renaming, setRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(f.name);
@@ -141,6 +143,11 @@ export function FolderRow({
                 />
               </div>
               <DropdownMenuSeparator />
+              {onInvite && (
+                <DropdownMenuItem onClick={onInvite}>
+                  <UserPlus className="h-3 w-3 mr-2" /> Invite collaborator
+                </DropdownMenuItem>
+              )}
               <DropdownMenuItem onClick={() => { setRenameValue(f.name); setRenaming(true); }}>
                 <Pencil className="h-3 w-3 mr-2" /> Rename
               </DropdownMenuItem>
