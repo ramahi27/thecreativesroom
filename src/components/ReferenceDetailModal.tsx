@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -9,7 +10,7 @@ import type { Reference, MediaItem } from "@/lib/references";
 import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
-import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2, Flag } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2, Flag, Download } from "lucide-react";
 import { consumeModalReturn, clearModalReturn, peekModalReturn, getModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 import { ZoomableImage } from "@/components/ZoomableImage";
@@ -25,6 +26,8 @@ interface Props {
 export function ReferenceDetailModal({ id, onClose }: Props) {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
+  const { isPro } = useSubscription();
+  const canDownload = isPro || isAdmin;
   const { all: ALL_CATEGORIES } = useCategories();
   const [r, setR] = useState<Reference | null>(null);
   const [allRefs, setAllRefs] = useState<Reference[]>([]);
@@ -265,6 +268,30 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       toast.success("Link copied");
     } catch {
       toast.error("Could not copy link");
+    }
+  }
+
+  async function handleDownload() {
+    if (!r) return;
+    // For embed-only videos (YouTube etc.) open the source URL — can't fetch them directly
+    if (currentIsEmbed || !current?.url) {
+      const fallback = r.source_url || r.media_url;
+      if (fallback) window.open(fallback, "_blank", "noreferrer");
+      return;
+    }
+    const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
+    try {
+      const res = await fetch(current.url, { mode: "cors" });
+      if (!res.ok) throw new Error("fetch failed");
+      const blob = await res.blob();
+      const ext = blob.type.split("/")[1]?.split("+")[0] || "jpg";
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${slug}.${ext}`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      window.open(current.url, "_blank", "noreferrer");
     }
   }
 
@@ -525,6 +552,16 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     <Share2 className="h-3 w-3" />
                     Share
                   </button>
+                  {canDownload && (current?.url || r.source_url || r.media_url) && (
+                    <button
+                      onClick={handleDownload}
+                      className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary"
+                      aria-label="Download"
+                    >
+                      <Download className="h-3 w-3" />
+                      Download
+                    </button>
+                  )}
                 </div>
               </div>
 

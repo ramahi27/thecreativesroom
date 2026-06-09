@@ -9,6 +9,9 @@ import { useCategories } from "@/hooks/useCategories";
 import { useFolders } from "@/hooks/useFolders";
 import { useMyProfile } from "@/hooks/useProfile";
 import { useFollowedFolders } from "@/hooks/useFollows";
+import { useSharedFolders } from "@/hooks/useSharedFolders";
+import { useSubscription } from "@/hooks/useSubscription";
+import { FolderInviteDialog } from "@/components/FolderInviteDialog";
 import { CollectionProfileHeader } from "@/components/CollectionProfileHeader";
 import { CollectionCard } from "@/components/CollectionCard";
 import { ReferenceCard } from "@/components/ReferenceCard";
@@ -78,11 +81,15 @@ const Bookmarks = () => {
     setVisibility,
   } = useFolders();
   const { profile, loading: profileLoading, refresh: refreshProfile } = useMyProfile();
+  const { isPro, plan } = useSubscription();
+  const canInvite = isPro || (plan as any) === "admin";
   const { folders: followed, loading: followedLoading } = useFollowedFolders();
-  const [tab, setTab] = useState<"mine" | "following" | "submitted">("mine");
+  const { sharedFolders, loading: sharedLoading, loaded: sharedLoaded, load: loadShared } = useSharedFolders();
+  const [tab, setTab] = useState<"mine" | "following" | "submitted" | "shared">("mine");
   const [submissions, setSubmissions] = useState<Reference[]>([]);
   const [submissionsLoaded, setSubmissionsLoaded] = useState(false);
   const [activeFolder, setActiveFolder] = useState<string | null>(null);
+  const [inviteTarget, setInviteTarget] = useState<{ id: string; name: string } | null>(null);
 
   // Selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -143,6 +150,10 @@ const Bookmarks = () => {
       window.removeEventListener("bookmarks:refresh", handler);
     };
   }, [user]);
+
+  useEffect(() => {
+    if (tab === "shared" && !sharedLoaded) loadShared();
+  }, [tab, sharedLoaded, loadShared]);
 
   useEffect(() => {
     if (!user || tab !== "submitted" || submissionsLoaded) return;
@@ -301,6 +312,7 @@ const Bookmarks = () => {
             { k: "mine", label: "My collection", count: refs.length },
             { k: "submitted", label: "Submitted", count: submissions.length },
             { k: "following", label: "Following", count: followed.length },
+            { k: "shared", label: "Shared with me", count: sharedFolders.length },
           ] as const).map((t) => {
             const active = tab === t.k;
             return (
@@ -412,6 +424,60 @@ const Bookmarks = () => {
                         </h3>
                         <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
                           {f.refs.length} {f.refs.length === 1 ? "ref" : "refs"}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                        by @{f.owner_username}
+                      </span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )
+        ) : tab === "shared" ? (
+          sharedLoading ? (
+            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
+          ) : sharedFolders.length === 0 ? (
+            <div className="py-20 text-center">
+              <p className="font-display text-3xl text-muted-foreground italic">
+                No shared folders yet.
+              </p>
+              <p className="mt-4 font-mono text-xs uppercase tracking-widest text-muted-foreground">
+                When someone invites you to a folder, it will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {sharedFolders.map((f) => {
+                const folderSlug = (f.name || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+                return (
+                  <Link
+                    key={f.id}
+                    to={`/u/${f.owner_username}/${folderSlug}`}
+                    className="group block border hairline bg-card hover:border-foreground transition-all hover:-translate-y-0.5"
+                  >
+                    <div className="relative aspect-[4/3] grid grid-cols-2 grid-rows-2 gap-0.5 bg-muted overflow-hidden">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="bg-secondary overflow-hidden">
+                          {f.preview_thumbs[i] ? (
+                            <img
+                              src={f.preview_thumbs[i]}
+                              alt=""
+                              loading="lazy"
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            />
+                          ) : (
+                            <div className="h-full w-full bg-muted" />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="p-4 flex flex-col gap-1">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <h3 className="font-display text-xl font-bold tracking-tight truncate">{f.name}</h3>
+                        <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground tabular-nums shrink-0">
+                          {f.ref_count} {f.ref_count === 1 ? "ref" : "refs"}
                         </span>
                       </div>
                       <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -601,6 +667,7 @@ const Bookmarks = () => {
                     draggingActive={dragging}
                     username={profile?.username}
                     onToggleVisibility={() => setVisibility(f.id, !f.is_public)}
+                    onInvite={canInvite ? () => setInviteTarget({ id: f.id, name: f.name }) : undefined}
                   />
                 ))}
               </div>
@@ -761,6 +828,15 @@ const Bookmarks = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {inviteTarget && (
+        <FolderInviteDialog
+          folderId={inviteTarget.id}
+          folderName={inviteTarget.name}
+          open={!!inviteTarget}
+          onOpenChange={(open) => { if (!open) setInviteTarget(null); }}
+        />
+      )}
 
       <SiteFooter />
     </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Pencil, Trash2, Inbox, Layers, Check, Plus } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, Inbox, Layers, Check, Plus, UserPlus } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +27,7 @@ interface Props {
   onDropOnFolder: (folderId: string, e: React.DragEvent) => void;
   draggingActive: boolean;
   username?: string | null;
+  onInvite?: (id: string) => void;
 }
 
 const COLORS = [
@@ -53,6 +54,7 @@ export function FolderSidebar({
   onDropOnFolder,
   draggingActive,
   username,
+  onInvite,
 }: Props) {
   const { updateColor, setVisibility } = useFolders();
   const [creating, setCreating] = useState(false);
@@ -253,6 +255,11 @@ export function FolderSidebar({
                         />
                       </div>
                       <DropdownMenuSeparator />
+                      {onInvite && (
+                        <DropdownMenuItem onClick={() => onInvite(f.id)}>
+                          <UserPlus className="h-3 w-3 mr-2" /> Invite
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem
                         onClick={() => {
                           setRenameValue(f.name);
