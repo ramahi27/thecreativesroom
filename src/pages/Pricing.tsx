@@ -21,6 +21,8 @@ const PRO_FEATURES = [
   { label: "Everything in Free" },
   { label: "Unlimited AI brief matches", note: true },
   { label: "Unlimited folders" },
+  { label: "Download images & videos" },
+  { label: "Invite collaborators to folders" },
   { label: "Early access to new features" },
 ];
 

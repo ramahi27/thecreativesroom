@@ -273,25 +273,44 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
   async function handleDownload() {
     if (!r) return;
-    // For embed-only videos (YouTube etc.) open the source URL — can't fetch them directly
+    const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
+
+    // Embed-only (YouTube / Vimeo) — browser can't download platform videos
     if (currentIsEmbed || !current?.url) {
+      toast.info("Platform videos can't be downloaded directly — opening the source page.");
       const fallback = r.source_url || r.media_url;
       if (fallback) window.open(fallback, "_blank", "noreferrer");
       return;
     }
-    const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
+
+    const url = current.url;
+    const rawExt = url.split("?")[0].split(".").pop() || "";
+    const ext = rawExt.length <= 4 ? rawExt : "mp4";
+
+    // Supabase storage supports ?download= to force Content-Disposition: attachment
+    if (url.includes(".supabase.co/storage/")) {
+      const a = document.createElement("a");
+      a.href = `${url}${url.includes("?") ? "&" : "?"}download=${slug}.${ext}`;
+      a.download = `${slug}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+
+    // General: fetch as blob (works for CORS-enabled hosts)
     try {
-      const res = await fetch(current.url, { mode: "cors" });
+      const res = await fetch(url, { mode: "cors" });
       if (!res.ok) throw new Error("fetch failed");
       const blob = await res.blob();
-      const ext = blob.type.split("/")[1]?.split("+")[0] || "jpg";
+      const blobExt = blob.type.split("/")[1]?.split("+")[0] || ext || "jpg";
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `${slug}.${ext}`;
+      a.download = `${slug}.${blobExt}`;
       a.click();
       URL.revokeObjectURL(a.href);
     } catch {
-      window.open(current.url, "_blank", "noreferrer");
+      window.open(url, "_blank", "noreferrer");
     }
   }
 
