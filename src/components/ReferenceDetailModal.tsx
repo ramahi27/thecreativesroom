@@ -280,11 +280,15 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
   async function handleDownload() {
     if (!r) return;
-    const url = current?.url ?? r.thumbnail_url ?? r.media_url;
-    if (!url) return;
+    // For embed-only videos (YouTube etc.) open the source URL — can't fetch them directly
+    if (currentIsEmbed || !current?.url) {
+      const fallback = r.source_url || r.media_url;
+      if (fallback) window.open(fallback, "_blank", "noreferrer");
+      return;
+    }
     const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
     try {
-      const res = await fetch(url, { mode: "cors" });
+      const res = await fetch(current.url, { mode: "cors" });
       if (!res.ok) throw new Error("fetch failed");
       const blob = await res.blob();
       const ext = blob.type.split("/")[1]?.split("+")[0] || "jpg";
@@ -294,8 +298,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       a.click();
       URL.revokeObjectURL(a.href);
     } catch {
-      // CORS-blocked or unavailable — open in new tab so user can save manually
-      window.open(url, "_blank", "noreferrer");
+      window.open(current.url, "_blank", "noreferrer");
     }
   }
 
@@ -535,7 +538,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     <Share2 className="h-3 w-3" />
                     Share
                   </button>
-                  {(current?.url || r.thumbnail_url || r.media_url) && !currentIsEmbed && (
+                  {(current?.url || r.source_url || r.media_url) && (
                     <button
                       onClick={handleDownload}
                       className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary"
