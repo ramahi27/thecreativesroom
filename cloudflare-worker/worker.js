@@ -1,7 +1,11 @@
-// YouTube download proxy — parallel version.
-// Races multiple cobalt + Invidious instances AT THE SAME TIME instead of
-// trying them one-by-one, so the whole request succeeds or fails in ~15-20s
-// instead of minutes. First instance to produce a working stream wins.
+// YouTube download proxy — Innertube edition.
+// Instead of relying on third-party cobalt/Invidious instances (which YouTube
+// blocks constantly), this calls YouTube's own internal "Innertube" API — the
+// same API the official Android/iOS apps use. The ANDROID and IOS clients
+// receive direct, uncyphered stream URLs for combined audio+video formats.
+// No third-party servers involved, so nothing to rot.
+//
+// Fallback chain: ANDROID client → IOS client → TV_EMBEDDED → cobalt seeds.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -9,21 +13,71 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
+// Innertube client configurations. Each mimics an official YouTube app.
+const INNERTUBE_CLIENTS = [
+  {
+    name: "ANDROID",
+    context: {
+      client: {
+        clientName: "ANDROID",
+        clientVersion: "19.30.36",
+        androidSdkVersion: 34,
+        hl: "en",
+        gl: "US",
+        utcOffsetMinutes: 0,
+      },
+    },
+    headers: {
+      "User-Agent": "com.google.android.youtube/19.30.36 (Linux; U; Android 14) gzip",
+      "X-Youtube-Client-Name": "3",
+      "X-Youtube-Client-Version": "19.30.36",
+    },
+  },
+  {
+    name: "IOS",
+    context: {
+      client: {
+        clientName: "IOS",
+        clientVersion: "19.29.1",
+        deviceMake: "Apple",
+        deviceModel: "iPhone16,2",
+        osName: "iPhone",
+        osVersion: "17.5.1.21F90",
+        hl: "en",
+        gl: "US",
+        utcOffsetMinutes: 0,
+      },
+    },
+    headers: {
+      "User-Agent": "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
+      "X-Youtube-Client-Name": "5",
+      "X-Youtube-Client-Version": "19.29.1",
+    },
+  },
+  {
+    name: "TV_EMBEDDED",
+    context: {
+      client: {
+        clientName: "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
+        clientVersion: "2.0",
+        hl: "en",
+        gl: "US",
+      },
+      thirdParty: { embedUrl: "https://www.youtube.com/" },
+    },
+    headers: {
+      "User-Agent": "Mozilla/5.0 (PlayStation; PlayStation 4/12.00) AppleWebKit/605.1.15",
+      "X-Youtube-Client-Name": "85",
+      "X-Youtube-Client-Version": "2.0",
+    },
+  },
+];
+
+// Cobalt instances as a last-ditch fallback.
 const COBALT_SEEDS = [
   "https://cobalt-api.kwiatekmiki.com",
-  "https://cobalt-api.ayo.tf",
   "https://api.cobalt.best",
-  "https://capi.3kh0.net",
   "https://co.eepy.today",
-  "https://downloadapi.stuff.solutions",
-];
-const INVIDIOUS_SEEDS = [
-  "https://inv.nadeko.net",
-  "https://yewtu.be",
-  "https://invidious.nerdvpn.de",
-  "https://invidious.f5.si",
-  "https://iv.melmac.space",
-  "https://invidious.privacydev.net",
 ];
 
 function extractId(url) {
@@ -46,83 +100,85 @@ function jsonErr(msg, status = 502) {
   });
 }
 
-async function fetchJson(url, ms = 6000) {
+// Call YouTube's Innertube player endpoint with one client config.
+// Returns { url, mimeType } of the best combined (audio+video) format, or null.
+async function innertubePlayer(client, ytId) {
   try {
-    const r = await fetch(url, {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(ms),
+    const r = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...client.headers,
+      },
+      body: JSON.stringify({
+        context: client.context,
+        videoId: ytId,
+        contentCheckOk: true,
+        racyCheckOk: true,
+      }),
+      signal: AbortSignal.timeout(8000),
     });
     if (!r.ok) return null;
-    return await r.json();
+    const data = await r.json();
+
+    if (data.playabilityStatus?.status !== "OK") return null;
+
+    // "formats" = combined audio+video (itag 18 = 360p, 22 = 720p when present).
+    const formats = data.streamingData?.formats || [];
+    const playable = formats.filter((f) => f.url && f.mimeType?.includes("mp4"));
+    if (!playable.length) return null;
+
+    // Highest resolution first.
+    playable.sort((a, b) => (b.height || 0) - (a.height || 0));
+    return { url: playable[0].url, height: playable[0].height };
   } catch {
     return null;
   }
 }
 
-// Ask ONE cobalt instance for a stream URL. Resolves to a URL or throws.
 async function askCobalt(inst, url) {
-  const r = await fetch(inst, {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ url, videoQuality: "720", filenameStyle: "basic", youtubeHLS: false }),
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!r.ok) throw new Error(`${inst} ${r.status}`);
-  const data = await r.json();
-  if ((data.status === "tunnel" || data.status === "redirect" || data.status === "stream") && data.url) {
-    return data.url;
+  try {
+    const r = await fetch(inst, {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ url, videoQuality: "720", filenameStyle: "basic", youtubeHLS: false }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    if ((data.status === "tunnel" || data.status === "redirect") && data.url) return data.url;
+    return null;
+  } catch {
+    return null;
   }
-  throw new Error(`${inst} no stream`);
-}
-
-// Ask ONE Invidious instance for a direct combined-stream URL.
-async function askInvidious(inst, ytId) {
-  const meta = await fetchJson(`${inst}/api/v1/videos/${ytId}?fields=formatStreams`, 7000);
-  const streams = meta?.formatStreams;
-  if (!Array.isArray(streams) || !streams.length) throw new Error(`${inst} no formatStreams`);
-  const pref = ["720p60", "720p", "480p", "360p"];
-  for (const q of pref) {
-    const s = streams.find((x) => x.qualityLabel === q && x.url);
-    if (s) return s.url;
-  }
-  const any = streams.find((x) => x.url);
-  if (any) return any.url;
-  throw new Error(`${inst} no url`);
-}
-
-// Race all sources in parallel; first resolved URL that actually streams wins.
-async function findStreamUrl(url, ytId) {
-  const attempts = [
-    ...COBALT_SEEDS.map((i) => askCobalt(i, url)),
-    ...INVIDIOUS_SEEDS.map((i) => askInvidious(i, ytId)),
-  ];
-  // Promise.any resolves with the first success, rejects only if ALL fail.
-  // We collect successes as they come so we can try a second one if the
-  // first stream URL turns out to be dead.
-  const results = [];
-  await Promise.allSettled(
-    attempts.map(async (p) => {
-      try {
-        const u = await p;
-        results.push(u);
-      } catch {
-        /* ignore */
-      }
-    }),
-  );
-  return results;
 }
 
 function streamBack(file, ytId) {
   const ct = file.headers.get("content-type") || "video/mp4";
-  return new Response(file.body, {
-    headers: {
-      ...CORS,
-      "Content-Type": ct,
-      "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
-      "Cache-Control": "no-store",
-    },
-  });
+  const len = file.headers.get("content-length");
+  const headers = {
+    ...CORS,
+    "Content-Type": ct,
+    "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
+    "Cache-Control": "no-store",
+  };
+  if (len) headers["Content-Length"] = len;
+  return new Response(file.body, { headers });
+}
+
+// Fetch a googlevideo stream URL. These URLs are IP-bound to the requester,
+// and since the Worker made the Innertube call, the Worker's IP is authorized.
+async function fetchStream(url, ua) {
+  try {
+    const file = await fetch(url, {
+      headers: { "User-Agent": ua || "Mozilla/5.0" },
+      signal: AbortSignal.timeout(30000),
+    });
+    if (file.ok && file.body) return file;
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export default {
@@ -141,24 +197,31 @@ export default {
     const ytId = extractId(url || "");
     if (!ytId) return jsonErr("Invalid YouTube URL", 400);
 
-    const candidates = await findStreamUrl(url, ytId);
-    if (!candidates.length) {
-      return jsonErr("All download sources are unavailable right now.");
+    // 1) Query all Innertube clients in parallel; collect every working format.
+    const results = await Promise.all(
+      INNERTUBE_CLIENTS.map(async (c) => {
+        const fmt = await innertubePlayer(c, ytId);
+        return fmt ? { ...fmt, ua: c.headers["User-Agent"] } : null;
+      }),
+    );
+    const formats = results.filter(Boolean).sort((a, b) => (b.height || 0) - (a.height || 0));
+
+    // 2) Try streaming each candidate. The stream fetch must use the SAME
+    //    user-agent family as the client that requested it.
+    for (const fmt of formats) {
+      const file = await fetchStream(fmt.url, fmt.ua);
+      if (file) return streamBack(file, ytId);
     }
 
-    // Try up to 3 candidate stream URLs — first one that streams wins.
-    for (const candidate of candidates.slice(0, 3)) {
-      try {
-        const file = await fetch(candidate, {
-          headers: { "User-Agent": "Mozilla/5.0", Referer: "https://www.youtube.com/" },
-          signal: AbortSignal.timeout(30000),
-        });
-        if (file.ok && file.body) return streamBack(file, ytId);
-      } catch {
-        /* next candidate */
-      }
+    // 3) Last resort: cobalt instances in parallel.
+    const cobaltUrls = (
+      await Promise.all(COBALT_SEEDS.map((i) => askCobalt(i, url)))
+    ).filter(Boolean);
+    for (const cu of cobaltUrls) {
+      const file = await fetchStream(cu);
+      if (file) return streamBack(file, ytId);
     }
 
-    return jsonErr("Found sources but none would stream. Try again in a minute.");
+    return jsonErr("All download sources are unavailable right now.");
   },
 };
