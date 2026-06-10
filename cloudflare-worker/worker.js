@@ -1,8 +1,7 @@
-// YouTube download proxy.
-// Strategy: get a direct stream URL from cobalt or Invidious, then stream it
-// back with Content-Disposition: attachment so the browser saves the file.
-// Returning a URL redirect doesn't work because YouTube CDN URLs are IP-scoped
-// (the browser can't use a URL fetched on the server's behalf), so we must proxy.
+// YouTube download proxy — parallel version.
+// Races multiple cobalt + Invidious instances AT THE SAME TIME instead of
+// trying them one-by-one, so the whole request succeeds or fails in ~15-20s
+// instead of minutes. First instance to produce a working stream wins.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -10,14 +9,10 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-// Static seeds — supplemented by live directory lookups at request time.
 const COBALT_SEEDS = [
   "https://cobalt-api.kwiatekmiki.com",
-  "https://cobalt.drgns.space",
-  "https://co.wuk.sh",
   "https://cobalt-api.ayo.tf",
   "https://api.cobalt.best",
-  "https://cobalt.api.timelessnesses.me",
   "https://capi.3kh0.net",
   "https://co.eepy.today",
   "https://downloadapi.stuff.solutions",
@@ -28,7 +23,6 @@ const INVIDIOUS_SEEDS = [
   "https://invidious.nerdvpn.de",
   "https://invidious.f5.si",
   "https://iv.melmac.space",
-  "https://invidious.materialio.us",
   "https://invidious.privacydev.net",
 ];
 
@@ -52,7 +46,7 @@ function jsonErr(msg, status = 502) {
   });
 }
 
-async function fetchJson(url, ms = 7000) {
+async function fetchJson(url, ms = 6000) {
   try {
     const r = await fetch(url, {
       headers: { Accept: "application/json" },
@@ -65,86 +59,70 @@ async function fetchJson(url, ms = 7000) {
   }
 }
 
-// Fetch live cobalt instance list.
-async function liveCobaltInstances() {
-  const data = await fetchJson("https://instances.cobalt.best/api/instances.json", 5000);
-  if (!Array.isArray(data)) return [];
-  return data
-    .filter((i) => i.api_online && i.services?.youtube !== false)
-    .sort((a, b) => (b.score || 0) - (a.score || 0))
-    .map((i) => `${i.protocol || "https"}://${i.api}`)
-    .slice(0, 10);
+// Ask ONE cobalt instance for a stream URL. Resolves to a URL or throws.
+async function askCobalt(inst, url) {
+  const r = await fetch(inst, {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ url, videoQuality: "720", filenameStyle: "basic", youtubeHLS: false }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!r.ok) throw new Error(`${inst} ${r.status}`);
+  const data = await r.json();
+  if ((data.status === "tunnel" || data.status === "redirect" || data.status === "stream") && data.url) {
+    return data.url;
+  }
+  throw new Error(`${inst} no stream`);
 }
 
-// Fetch live Invidious instance list.
-async function liveInvidiousInstances() {
-  const data = await fetchJson("https://api.invidious.io/instances.json?sort_by=health", 5000);
-  if (!Array.isArray(data)) return [];
-  return data
-    .filter(([, m]) => m?.type === "https" && m?.api !== false)
-    .map(([, m]) => m.uri.replace(/\/$/, ""))
-    .slice(0, 8);
+// Ask ONE Invidious instance for a direct combined-stream URL.
+async function askInvidious(inst, ytId) {
+  const meta = await fetchJson(`${inst}/api/v1/videos/${ytId}?fields=formatStreams`, 7000);
+  const streams = meta?.formatStreams;
+  if (!Array.isArray(streams) || !streams.length) throw new Error(`${inst} no formatStreams`);
+  const pref = ["720p60", "720p", "480p", "360p"];
+  for (const q of pref) {
+    const s = streams.find((x) => x.qualityLabel === q && x.url);
+    if (s) return s.url;
+  }
+  const any = streams.find((x) => x.url);
+  if (any) return any.url;
+  throw new Error(`${inst} no url`);
 }
 
-// Try cobalt instances. Returns a stream URL string on success, null on failure.
-// Tries both the current API format and the older field names.
-async function tryCobalt(instances, url) {
-  const bodies = [
-    // Current cobalt API (v7+)
-    JSON.stringify({ url, vQuality: "720", filenameStyle: "basic", youtubeHLS: false }),
-    // Older cobalt API
-    JSON.stringify({ url, videoQuality: "720", filenameStyle: "basic" }),
+// Race all sources in parallel; first resolved URL that actually streams wins.
+async function findStreamUrl(url, ytId) {
+  const attempts = [
+    ...COBALT_SEEDS.map((i) => askCobalt(i, url)),
+    ...INVIDIOUS_SEEDS.map((i) => askInvidious(i, ytId)),
   ];
-
-  for (const inst of instances) {
-    for (const body of bodies) {
+  // Promise.any resolves with the first success, rejects only if ALL fail.
+  // We collect successes as they come so we can try a second one if the
+  // first stream URL turns out to be dead.
+  const results = [];
+  await Promise.allSettled(
+    attempts.map(async (p) => {
       try {
-        const r = await fetch(inst, {
-          method: "POST",
-          headers: { Accept: "application/json", "Content-Type": "application/json" },
-          body,
-          signal: AbortSignal.timeout(9000),
-        });
-        if (!r.ok) continue;
-        const data = await r.json();
-        if ((data.status === "tunnel" || data.status === "redirect" || data.status === "stream") && data.url) {
-          return data.url;
-        }
+        const u = await p;
+        results.push(u);
       } catch {
-        /* try next */
+        /* ignore */
       }
-      break; // If first body got a response (even bad), don't retry same instance
-    }
-  }
-  return null;
+    }),
+  );
+  return results;
 }
 
-// Try Invidious instances using formatStreams URLs (direct YouTube CDN fetch from Worker).
-// Cloudflare IPs can reach YouTube CDN; the URL is IP-scoped to the fetching IP so
-// we must stream it through here rather than redirect.
-async function tryInvidious(instances, ytId) {
-  const QUALITY_PREF = ["720p60", "720p", "480p", "360p", "240p"];
-
-  for (const inst of instances) {
-    const meta = await fetchJson(
-      `${inst}/api/v1/videos/${ytId}?fields=formatStreams`,
-      8000,
-    );
-    const streams = meta?.formatStreams;
-    if (!Array.isArray(streams) || !streams.length) continue;
-
-    // Pick best quality that has a direct URL.
-    let chosen = null;
-    for (const q of QUALITY_PREF) {
-      chosen = streams.find((s) => s.qualityLabel === q && s.url);
-      if (chosen) break;
-    }
-    if (!chosen) chosen = streams.find((s) => s.url);
-    if (!chosen?.url) continue;
-
-    return chosen.url; // Direct YouTube CDN URL — Worker will proxy it
-  }
-  return null;
+function streamBack(file, ytId) {
+  const ct = file.headers.get("content-type") || "video/mp4";
+  return new Response(file.body, {
+    headers: {
+      ...CORS,
+      "Content-Type": ct,
+      "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
+      "Cache-Control": "no-store",
+    },
+  });
 }
 
 export default {
@@ -163,64 +141,24 @@ export default {
     const ytId = extractId(url || "");
     if (!ytId) return jsonErr("Invalid YouTube URL", 400);
 
-    // Discover live instances in parallel with using static seeds.
-    const [liveCobalt, liveInv] = await Promise.all([
-      liveCobaltInstances(),
-      liveInvidiousInstances(),
-    ]);
-    const cobaltList = [...new Set([...liveCobalt, ...COBALT_SEEDS])];
-    const invList = [...new Set([...liveInv, ...INVIDIOUS_SEEDS])];
+    const candidates = await findStreamUrl(url, ytId);
+    if (!candidates.length) {
+      return jsonErr("All download sources are unavailable right now.");
+    }
 
-    // Try cobalt first — it merges audio+video and returns a ready-to-play MP4.
-    const cobaltUrl = await tryCobalt(cobaltList, url);
-    if (cobaltUrl) {
+    // Try up to 3 candidate stream URLs — first one that streams wins.
+    for (const candidate of candidates.slice(0, 3)) {
       try {
-        const file = await fetch(cobaltUrl, {
-          headers: { "User-Agent": "Mozilla/5.0" },
-          signal: AbortSignal.timeout(60000),
+        const file = await fetch(candidate, {
+          headers: { "User-Agent": "Mozilla/5.0", Referer: "https://www.youtube.com/" },
+          signal: AbortSignal.timeout(30000),
         });
-        if (file.ok && file.body) {
-          const ct = file.headers.get("content-type") || "video/mp4";
-          return new Response(file.body, {
-            headers: {
-              ...CORS,
-              "Content-Type": ct,
-              "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
-              "Cache-Control": "no-store",
-            },
-          });
-        }
+        if (file.ok && file.body) return streamBack(file, ytId);
       } catch {
-        /* fall through to Invidious */
+        /* next candidate */
       }
     }
 
-    // Invidious fallback — gets a direct YouTube CDN stream URL, then proxies it.
-    const invUrl = await tryInvidious(invList, ytId);
-    if (invUrl) {
-      try {
-        const file = await fetch(invUrl, {
-          headers: {
-            "User-Agent": "Mozilla/5.0",
-            "Referer": "https://www.youtube.com/",
-          },
-          signal: AbortSignal.timeout(60000),
-        });
-        if (file.ok && file.body) {
-          return new Response(file.body, {
-            headers: {
-              ...CORS,
-              "Content-Type": "video/mp4",
-              "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
-              "Cache-Control": "no-store",
-            },
-          });
-        }
-      } catch {
-        /* fall through */
-      }
-    }
-
-    return jsonErr("All download sources are unavailable right now.");
+    return jsonErr("Found sources but none would stream. Try again in a minute.");
   },
 };
