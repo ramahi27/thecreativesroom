@@ -1,11 +1,15 @@
-// YouTube download proxy — Innertube edition.
-// Instead of relying on third-party cobalt/Invidious instances (which YouTube
-// blocks constantly), this calls YouTube's own internal "Innertube" API — the
-// same API the official Android/iOS apps use. The ANDROID and IOS clients
-// receive direct, uncyphered stream URLs for combined audio+video formats.
-// No third-party servers involved, so nothing to rot.
+// YouTube download proxy — RapidAPI edition.
+// All free download paths (cobalt, Invidious, Piped, direct Innertube) are now
+// blocked by YouTube from datacenter IPs. This version uses a RapidAPI
+// YouTube downloader service, which maintains its own unblocked infrastructure.
 //
-// Fallback chain: ANDROID client → IOS client → TV_EMBEDDED → cobalt seeds.
+// Setup:
+// 1. Sign up at https://rapidapi.com and subscribe to
+//    "YT-API" (https://rapidapi.com/ytjar/api/yt-api) — free tier available,
+//    paid from ~$10/mo for higher volume.
+// 2. In the Cloudflare dashboard: Worker → Settings → Variables and Secrets →
+//    Add → Type "Secret", name RAPIDAPI_KEY, paste your RapidAPI key.
+// 3. Deploy this code.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -13,72 +17,7 @@ const CORS = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-// Innertube client configurations. Each mimics an official YouTube app.
-const INNERTUBE_CLIENTS = [
-  {
-    name: "ANDROID",
-    context: {
-      client: {
-        clientName: "ANDROID",
-        clientVersion: "19.30.36",
-        androidSdkVersion: 34,
-        hl: "en",
-        gl: "US",
-        utcOffsetMinutes: 0,
-      },
-    },
-    headers: {
-      "User-Agent": "com.google.android.youtube/19.30.36 (Linux; U; Android 14) gzip",
-      "X-Youtube-Client-Name": "3",
-      "X-Youtube-Client-Version": "19.30.36",
-    },
-  },
-  {
-    name: "IOS",
-    context: {
-      client: {
-        clientName: "IOS",
-        clientVersion: "19.29.1",
-        deviceMake: "Apple",
-        deviceModel: "iPhone16,2",
-        osName: "iPhone",
-        osVersion: "17.5.1.21F90",
-        hl: "en",
-        gl: "US",
-        utcOffsetMinutes: 0,
-      },
-    },
-    headers: {
-      "User-Agent": "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
-      "X-Youtube-Client-Name": "5",
-      "X-Youtube-Client-Version": "19.29.1",
-    },
-  },
-  {
-    name: "TV_EMBEDDED",
-    context: {
-      client: {
-        clientName: "TVHTML5_SIMPLY_EMBEDDED_PLAYER",
-        clientVersion: "2.0",
-        hl: "en",
-        gl: "US",
-      },
-      thirdParty: { embedUrl: "https://www.youtube.com/" },
-    },
-    headers: {
-      "User-Agent": "Mozilla/5.0 (PlayStation; PlayStation 4/12.00) AppleWebKit/605.1.15",
-      "X-Youtube-Client-Name": "85",
-      "X-Youtube-Client-Version": "2.0",
-    },
-  },
-];
-
-// Cobalt instances as a last-ditch fallback.
-const COBALT_SEEDS = [
-  "https://cobalt-api.kwiatekmiki.com",
-  "https://api.cobalt.best",
-  "https://co.eepy.today",
-];
+const RAPIDAPI_HOST = "yt-api.p.rapidapi.com";
 
 function extractId(url) {
   for (const p of [
@@ -100,92 +39,15 @@ function jsonErr(msg, status = 502) {
   });
 }
 
-// Call YouTube's Innertube player endpoint with one client config.
-// Returns { url, mimeType } of the best combined (audio+video) format, or null.
-async function innertubePlayer(client, ytId) {
-  try {
-    const r = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...client.headers,
-      },
-      body: JSON.stringify({
-        context: client.context,
-        videoId: ytId,
-        contentCheckOk: true,
-        racyCheckOk: true,
-      }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!r.ok) return null;
-    const data = await r.json();
-
-    if (data.playabilityStatus?.status !== "OK") return null;
-
-    // "formats" = combined audio+video (itag 18 = 360p, 22 = 720p when present).
-    const formats = data.streamingData?.formats || [];
-    const playable = formats.filter((f) => f.url && f.mimeType?.includes("mp4"));
-    if (!playable.length) return null;
-
-    // Highest resolution first.
-    playable.sort((a, b) => (b.height || 0) - (a.height || 0));
-    return { url: playable[0].url, height: playable[0].height };
-  } catch {
-    return null;
-  }
-}
-
-async function askCobalt(inst, url) {
-  try {
-    const r = await fetch(inst, {
-      method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ url, videoQuality: "720", filenameStyle: "basic", youtubeHLS: false }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!r.ok) return null;
-    const data = await r.json();
-    if ((data.status === "tunnel" || data.status === "redirect") && data.url) return data.url;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function streamBack(file, ytId) {
-  const ct = file.headers.get("content-type") || "video/mp4";
-  const len = file.headers.get("content-length");
-  const headers = {
-    ...CORS,
-    "Content-Type": ct,
-    "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
-    "Cache-Control": "no-store",
-  };
-  if (len) headers["Content-Length"] = len;
-  return new Response(file.body, { headers });
-}
-
-// Fetch a googlevideo stream URL. These URLs are IP-bound to the requester,
-// and since the Worker made the Innertube call, the Worker's IP is authorized.
-async function fetchStream(url, ua) {
-  try {
-    const file = await fetch(url, {
-      headers: { "User-Agent": ua || "Mozilla/5.0" },
-      signal: AbortSignal.timeout(30000),
-    });
-    if (file.ok && file.body) return file;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
     if (request.method !== "POST")
       return new Response("Method not allowed", { status: 405, headers: CORS });
+
+    if (!env.RAPIDAPI_KEY) {
+      return jsonErr("Server not configured: missing RAPIDAPI_KEY secret.", 500);
+    }
 
     let url;
     try {
@@ -197,31 +59,65 @@ export default {
     const ytId = extractId(url || "");
     if (!ytId) return jsonErr("Invalid YouTube URL", 400);
 
-    // 1) Query all Innertube clients in parallel; collect every working format.
-    const results = await Promise.all(
-      INNERTUBE_CLIENTS.map(async (c) => {
-        const fmt = await innertubePlayer(c, ytId);
-        return fmt ? { ...fmt, ua: c.headers["User-Agent"] } : null;
-      }),
-    );
-    const formats = results.filter(Boolean).sort((a, b) => (b.height || 0) - (a.height || 0));
-
-    // 2) Try streaming each candidate. The stream fetch must use the SAME
-    //    user-agent family as the client that requested it.
-    for (const fmt of formats) {
-      const file = await fetchStream(fmt.url, fmt.ua);
-      if (file) return streamBack(file, ytId);
+    // Ask YT-API for download links. cgeo=US helps consistency of results.
+    let info;
+    try {
+      const r = await fetch(
+        `https://${RAPIDAPI_HOST}/dl?id=${ytId}&cgeo=US`,
+        {
+          headers: {
+            "x-rapidapi-key": env.RAPIDAPI_KEY,
+            "x-rapidapi-host": RAPIDAPI_HOST,
+          },
+          signal: AbortSignal.timeout(20000),
+        },
+      );
+      if (!r.ok) {
+        if (r.status === 429) return jsonErr("Download quota reached for this month.", 429);
+        return jsonErr(`Downloader API error (${r.status}).`);
+      }
+      info = await r.json();
+    } catch {
+      return jsonErr("Downloader API timed out. Try again.");
     }
 
-    // 3) Last resort: cobalt instances in parallel.
-    const cobaltUrls = (
-      await Promise.all(COBALT_SEEDS.map((i) => askCobalt(i, url)))
-    ).filter(Boolean);
-    for (const cu of cobaltUrls) {
-      const file = await fetchStream(cu);
-      if (file) return streamBack(file, ytId);
+    if (info.status && info.status !== "OK") {
+      return jsonErr(info.reason || "Video unavailable (private, deleted, or region-locked).");
     }
 
-    return jsonErr("All download sources are unavailable right now.");
+    // "formats" are combined audio+video streams, ready to save as-is.
+    // Prefer the highest resolution mp4.
+    const formats = (info.formats || [])
+      .filter((f) => f.url && (f.mimeType || "").includes("mp4"))
+      .sort((a, b) => (b.height || 0) - (a.height || 0));
+
+    if (!formats.length) {
+      return jsonErr("No downloadable format found for this video.");
+    }
+
+    // Try candidates in order until one streams.
+    for (const fmt of formats.slice(0, 3)) {
+      try {
+        const file = await fetch(fmt.url, {
+          headers: { "User-Agent": "Mozilla/5.0" },
+          signal: AbortSignal.timeout(30000),
+        });
+        if (file.ok && file.body) {
+          const headers = {
+            ...CORS,
+            "Content-Type": "video/mp4",
+            "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
+            "Cache-Control": "no-store",
+          };
+          const len = file.headers.get("content-length");
+          if (len) headers["Content-Length"] = len;
+          return new Response(file.body, { headers });
+        }
+      } catch {
+        /* next format */
+      }
+    }
+
+    return jsonErr("Got download links but none would stream. Try again in a minute.");
   },
 };
