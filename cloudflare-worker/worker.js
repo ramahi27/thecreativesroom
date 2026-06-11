@@ -1,6 +1,11 @@
-// YouTube download proxy — RapidAPI edition.
-// Uses combined audio+video streams only (720p max with audio).
-// 1080p+audio requires server-side ffmpeg merging which Workers can't do.
+// YouTube download proxy.
+// Primary: yt-dlp server on Railway — returns 1080p with merged audio.
+// Fallback: RapidAPI YT-API — returns 720p with audio.
+//
+// Required Worker secrets (Cloudflare dashboard → Worker → Settings → Variables):
+//   YTDLP_URL    — your Railway server URL e.g. https://your-app.up.railway.app
+//   YTDLP_SECRET — matches YTD_SECRET on the Railway server
+//   RAPIDAPI_KEY — your RapidAPI key (fallback)
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -30,14 +35,68 @@ function jsonErr(msg, status = 502) {
   });
 }
 
+// ── Primary: yt-dlp server (1080p + audio) ───────────────────────────────────
+async function tryYtdlp(ytdlpUrl, secret, url) {
+  try {
+    const r = await fetch(`${ytdlpUrl}/download`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Secret": secret || "",
+      },
+      body: JSON.stringify({ url }),
+      signal: AbortSignal.timeout(90000), // yt-dlp needs up to 90s for large videos
+    });
+    if (r.ok && r.body) return r;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ── Fallback: RapidAPI (720p + audio) ────────────────────────────────────────
+async function tryRapidApi(apiKey, url, ytId) {
+  try {
+    const r = await fetch(`https://${RAPIDAPI_HOST}/dl?id=${ytId}&cgeo=US`, {
+      headers: {
+        "x-rapidapi-key": apiKey,
+        "x-rapidapi-host": RAPIDAPI_HOST,
+      },
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!r.ok) return null;
+    const info = await r.json();
+    if (info.status && info.status !== "OK") return null;
+
+    const formats = (info.formats || [])
+      .filter((f) => f.url && (f.mimeType || "").includes("mp4"))
+      .sort((a, b) => {
+        const aIs720 = a.itag == 22 || a.qualityLabel === "720p" ? 1 : 0;
+        const bIs720 = b.itag == 22 || b.qualityLabel === "720p" ? 1 : 0;
+        if (bIs720 !== aIs720) return bIs720 - aIs720;
+        return (b.height || 0) - (a.height || 0);
+      });
+
+    for (const fmt of formats.slice(0, 3)) {
+      try {
+        const file = await fetch(fmt.url, {
+          headers: { "User-Agent": "Mozilla/5.0" },
+          signal: AbortSignal.timeout(30000),
+        });
+        if (file.ok && file.body) return file;
+      } catch { /* next */ }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
     if (request.method !== "POST")
       return new Response("Method not allowed", { status: 405, headers: CORS });
-
-    if (!env.RAPIDAPI_KEY)
-      return jsonErr("Server not configured: missing RAPIDAPI_KEY secret.", 500);
 
     let url;
     try {
@@ -49,62 +108,38 @@ export default {
     const ytId = extractId(url || "");
     if (!ytId) return jsonErr("Invalid YouTube URL", 400);
 
-    let info;
-    try {
-      const r = await fetch(`https://${RAPIDAPI_HOST}/dl?id=${ytId}&cgeo=US`, {
-        headers: {
-          "x-rapidapi-key": env.RAPIDAPI_KEY,
-          "x-rapidapi-host": RAPIDAPI_HOST,
-        },
-        signal: AbortSignal.timeout(20000),
-      });
-      if (!r.ok) {
-        if (r.status === 429) return jsonErr("Download quota reached for this month.", 429);
-        return jsonErr(`Downloader API error (${r.status}).`);
+    // 1) Try yt-dlp server first (1080p + audio)
+    if (env.YTDLP_URL) {
+      const res = await tryYtdlp(env.YTDLP_URL, env.YTDLP_SECRET || "", url);
+      if (res) {
+        const headers = {
+          ...CORS,
+          "Content-Type": "video/mp4",
+          "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
+          "Cache-Control": "no-store",
+        };
+        const len = res.headers.get("content-length");
+        if (len) headers["Content-Length"] = len;
+        return new Response(res.body, { headers });
       }
-      info = await r.json();
-    } catch {
-      return jsonErr("Downloader API timed out. Try again.");
     }
 
-    if (info.status && info.status !== "OK")
-      return jsonErr(info.reason || "Video unavailable (private, deleted, or region-locked).");
-
-    // Combined audio+video only (itag 22 = 720p, itag 18 = 360p).
-    // Sort so 720p (itag 22) comes first, then by height descending.
-    const formats = (info.formats || [])
-      .filter((f) => f.url && (f.mimeType || "").includes("mp4"))
-      .sort((a, b) => {
-        // Explicit 720p first
-        const aIs720 = a.itag == 22 || a.qualityLabel === "720p" ? 1 : 0;
-        const bIs720 = b.itag == 22 || b.qualityLabel === "720p" ? 1 : 0;
-        if (bIs720 !== aIs720) return bIs720 - aIs720;
-        return (b.height || 0) - (a.height || 0);
-      });
-
-    if (!formats.length)
-      return jsonErr("No downloadable format found for this video.");
-
-    for (const fmt of formats.slice(0, 3)) {
-      try {
-        const file = await fetch(fmt.url, {
-          headers: { "User-Agent": "Mozilla/5.0" },
-          signal: AbortSignal.timeout(30000),
-        });
-        if (file.ok && file.body) {
-          const headers = {
-            ...CORS,
-            "Content-Type": "video/mp4",
-            "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
-            "Cache-Control": "no-store",
-          };
-          const len = file.headers.get("content-length");
-          if (len) headers["Content-Length"] = len;
-          return new Response(file.body, { headers });
-        }
-      } catch { /* next format */ }
+    // 2) Fallback: RapidAPI (720p + audio)
+    if (env.RAPIDAPI_KEY) {
+      const res = await tryRapidApi(env.RAPIDAPI_KEY, url, ytId);
+      if (res) {
+        const headers = {
+          ...CORS,
+          "Content-Type": "video/mp4",
+          "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
+          "Cache-Control": "no-store",
+        };
+        const len = res.headers.get("content-length");
+        if (len) headers["Content-Length"] = len;
+        return new Response(res.body, { headers });
+      }
     }
 
-    return jsonErr("Got download links but none would stream. Try again in a minute.");
+    return jsonErr("All download sources are unavailable right now.");
   },
 };
