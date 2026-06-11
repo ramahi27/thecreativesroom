@@ -126,21 +126,19 @@ BEGIN
 END;
 $$;
 
--- ── 6. Block self-upgrade: users cannot write the plan column ─────
--- The existing UPDATE policy lets users edit their own profile row,
--- which includes the `plan` column — meaning any user could set
--- plan = 'paid' for free. Fix: revoke UPDATE entirely from
--- authenticated, then re-grant only the safe editable columns.
--- The `plan` column is written exclusively by the Stripe webhook
--- edge function which uses the service_role key (bypasses RLS).
-
+-- ── 6. Block self-upgrade: users cannot write profiles at all ─────
+-- Revoke UPDATE entirely from client roles and grant NO update columns.
+-- Profile edits go exclusively through the update_my_profile()
+-- SECURITY DEFINER function (defined in a later migration), which writes
+-- only safe columns. The plan column is written only by the Stripe
+-- webhook via service_role. With no UPDATE grant and no UPDATE policy,
+-- a self-upgrade is impossible.
+REVOKE UPDATE ON public.profiles FROM PUBLIC;
 REVOKE UPDATE ON public.profiles FROM authenticated;
-GRANT UPDATE (username, bio, avatar_url, submissions_public)
-  ON public.profiles TO authenticated;
+REVOKE UPDATE ON public.profiles FROM anon;
 
--- Also lock down SELECT so Stripe IDs are never readable if columns
--- are ever re-added accidentally.
+-- SELECT: plan is intentionally excluded — read it via get_my_plan().
 REVOKE SELECT ON public.profiles FROM anon, authenticated;
-GRANT SELECT (user_id, username, bio, avatar_url, created_at, updated_at, submissions_public, plan)
+GRANT SELECT (user_id, username, bio, avatar_url, created_at, updated_at, submissions_public)
   ON public.profiles TO anon, authenticated;
 GRANT ALL ON public.profiles TO service_role;

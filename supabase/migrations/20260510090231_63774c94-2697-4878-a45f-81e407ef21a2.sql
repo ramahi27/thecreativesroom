@@ -1,11 +1,17 @@
 
--- Restrict profiles SELECT to authenticated; anon should use get_profile_by_username RPC
+-- Profiles SELECT: own row always, other rows only when public.
 DROP POLICY IF EXISTS "Anyone can view profiles" ON public.profiles;
-CREATE POLICY "Authenticated can view profiles"
-ON public.profiles
-FOR SELECT
-TO authenticated
-USING (true);
+DROP POLICY IF EXISTS "Authenticated can view profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Users read own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Public profiles readable" ON public.profiles;
+
+CREATE POLICY "Users read own profile"
+ON public.profiles FOR SELECT TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Public profiles readable"
+ON public.profiles FOR SELECT TO anon, authenticated
+USING (submissions_public = true);
 
 -- Restrict folder_follows SELECT to authenticated to avoid leaking follower UUIDs to anon
 DROP POLICY IF EXISTS "Anyone can view follows" ON public.folder_follows;

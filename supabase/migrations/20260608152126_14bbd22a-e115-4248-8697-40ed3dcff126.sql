@@ -1,7 +1,10 @@
 
--- 1) Restrict access to sensitive Stripe columns on profiles via column-level privileges
+-- 1) Restrict profiles column access. The plan column is intentionally
+-- excluded from the client grant — callers read their own plan via the
+-- get_my_plan() SECURITY DEFINER function, so plan is never exposed by
+-- querying another user's public profile row.
 REVOKE SELECT ON public.profiles FROM anon, authenticated;
-GRANT SELECT (user_id, username, bio, avatar_url, created_at, updated_at, submissions_public, plan)
+GRANT SELECT (user_id, username, bio, avatar_url, created_at, updated_at, submissions_public)
   ON public.profiles TO anon, authenticated;
 GRANT ALL ON public.profiles TO service_role;
 

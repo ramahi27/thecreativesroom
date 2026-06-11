@@ -83,6 +83,7 @@ CREATE POLICY "Public profiles readable" ON public.profiles
   FOR SELECT TO anon, authenticated
   USING (submissions_public = true);
 
+-- plan is intentionally excluded — callers read their own via get_my_plan().
 REVOKE SELECT ON public.profiles FROM anon, authenticated;
-GRANT SELECT (user_id, username, bio, avatar_url, created_at, updated_at, submissions_public, plan)
+GRANT SELECT (user_id, username, bio, avatar_url, created_at, updated_at, submissions_public)
   ON public.profiles TO anon, authenticated;
