@@ -100,12 +100,12 @@ const Index = () => {
       return;
     }
     (async () => {
-      const [{ data: profileData }, { data: usageData }, { data: adminRow }] = await Promise.all([
-        supabase.from("profiles").select("plan").eq("user_id", user.id).maybeSingle(),
+      const [{ data: planData }, { data: usageData }, { data: adminRow }] = await Promise.all([
+        supabase.rpc("get_my_plan" as any),
         supabase.from("brief_usages").select("count").eq("user_id", user.id).eq("usage_date", today).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", user.id).eq("role", "admin").maybeSingle(),
       ]);
-      const plan = adminRow ? "admin" : ((profileData?.plan as string) || "free");
+      const plan = adminRow ? "admin" : ((planData as string) || "free");
       const limit = (plan === "paid" || plan === "admin") ? 50 : 3;
       setBriefUsage({ used: usageData?.count ?? 0, limit, plan });
     })();

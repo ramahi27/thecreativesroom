@@ -99,16 +99,17 @@ const Users = () => {
       setLoading(true);
       setFetchError(null);
 
-      // Build the overview entirely from tables the admin can already read,
-      // so it doesn't depend on a server-side function.
-      const [profilesRes, rolesRes, refsRes, viewsRes] = await Promise.all([
-        supabase.from("profiles").select("user_id, username, created_at, plan").limit(500),
+      // plan is not client-readable on profiles (column grant excludes it);
+      // admins fetch it via the guarded admin_list_user_plans RPC.
+      const [profilesRes, rolesRes, refsRes, viewsRes, plansRes] = await Promise.all([
+        supabase.from("profiles").select("user_id, username, created_at").limit(500),
         supabase.from("user_roles").select("user_id").eq("role", "admin").limit(500),
         supabase.from("references").select("created_by, approved_by").eq("published", true).limit(5000),
         supabase.from("page_views").select("user_id, duration_seconds").not("user_id", "is", null).limit(10000),
+        supabase.rpc("admin_list_user_plans" as any),
       ]);
 
-      const firstError = profilesRes.error || rolesRes.error || refsRes.error || viewsRes.error;
+      const firstError = profilesRes.error || rolesRes.error || refsRes.error || viewsRes.error || plansRes.error;
       if (firstError) {
         console.error(firstError);
         setFetchError(firstError.message);
@@ -118,6 +119,9 @@ const Users = () => {
       }
 
       const adminIds = new Set((rolesRes.data || []).map((r) => r.user_id));
+
+      const planBy = new Map<string, Plan>();
+      for (const p of (plansRes.data as any[]) || []) planBy.set(p.user_id, p.plan as Plan);
 
       const addedBy = new Map<string, number>();
       const approvedBy = new Map<string, number>();
@@ -137,7 +141,7 @@ const Users = () => {
           username: p.username,
           created_at: p.created_at,
           is_admin: adminIds.has(p.user_id),
-          plan: ((p as any).plan as Plan) || "free",
+          plan: planBy.get(p.user_id) || "free",
           references_added: addedBy.get(p.user_id) || 0,
           references_approved: approvedBy.get(p.user_id) || 0,
           time_spent_seconds: timeBy.get(p.user_id) || 0,
