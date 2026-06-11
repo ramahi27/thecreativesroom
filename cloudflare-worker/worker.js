@@ -128,6 +128,12 @@ export default {
     if (request.method !== "POST")
       return new Response("Method not allowed", { status: 405, headers: CORS });
 
+    // Fail closed: without Supabase credentials nobody can be verified,
+    // so nobody gets through.
+    if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
+      return jsonErr("Service misconfigured", 500);
+    }
+
     const authHeader = request.headers.get("Authorization") || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) return jsonErr("Unauthorized", 401);
@@ -144,19 +150,15 @@ export default {
 
     // Run auth + yt-dlp in parallel to stay within the 30s wall-clock limit.
     const [authResult, ytdlpRes] = await Promise.all([
-      env.SUPABASE_URL && env.SUPABASE_ANON_KEY
-        ? verifyToken(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token)
-        : Promise.resolve({ valid: true, userId: null }),
+      verifyToken(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token),
       env.YTDLP_URL ? tryYtdlp(env.YTDLP_URL, env.YTDLP_SECRET || "", url) : Promise.resolve(null),
     ]);
 
-    if (!authResult.valid) return jsonErr("Unauthorized", 401);
+    if (!authResult.valid || !authResult.userId) return jsonErr("Unauthorized", 401);
 
-    // Check Pro subscription (runs after auth resolves, yt-dlp already ran in parallel)
-    if (env.SUPABASE_URL && env.SUPABASE_ANON_KEY && authResult.userId) {
-      const isPro = await checkProAccess(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token, authResult.userId);
-      if (!isPro) return jsonErr("Pro subscription required to download videos.", 403);
-    }
+    // Pro subscription is mandatory (paid plan or admin role).
+    const isPro = await checkProAccess(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token, authResult.userId);
+    if (!isPro) return jsonErr("Pro subscription required to download videos.", 403);
 
     if (ytdlpRes) {
       const headers = {

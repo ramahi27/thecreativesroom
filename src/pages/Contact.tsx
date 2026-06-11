@@ -30,12 +30,26 @@ const Contact = () => {
     e.preventDefault();
     if (!message.trim()) return;
     setLoading(true);
-    const { error } = await supabase.from("feedback").insert({
-      type,
-      message: message.trim(),
-      email: email.trim() || null,
-      user_id: user?.id ?? null,
-    });
+    // RLS: logged-in users may only store their own auth email; anonymous
+    // submissions store no email — the reply-to address rides in the message.
+    const replyTo = email.trim();
+    const { error } = await supabase.from("feedback").insert(
+      user
+        ? {
+            type,
+            message: message.trim(),
+            email: user.email ?? null,
+            user_id: user.id,
+          }
+        : {
+            type,
+            message: replyTo
+              ? `${message.trim()}\n\n[Reply-to: ${replyTo}]`
+              : message.trim(),
+            email: null,
+            user_id: null,
+          }
+    );
     setLoading(false);
     if (error) {
       toast.error("Something went wrong. Please try again.");

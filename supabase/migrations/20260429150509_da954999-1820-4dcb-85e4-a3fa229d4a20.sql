@@ -14,10 +14,10 @@ STABLE SECURITY DEFINER
 SET search_path TO 'public'
 AS $function$
 BEGIN
-  -- Allow callers to query roles only for themselves, unless they are themselves an admin.
-  -- This prevents enumeration of admin accounts by arbitrary user IDs.
-  IF auth.uid() IS NOT NULL
-     AND _user_id <> auth.uid()
+  -- Callers may only query roles for themselves, unless they are an admin.
+  -- IS DISTINCT FROM ensures anonymous callers (auth.uid() IS NULL) cannot
+  -- enumerate admin accounts by probing arbitrary user IDs.
+  IF _user_id IS DISTINCT FROM auth.uid()
      AND NOT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role = 'admin')
   THEN
     RETURN false;

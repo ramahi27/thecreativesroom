@@ -64,7 +64,7 @@ END $$;
 CREATE POLICY "submit feedback" ON public.feedback
   FOR INSERT WITH CHECK (
     (auth.uid() IS NOT NULL
-      AND (user_id IS NULL OR user_id = auth.uid())
+      AND user_id = auth.uid()
       AND (email IS NULL OR email = auth.email()))
     OR
     (auth.uid() IS NULL AND user_id IS NULL AND email IS NULL)

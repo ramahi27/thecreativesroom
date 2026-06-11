@@ -190,10 +190,9 @@ const ProfileSettings = () => {
     if (!user) return;
     setSavingVisibility(true);
     setSubsPublic(v);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ submissions_public: v })
-      .eq("user_id", user.id);
+    const { error } = await supabase.rpc("update_my_profile", {
+      p_submissions_public: v,
+    });
     setSavingVisibility(false);
     if (error) { toast.error(error.message); setSubsPublic(!v); }
     else toast.success(v ? "Submissions are now public" : "Submissions are now private");

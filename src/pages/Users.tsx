@@ -72,10 +72,10 @@ const Users = () => {
     if (row.is_admin) return;
     const next: Plan = row.plan === "paid" ? "free" : "paid";
     setTogglingId(row.user_id);
-    const { error } = await supabase
-      .from("profiles")
-      .update({ plan: next })
-      .eq("user_id", row.user_id);
+    const { error } = await supabase.rpc("admin_set_plan" as any, {
+      p_user_id: row.user_id,
+      p_plan: next,
+    });
     setTogglingId(null);
     if (error) { toast.error(error.message); return; }
     setRows((prev) => prev.map((r) => r.user_id === row.user_id ? { ...r, plan: next } : r));

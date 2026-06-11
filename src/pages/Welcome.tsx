@@ -50,12 +50,11 @@ const Welcome = () => {
       setSaving(false);
       return toast.error("That username is taken.");
     }
-    const { error } = await supabase
-      .from("profiles")
-      .upsert(
-        { user_id: user.id, username: v.value },
-        { onConflict: "user_id" },
-      );
+    // SECURITY DEFINER RPC — creates the profile row if missing, otherwise
+    // updates safe columns only. Direct table UPDATE is revoked by RLS hardening.
+    const { error } = await supabase.rpc("update_my_profile", {
+      p_username: v.value,
+    });
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Welcome!");

@@ -43,7 +43,15 @@ ALTER TABLE public.folder_items ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users view own folder items" ON public.folder_items
   FOR SELECT TO authenticated USING (auth.uid() = user_id);
+-- Insert requires both owning the row AND owning the target folder,
+-- otherwise users could inject items into other users' folders.
 CREATE POLICY "Users insert own folder items" ON public.folder_items
-  FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+  FOR INSERT TO authenticated WITH CHECK (
+    auth.uid() = user_id
+    AND EXISTS (
+      SELECT 1 FROM public.folders f
+      WHERE f.id = folder_items.folder_id AND f.user_id = auth.uid()
+    )
+  );
 CREATE POLICY "Users delete own folder items" ON public.folder_items
   FOR DELETE TO authenticated USING (auth.uid() = user_id);

@@ -15,17 +15,25 @@ CREATE TABLE public.profiles (
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Anyone can view profiles"
-  ON public.profiles FOR SELECT
-  USING (true);
+-- Own row always readable; other profiles only when public.
+CREATE POLICY "Users read own profile"
+  ON public.profiles FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Public profiles readable"
+  ON public.profiles FOR SELECT TO anon, authenticated
+  USING (submissions_public = true);
 
 CREATE POLICY "Users can insert own profile"
   ON public.profiles FOR INSERT TO authenticated
   WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update own profile"
-  ON public.profiles FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id);
+-- No UPDATE policy: profile edits go through the SECURITY DEFINER
+-- function update_my_profile() which writes only safe columns
+-- (username, bio, avatar_url, submissions_public) scoped to auth.uid().
+-- The plan column is written exclusively by the Stripe webhook via
+-- service_role. Direct UPDATE is revoked from client roles.
+REVOKE UPDATE ON public.profiles FROM PUBLIC, authenticated, anon;
 
 CREATE POLICY "Users can delete own profile"
   ON public.profiles FOR DELETE TO authenticated
