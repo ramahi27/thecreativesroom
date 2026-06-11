@@ -95,28 +95,24 @@ async function verifyToken(supabaseUrl, anonKey, token) {
   }
 }
 
-// Returns true if user has paid plan OR admin role
-async function checkProAccess(supabaseUrl, anonKey, token, userId) {
+// Returns true if the token belongs to a user with paid plan OR admin role.
+// Uses the check_pro_access() SECURITY DEFINER RPC so no column-level
+// grants are needed on profiles and no second table query is required.
+async function checkProAccess(supabaseUrl, anonKey, token) {
   try {
-    const [profileRes, roleRes] = await Promise.all([
-      fetch(`${supabaseUrl}/rest/v1/profiles?select=plan&user_id=eq.${userId}&limit=1`, {
-        headers: { "Authorization": `Bearer ${token}`, "apikey": anonKey },
-        signal: AbortSignal.timeout(4000),
-      }),
-      fetch(`${supabaseUrl}/rest/v1/user_roles?select=role&user_id=eq.${userId}&role=eq.admin&limit=1`, {
-        headers: { "Authorization": `Bearer ${token}`, "apikey": anonKey },
-        signal: AbortSignal.timeout(4000),
-      }),
-    ]);
-    if (profileRes.ok) {
-      const rows = await profileRes.json();
-      if (rows[0]?.plan === "paid") return true;
-    }
-    if (roleRes.ok) {
-      const roles = await roleRes.json();
-      if (roles.length > 0) return true;
-    }
-    return false;
+    const r = await fetch(`${supabaseUrl}/rest/v1/rpc/check_pro_access`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+        "apikey": anonKey,
+      },
+      body: "{}",
+      signal: AbortSignal.timeout(4000),
+    });
+    if (!r.ok) return false;
+    const result = await r.json();
+    return result === true;
   } catch {
     return false;
   }
@@ -157,7 +153,7 @@ export default {
     if (!authResult.valid || !authResult.userId) return jsonErr("Unauthorized", 401);
 
     // Pro subscription is mandatory (paid plan or admin role).
-    const isPro = await checkProAccess(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token, authResult.userId);
+    const isPro = await checkProAccess(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token);
     if (!isPro) return jsonErr("Pro subscription required to download videos.", 403);
 
     if (ytdlpRes) {

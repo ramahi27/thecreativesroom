@@ -43,12 +43,9 @@ export function useSubscription() {
       return;
     }
     supabase
-      .from("profiles")
-      .select("plan")
-      .eq("user_id", user.id)
-      .single()
+      .rpc("get_my_plan" as any)
       .then(({ data }) => {
-        const plan = ((data as any)?.plan as Plan) || "free";
+        const plan = (data as Plan) || "free";
         _cache = { uid: user.id, plan };
         const s = { plan, isPro: plan === "paid", loading: false };
         setState(s);
