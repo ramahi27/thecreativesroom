@@ -3,14 +3,16 @@
 // Fallback: RapidAPI YT-API — returns 720p with audio.
 //
 // Required Worker secrets (Cloudflare dashboard → Worker → Settings → Variables):
-//   YTDLP_URL    — your Railway server URL e.g. https://your-app.up.railway.app
-//   YTDLP_SECRET — matches YTD_SECRET on the Railway server
-//   RAPIDAPI_KEY — your RapidAPI key (fallback)
+//   YTDLP_URL       — your Railway server URL e.g. https://your-app.up.railway.app
+//   YTDLP_SECRET    — matches YTD_SECRET on the Railway server
+//   RAPIDAPI_KEY    — your RapidAPI key (fallback)
+//   SUPABASE_URL    — e.g. https://vaogvackqxfhureqbprw.supabase.co
+//   SUPABASE_ANON_KEY — your Supabase anon/public key
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
 
 const RAPIDAPI_HOST = "yt-api.p.rapidapi.com";
@@ -92,11 +94,37 @@ async function tryRapidApi(apiKey, url, ytId) {
   }
 }
 
+// ── Auth: verify Supabase JWT ─────────────────────────────────────────────────
+async function verifySupabaseToken(supabaseUrl, anonKey, token) {
+  try {
+    const r = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "apikey": anonKey,
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { headers: CORS });
     if (request.method !== "POST")
       return new Response("Method not allowed", { status: 405, headers: CORS });
+
+    // Require a valid Supabase session token
+    const authHeader = request.headers.get("Authorization") || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    if (!token) return jsonErr("Unauthorized", 401);
+
+    if (env.SUPABASE_URL && env.SUPABASE_ANON_KEY) {
+      const valid = await verifySupabaseToken(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token);
+      if (!valid) return jsonErr("Unauthorized", 401);
+    }
 
     let url;
     try {

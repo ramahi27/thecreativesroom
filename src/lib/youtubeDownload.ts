@@ -2,6 +2,8 @@
 // The Worker fetches the video server-side (no CORS/merge problems) and streams
 // a finished MP4 back with Content-Disposition: attachment.
 
+import { supabase } from "@/integrations/supabase/client";
+
 const DOWNLOAD_PROXY = "https://tcr-download.r-laith27.workers.dev/";
 
 export function extractYouTubeId(url: string): string | null {
@@ -23,9 +25,17 @@ export async function downloadYouTubeVideo(
   onStatus: (s: string) => void = () => {},
 ): Promise<Blob> {
   onStatus("Fetching video…");
+
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
+  if (!token) throw new Error("You must be logged in to download videos.");
+
   const res = await fetch(DOWNLOAD_PROXY, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
     body: JSON.stringify({ url: sourceUrl }),
   });
 
