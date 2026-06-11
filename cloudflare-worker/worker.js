@@ -45,7 +45,7 @@ async function tryYtdlp(ytdlpUrl, secret, url) {
         "X-Secret": secret || "",
       },
       body: JSON.stringify({ url }),
-      signal: AbortSignal.timeout(90000), // yt-dlp needs up to 90s for large videos
+      signal: AbortSignal.timeout(25000), // must be < 30s (Cloudflare Worker free plan wall-clock limit)
     });
     if (r.ok && r.body) return r;
     return null;
