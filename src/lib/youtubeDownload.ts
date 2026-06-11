@@ -48,6 +48,6 @@ export async function downloadYouTubeVideo(
     throw new Error(msg);
   }
 
-  onStatus("Downloading…");
+  onStatus("Downloading… this may take a moment");
   return await res.blob();
 }
