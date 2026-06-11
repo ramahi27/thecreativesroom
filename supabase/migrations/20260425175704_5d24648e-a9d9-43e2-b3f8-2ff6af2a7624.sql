@@ -14,14 +14,24 @@ ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
 
 CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
 RETURNS BOOLEAN
-LANGUAGE SQL
+LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT EXISTS (
+BEGIN
+  -- IS DISTINCT FROM covers anonymous callers (auth.uid() IS NULL) too.
+  IF _user_id IS DISTINCT FROM auth.uid()
+     AND NOT EXISTS (
+       SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role = 'admin'
+     )
+  THEN
+    RETURN false;
+  END IF;
+  RETURN EXISTS (
     SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role
-  )
+  );
+END;
 $$;
 
 CREATE POLICY "Users can view their own roles"
