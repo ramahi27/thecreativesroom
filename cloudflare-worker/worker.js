@@ -1,15 +1,6 @@
 // YouTube download proxy — RapidAPI edition.
-// All free download paths (cobalt, Invidious, Piped, direct Innertube) are now
-// blocked by YouTube from datacenter IPs. This version uses a RapidAPI
-// YouTube downloader service, which maintains its own unblocked infrastructure.
-//
-// Setup:
-// 1. Sign up at https://rapidapi.com and subscribe to
-//    "YT-API" (https://rapidapi.com/ytjar/api/yt-api) — free tier available,
-//    paid from ~$10/mo for higher volume.
-// 2. In the Cloudflare dashboard: Worker → Settings → Variables and Secrets →
-//    Add → Type "Secret", name RAPIDAPI_KEY, paste your RapidAPI key.
-// 3. Deploy this code.
+// Uses combined audio+video streams only (720p max with audio).
+// 1080p+audio requires server-side ffmpeg merging which Workers can't do.
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -45,9 +36,8 @@ export default {
     if (request.method !== "POST")
       return new Response("Method not allowed", { status: 405, headers: CORS });
 
-    if (!env.RAPIDAPI_KEY) {
+    if (!env.RAPIDAPI_KEY)
       return jsonErr("Server not configured: missing RAPIDAPI_KEY secret.", 500);
-    }
 
     let url;
     try {
@@ -59,19 +49,15 @@ export default {
     const ytId = extractId(url || "");
     if (!ytId) return jsonErr("Invalid YouTube URL", 400);
 
-    // Ask YT-API for download links. cgeo=US helps consistency of results.
     let info;
     try {
-      const r = await fetch(
-        `https://${RAPIDAPI_HOST}/dl?id=${ytId}&cgeo=US`,
-        {
-          headers: {
-            "x-rapidapi-key": env.RAPIDAPI_KEY,
-            "x-rapidapi-host": RAPIDAPI_HOST,
-          },
-          signal: AbortSignal.timeout(20000),
+      const r = await fetch(`https://${RAPIDAPI_HOST}/dl?id=${ytId}&cgeo=US`, {
+        headers: {
+          "x-rapidapi-key": env.RAPIDAPI_KEY,
+          "x-rapidapi-host": RAPIDAPI_HOST,
         },
-      );
+        signal: AbortSignal.timeout(20000),
+      });
       if (!r.ok) {
         if (r.status === 429) return jsonErr("Download quota reached for this month.", 429);
         return jsonErr(`Downloader API error (${r.status}).`);
@@ -81,40 +67,25 @@ export default {
       return jsonErr("Downloader API timed out. Try again.");
     }
 
-    if (info.status && info.status !== "OK") {
+    if (info.status && info.status !== "OK")
       return jsonErr(info.reason || "Video unavailable (private, deleted, or region-locked).");
-    }
 
-    // Combined audio+video streams (itag 22 = 720p, itag 18 = 360p).
-    const combined = (info.formats || [])
+    // Combined audio+video only (itag 22 = 720p, itag 18 = 360p).
+    // Sort so 720p (itag 22) comes first, then by height descending.
+    const formats = (info.formats || [])
       .filter((f) => f.url && (f.mimeType || "").includes("mp4"))
-      .sort((a, b) => (b.height || 0) - (a.height || 0));
+      .sort((a, b) => {
+        // Explicit 720p first
+        const aIs720 = a.itag == 22 || a.qualityLabel === "720p" ? 1 : 0;
+        const bIs720 = b.itag == 22 || b.qualityLabel === "720p" ? 1 : 0;
+        if (bIs720 !== aIs720) return bIs720 - aIs720;
+        return (b.height || 0) - (a.height || 0);
+      });
 
-    // Adaptive video-only streams can go up to 1080p/4K.
-    // We prefer these when their height beats the best combined stream,
-    // since for visual reference work sharp picture matters more than audio.
-    const adaptive = (info.adaptiveFormats || [])
-      .filter((f) => f.url && (f.mimeType || "").includes("video/mp4") && !f.audioQuality)
-      .sort((a, b) => (b.height || 0) - (a.height || 0));
-
-    const bestCombinedHeight = combined[0]?.height || 0;
-    const bestAdaptiveHeight = adaptive[0]?.height || 0;
-
-    // Build candidate list: if adaptive offers meaningfully better resolution
-    // (≥1080p or at least 2× the combined height), put it first.
-    let formats;
-    if (bestAdaptiveHeight >= 1080 || bestAdaptiveHeight >= bestCombinedHeight * 1.4) {
-      formats = [...adaptive.slice(0, 2), ...combined.slice(0, 2)];
-    } else {
-      formats = [...combined.slice(0, 2), ...adaptive.slice(0, 2)];
-    }
-
-    if (!formats.length) {
+    if (!formats.length)
       return jsonErr("No downloadable format found for this video.");
-    }
 
-    // Try candidates in order until one streams.
-    for (const fmt of formats.slice(0, 4)) {
+    for (const fmt of formats.slice(0, 3)) {
       try {
         const file = await fetch(fmt.url, {
           headers: { "User-Agent": "Mozilla/5.0" },
@@ -131,9 +102,7 @@ export default {
           if (len) headers["Content-Length"] = len;
           return new Response(file.body, { headers });
         }
-      } catch {
-        /* next format */
-      }
+      } catch { /* next format */ }
     }
 
     return jsonErr("Got download links but none would stream. Try again in a minute.");
