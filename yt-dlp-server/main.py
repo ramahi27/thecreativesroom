@@ -1,4 +1,4 @@
-import os, re, subprocess
+import os, re, subprocess, tempfile
 from flask import Flask, request, Response, jsonify
 
 app = Flask(__name__)
@@ -26,62 +26,57 @@ def download():
     if not url or not valid_yt_url(url):
         return jsonify(error="Invalid YouTube URL"), 400
 
-    # Stream yt-dlp output directly to the HTTP response — no temp file,
-    # no waiting for full download. First bytes flow immediately, which
-    # keeps the Cloudflare Worker from timing out.
-    #
-    # Format priority:
-    #   22   = 720p H.264 + AAC combined (best single-stream quality)
-    #   18   = 360p H.264 + AAC combined (universal fallback)
-    #   best = whatever combined stream yt-dlp can find
-    #
-    # Combined streams don't need merging so -o - (stdout) works perfectly.
-    cmd = [
-        "yt-dlp",
-        "--no-playlist",
-        "-f", "22/18/best",
-        "--extractor-args", "youtube:player_client=ios,android,web",
-        "--user-agent", "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
-        "--no-part",
-        "--no-warnings",
-        "-o", "-",   # write to stdout
-        url,
-    ]
+    with tempfile.TemporaryDirectory() as tmpdir:
+        out_path = os.path.join(tmpdir, "video.mp4")
 
-    try:
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-    except Exception as e:
-        return jsonify(error=str(e)), 502
+        # Use combined audio+video formats only (no ffmpeg merge needed).
+        # itag 22 = 720p H.264+AAC, itag 18 = 360p H.264+AAC.
+        # Combined formats download as a single valid MP4 — fast and reliable.
+        cmd = [
+            "yt-dlp",
+            "--no-playlist",
+            "-f", "22/18/best[height<=720]",
+            "--extractor-args", "youtube:player_client=ios,android,web",
+            "--user-agent", "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
+            "--no-part",
+            "--no-warnings",
+            "-o", out_path,
+            url,
+        ]
 
-    def generate():
         try:
-            while True:
-                chunk = process.stdout.read(256 * 1024)  # 256 KB chunks
-                if not chunk:
-                    break
-                yield chunk
-        finally:
-            process.stdout.close()
-            process.wait()
-            if process.returncode and process.returncode != 0:
-                err = process.stderr.read().decode(errors="replace").strip().splitlines()
-                print(f"yt-dlp exit {process.returncode}: {err[-1] if err else 'no output'}", flush=True)
-            process.stderr.close()
+            result = subprocess.run(cmd, timeout=60, capture_output=True, text=True)
+        except subprocess.TimeoutExpired:
+            print("yt-dlp timed out", flush=True)
+            return jsonify(error="Download timed out"), 502
 
-    return Response(
-        generate(),
-        status=200,
-        headers={
-            "Content-Type": "video/mp4",
-            "Content-Disposition": "attachment; filename=\"video.mp4\"",
-            "Cache-Control": "no-store",
-            "X-Accel-Buffering": "no",
-        },
-    )
+        if result.stderr.strip():
+            print(f"yt-dlp stderr: {result.stderr.strip()}", flush=True)
+
+        if result.returncode != 0 or not os.path.exists(out_path):
+            lines = result.stderr.strip().splitlines()
+            err = lines[-1] if lines else "yt-dlp failed"
+            print(f"yt-dlp failed ({result.returncode}): {err}", flush=True)
+            return jsonify(error=err), 502
+
+        file_size = os.path.getsize(out_path)
+        print(f"Download OK: {file_size} bytes", flush=True)
+
+        def generate():
+            with open(out_path, "rb") as f:
+                while chunk := f.read(256 * 1024):
+                    yield chunk
+
+        return Response(
+            generate(),
+            status=200,
+            headers={
+                "Content-Type": "video/mp4",
+                "Content-Disposition": 'attachment; filename="video.mp4"',
+                "Content-Length": str(file_size),
+                "Cache-Control": "no-store",
+            },
+        )
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
