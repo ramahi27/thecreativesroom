@@ -125,10 +125,9 @@ export function CollectionProfileHeader({ profile, loading, onSaved }: Props) {
               checked={profile.submissions_public !== false}
               onCheckedChange={async (v) => {
                 if (!user) return;
-                const { error } = await supabase
-                  .from("profiles")
-                  .update({ submissions_public: v })
-                  .eq("user_id", user.id);
+                const { error } = await supabase.rpc("update_my_profile", {
+                  p_submissions_public: v,
+                });
                 if (error) toast.error(error.message);
                 else {
                   toast.success(v ? "Submissions are public" : "Submissions are private");

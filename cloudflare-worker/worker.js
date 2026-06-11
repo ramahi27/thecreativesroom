@@ -1,13 +1,7 @@
-// YouTube download proxy.
-// Primary: yt-dlp server on Railway — returns 1080p with merged audio.
-// Fallback: RapidAPI YT-API — returns 720p with audio.
-//
-// Required Worker secrets (Cloudflare dashboard → Worker → Settings → Variables):
-//   YTDLP_URL       — your Railway server URL e.g. https://your-app.up.railway.app
-//   YTDLP_SECRET    — matches YTD_SECRET on the Railway server
-//   RAPIDAPI_KEY    — your RapidAPI key (fallback)
-//   SUPABASE_URL    — e.g. https://vaogvackqxfhureqbprw.supabase.co
-//   SUPABASE_ANON_KEY — your Supabase anon/public key
+// YouTube download proxy — Pro users only.
+// Required Worker secrets:
+//   YTDLP_URL, YTDLP_SECRET, RAPIDAPI_KEY
+//   SUPABASE_URL, SUPABASE_ANON_KEY
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -37,17 +31,13 @@ function jsonErr(msg, status = 502) {
   });
 }
 
-// ── Primary: yt-dlp server (1080p + audio) ───────────────────────────────────
 async function tryYtdlp(ytdlpUrl, secret, url) {
   try {
     const r = await fetch(`${ytdlpUrl}/download`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Secret": secret || "",
-      },
+      headers: { "Content-Type": "application/json", "X-Secret": secret || "" },
       body: JSON.stringify({ url }),
-      signal: AbortSignal.timeout(25000), // must be < 30s (Cloudflare Worker free plan wall-clock limit)
+      signal: AbortSignal.timeout(25000),
     });
     if (r.ok && r.body) return r;
     return null;
@@ -56,14 +46,10 @@ async function tryYtdlp(ytdlpUrl, secret, url) {
   }
 }
 
-// ── Fallback: RapidAPI (720p + audio) ────────────────────────────────────────
 async function tryRapidApi(apiKey, url, ytId) {
   try {
     const r = await fetch(`https://${RAPIDAPI_HOST}/dl?id=${ytId}&cgeo=US`, {
-      headers: {
-        "x-rapidapi-key": apiKey,
-        "x-rapidapi-host": RAPIDAPI_HOST,
-      },
+      headers: { "x-rapidapi-key": apiKey, "x-rapidapi-host": RAPIDAPI_HOST },
       signal: AbortSignal.timeout(20000),
     });
     if (!r.ok) return null;
@@ -94,17 +80,43 @@ async function tryRapidApi(apiKey, url, ytId) {
   }
 }
 
-// ── Auth: verify Supabase JWT ─────────────────────────────────────────────────
-async function verifySupabaseToken(supabaseUrl, anonKey, token) {
+// Returns { valid: bool, userId: string|null }
+async function verifyToken(supabaseUrl, anonKey, token) {
   try {
     const r = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        "Authorization": `Bearer ${token}`,
-        "apikey": anonKey,
-      },
+      headers: { "Authorization": `Bearer ${token}`, "apikey": anonKey },
       signal: AbortSignal.timeout(5000),
     });
-    return r.ok;
+    if (!r.ok) return { valid: false, userId: null };
+    const u = await r.json();
+    return { valid: true, userId: u.id };
+  } catch {
+    return { valid: false, userId: null };
+  }
+}
+
+// Returns true if user has paid plan OR admin role
+async function checkProAccess(supabaseUrl, anonKey, token, userId) {
+  try {
+    const [profileRes, roleRes] = await Promise.all([
+      fetch(`${supabaseUrl}/rest/v1/profiles?select=plan&user_id=eq.${userId}&limit=1`, {
+        headers: { "Authorization": `Bearer ${token}`, "apikey": anonKey },
+        signal: AbortSignal.timeout(4000),
+      }),
+      fetch(`${supabaseUrl}/rest/v1/user_roles?select=role&user_id=eq.${userId}&role=eq.admin&limit=1`, {
+        headers: { "Authorization": `Bearer ${token}`, "apikey": anonKey },
+        signal: AbortSignal.timeout(4000),
+      }),
+    ]);
+    if (profileRes.ok) {
+      const rows = await profileRes.json();
+      if (rows[0]?.plan === "paid") return true;
+    }
+    if (roleRes.ok) {
+      const roles = await roleRes.json();
+      if (roles.length > 0) return true;
+    }
+    return false;
   } catch {
     return false;
   }
@@ -116,7 +128,6 @@ export default {
     if (request.method !== "POST")
       return new Response("Method not allowed", { status: 405, headers: CORS });
 
-    // Require a valid Supabase session token
     const authHeader = request.headers.get("Authorization") || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) return jsonErr("Unauthorized", 401);
@@ -131,36 +142,34 @@ export default {
     const ytId = extractId(url || "");
     if (!ytId) return jsonErr("Invalid YouTube URL", 400);
 
-    // Run auth and yt-dlp in parallel to stay within the 30s wall-clock limit.
-    // If auth fails we abort; if yt-dlp wins we still check auth before returning.
-    // 1) Try yt-dlp server first (720p + audio) while verifying auth simultaneously
-    if (env.YTDLP_URL) {
-      const [valid, res] = await Promise.all([
-        env.SUPABASE_URL && env.SUPABASE_ANON_KEY
-          ? verifySupabaseToken(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token)
-          : Promise.resolve(true),
-        tryYtdlp(env.YTDLP_URL, env.YTDLP_SECRET || "", url),
-      ]);
-      if (!valid) return jsonErr("Unauthorized", 401);
-      if (res) {
-        const headers = {
-          ...CORS,
-          "Content-Type": "video/mp4",
-          "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
-          "Cache-Control": "no-store",
-        };
-        const len = res.headers.get("content-length");
-        if (len) headers["Content-Length"] = len;
-        return new Response(res.body, { headers });
-      }
+    // Run auth + yt-dlp in parallel to stay within the 30s wall-clock limit.
+    const [authResult, ytdlpRes] = await Promise.all([
+      env.SUPABASE_URL && env.SUPABASE_ANON_KEY
+        ? verifyToken(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token)
+        : Promise.resolve({ valid: true, userId: null }),
+      env.YTDLP_URL ? tryYtdlp(env.YTDLP_URL, env.YTDLP_SECRET || "", url) : Promise.resolve(null),
+    ]);
+
+    if (!authResult.valid) return jsonErr("Unauthorized", 401);
+
+    // Check Pro subscription (runs after auth resolves, yt-dlp already ran in parallel)
+    if (env.SUPABASE_URL && env.SUPABASE_ANON_KEY && authResult.userId) {
+      const isPro = await checkProAccess(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token, authResult.userId);
+      if (!isPro) return jsonErr("Pro subscription required to download videos.", 403);
     }
 
-    // 2) Fallback: RapidAPI (720p + audio)
-    // If we skipped yt-dlp (no YTDLP_URL), verify auth now before RapidAPI.
-    if (!env.YTDLP_URL && env.SUPABASE_URL && env.SUPABASE_ANON_KEY) {
-      const valid = await verifySupabaseToken(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token);
-      if (!valid) return jsonErr("Unauthorized", 401);
+    if (ytdlpRes) {
+      const headers = {
+        ...CORS,
+        "Content-Type": "video/mp4",
+        "Content-Disposition": `attachment; filename="${ytId}.mp4"`,
+        "Cache-Control": "no-store",
+      };
+      const len = ytdlpRes.headers.get("content-length");
+      if (len) headers["Content-Length"] = len;
+      return new Response(ytdlpRes.body, { headers });
     }
+
     if (env.RAPIDAPI_KEY) {
       const res = await tryRapidApi(env.RAPIDAPI_KEY, url, ytId);
       if (res) {

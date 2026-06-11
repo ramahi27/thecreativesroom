@@ -143,15 +143,11 @@ const ProfileSettings = () => {
         return toast.error("That username is taken.");
       }
     }
-    const { error } = await supabase.from("profiles").upsert(
-      {
-        user_id: user.id,
-        username: v.value,
-        bio: bio.trim() || null,
-        avatar_url: avatarUrl || null,
-      },
-      { onConflict: "user_id" },
-    );
+    const { error } = await supabase.rpc("update_my_profile", {
+      p_username: v.value,
+      p_bio: bio.trim() || null,
+      p_avatar_url: avatarUrl || null,
+    });
     setSavingProfile(false);
     if (error) return toast.error(error.message);
     toast.success("Profile saved.");
