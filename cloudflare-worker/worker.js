@@ -121,11 +121,6 @@ export default {
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
     if (!token) return jsonErr("Unauthorized", 401);
 
-    if (env.SUPABASE_URL && env.SUPABASE_ANON_KEY) {
-      const valid = await verifySupabaseToken(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token);
-      if (!valid) return jsonErr("Unauthorized", 401);
-    }
-
     let url;
     try {
       ({ url } = await request.json());
@@ -136,9 +131,17 @@ export default {
     const ytId = extractId(url || "");
     if (!ytId) return jsonErr("Invalid YouTube URL", 400);
 
-    // 1) Try yt-dlp server first (1080p + audio)
+    // Run auth and yt-dlp in parallel to stay within the 30s wall-clock limit.
+    // If auth fails we abort; if yt-dlp wins we still check auth before returning.
+    // 1) Try yt-dlp server first (720p + audio) while verifying auth simultaneously
     if (env.YTDLP_URL) {
-      const res = await tryYtdlp(env.YTDLP_URL, env.YTDLP_SECRET || "", url);
+      const [valid, res] = await Promise.all([
+        env.SUPABASE_URL && env.SUPABASE_ANON_KEY
+          ? verifySupabaseToken(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token)
+          : Promise.resolve(true),
+        tryYtdlp(env.YTDLP_URL, env.YTDLP_SECRET || "", url),
+      ]);
+      if (!valid) return jsonErr("Unauthorized", 401);
       if (res) {
         const headers = {
           ...CORS,
@@ -153,6 +156,11 @@ export default {
     }
 
     // 2) Fallback: RapidAPI (720p + audio)
+    // If we skipped yt-dlp (no YTDLP_URL), verify auth now before RapidAPI.
+    if (!env.YTDLP_URL && env.SUPABASE_URL && env.SUPABASE_ANON_KEY) {
+      const valid = await verifySupabaseToken(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token);
+      if (!valid) return jsonErr("Unauthorized", 401);
+    }
     if (env.RAPIDAPI_KEY) {
       const res = await tryRapidApi(env.RAPIDAPI_KEY, url, ytId);
       if (res) {
