@@ -284,11 +284,8 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       const ytId = extractYouTubeId(target);
 
       if (!ytId) {
-        // Non-YouTube (e.g. Vimeo): hand off to cobalt
         if (!target) { toast.error("No source URL available."); return; }
-        try { await navigator.clipboard.writeText(target); } catch { /* ignore */ }
-        window.open("https://cobalt.tools", "_blank", "noreferrer");
-        toast.success("Link copied — paste it into cobalt.tools to download", { duration: 6000 });
+        toast.error("Only YouTube videos can be downloaded.");
         return;
       }
 
@@ -305,11 +302,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         document.body.removeChild(a);
         toast.success("Download complete", { id: tId });
       } catch (err: any) {
-        toast.dismiss(tId);
-        // Last resort: hand off to cobalt
-        try { await navigator.clipboard.writeText(target); } catch { /* ignore */ }
-        window.open("https://cobalt.tools", "_blank", "noreferrer");
-        toast.error((err.message || "Download failed") + " — opened cobalt.tools as a fallback.", { duration: 7000 });
+        toast.error(err.message || "Download failed. Please try again.", { id: tId, duration: 6000 });
       } finally {
         setDownloading(false);
       }
