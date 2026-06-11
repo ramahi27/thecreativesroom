@@ -1,5 +1,5 @@
 -- ================================================================
--- Security hardening: fix all 5 issues flagged by the security advisor
+-- Security hardening: fix all 6 issues flagged by the security advisor
 -- This migration is fully idempotent.
 -- ================================================================
 
@@ -125,3 +125,22 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+-- ── 6. Block self-upgrade: users cannot write the plan column ─────
+-- The existing UPDATE policy lets users edit their own profile row,
+-- which includes the `plan` column — meaning any user could set
+-- plan = 'paid' for free. Fix: revoke UPDATE entirely from
+-- authenticated, then re-grant only the safe editable columns.
+-- The `plan` column is written exclusively by the Stripe webhook
+-- edge function which uses the service_role key (bypasses RLS).
+
+REVOKE UPDATE ON public.profiles FROM authenticated;
+GRANT UPDATE (username, bio, avatar_url, submissions_public)
+  ON public.profiles TO authenticated;
+
+-- Also lock down SELECT so Stripe IDs are never readable if columns
+-- are ever re-added accidentally.
+REVOKE SELECT ON public.profiles FROM anon, authenticated;
+GRANT SELECT (user_id, username, bio, avatar_url, created_at, updated_at, submissions_public, plan)
+  ON public.profiles TO anon, authenticated;
+GRANT ALL ON public.profiles TO service_role;
