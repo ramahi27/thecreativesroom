@@ -35,7 +35,7 @@ def download():
             "yt-dlp",
             "--no-playlist",
             "--merge-output-format", "mp4",
-            "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
+            "-f", "bestvideo[height<=1080]+bestaudio/bestvideo+bestaudio/best",
             "--extractor-args", "youtube:player_client=ios,android,web",
             "--user-agent", "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
             "--add-header", "X-Youtube-Client-Name:5",
