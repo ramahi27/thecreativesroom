@@ -144,17 +144,21 @@ export default {
     const ytId = extractId(url || "");
     if (!ytId) return jsonErr("Invalid YouTube URL", 400);
 
-    // Run auth + yt-dlp in parallel to stay within the 30s wall-clock limit.
-    const [authResult, ytdlpRes] = await Promise.all([
+    // Verify identity and Pro entitlement BEFORE any download work starts:
+    // no yt-dlp or RapidAPI traffic is ever triggered for unauthorized
+    // callers. Token verification and the Pro check run in parallel since
+    // both depend only on the token.
+    const [authResult, isPro] = await Promise.all([
       verifyToken(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token),
-      env.YTDLP_URL ? tryYtdlp(env.YTDLP_URL, env.YTDLP_SECRET || "", url) : Promise.resolve(null),
+      checkProAccess(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token),
     ]);
 
     if (!authResult.valid || !authResult.userId) return jsonErr("Unauthorized", 401);
-
-    // Pro subscription is mandatory (paid plan or admin role).
-    const isPro = await checkProAccess(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, token);
     if (!isPro) return jsonErr("Pro subscription required to download videos.", 403);
+
+    const ytdlpRes = env.YTDLP_URL
+      ? await tryYtdlp(env.YTDLP_URL, env.YTDLP_SECRET || "", url)
+      : null;
 
     if (ytdlpRes) {
       const headers = {
