@@ -40,7 +40,7 @@
     /* Custom tokens */
     --surface-elevated: 0 0% 9%;
     --hairline: 40 10% 90% / 0.08;
-    --grain-opacity: 0.04;
+    --grain-opacity: 0.07;
 
     --gradient-spotlight: radial-gradient(ellipse 80% 50% at 50% -10%, hsl(18 95% 58% / 0.15), transparent 70%);
     --gradient-fade: linear-gradient(180deg, hsl(0 0% 4% / 0) 0%, hsl(0 0% 4%) 100%);
@@ -91,7 +91,7 @@
 
     --surface-elevated: 0 0% 100%;
     --hairline: 20 10% 20% / 0.12;
-    --grain-opacity: 0.02;
+    --grain-opacity: 0.045;
 
     --gradient-spotlight: radial-gradient(ellipse 80% 50% at 50% -10%, hsl(18 95% 50% / 0.10), transparent 70%);
     --gradient-fade: linear-gradient(180deg, hsl(36 33% 97% / 0) 0%, hsl(36 33% 97%) 100%);
@@ -130,11 +130,54 @@
   .font-body { font-family: 'Inter', sans-serif; }
   .font-mono { font-family: 'JetBrains Mono', monospace; }
 
+  /* Halftone dot texture — replaces generic film-grain noise with a print-press pattern */
   .grain::before {
     content: "";
     position: fixed; inset: 0; pointer-events: none; z-index: 100;
     opacity: var(--grain-opacity);
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-image: radial-gradient(circle, hsl(var(--foreground)) 1px, transparent 1px);
+    background-size: 16px 16px;
+  }
+
+  /*
+   * Print-shop overlay:
+   * — Corner crop marks (the L-shaped trim guides on a press sheet)
+   * — Registration label at the bottom margin (like the slug line on a proof)
+   * Two 20px arms per corner, inset 10px from each edge.
+   */
+  .grain::after {
+    content: "⊕  THE CREATIVES ROOM  ⊕";
+    position: fixed; inset: 0; pointer-events: none; z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 7px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 7.5px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: hsl(var(--foreground) / 0.12);
+    /* 8 hairlines — 2 per corner (horizontal arm + vertical arm) */
+    background-image:
+      linear-gradient(hsl(var(--foreground) / 0.2), hsl(var(--foreground) / 0.2)),
+      linear-gradient(hsl(var(--foreground) / 0.2), hsl(var(--foreground) / 0.2)),
+      linear-gradient(hsl(var(--foreground) / 0.2), hsl(var(--foreground) / 0.2)),
+      linear-gradient(hsl(var(--foreground) / 0.2), hsl(var(--foreground) / 0.2)),
+      linear-gradient(hsl(var(--foreground) / 0.2), hsl(var(--foreground) / 0.2)),
+      linear-gradient(hsl(var(--foreground) / 0.2), hsl(var(--foreground) / 0.2)),
+      linear-gradient(hsl(var(--foreground) / 0.2), hsl(var(--foreground) / 0.2)),
+      linear-gradient(hsl(var(--foreground) / 0.2), hsl(var(--foreground) / 0.2));
+    background-size:
+      20px 1px, 1px 20px,   /* top-left */
+      20px 1px, 1px 20px,   /* top-right */
+      20px 1px, 1px 20px,   /* bottom-left */
+      20px 1px, 1px 20px;   /* bottom-right */
+    background-position:
+      10px 10px,  10px 10px,
+      calc(100% - 10px) 10px,  calc(100% - 10px) 10px,
+      10px calc(100% - 10px),  10px calc(100% - 10px),
+      calc(100% - 10px) calc(100% - 10px),  calc(100% - 10px) calc(100% - 10px);
+    background-repeat: no-repeat;
   }
 
   .hairline { border-color: hsl(var(--hairline)); }
