@@ -82,7 +82,8 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
         if (orderedIds && orderedIds.length > 0) setModalNavOrder(orderedIds);
         else clearModalNavOrder();
       }}
-      className="reveal-card group block rounded-2xl overflow-hidden bg-card border hairline flex flex-col transition-all hover:border-foreground/20 hover:shadow-lg hover:shadow-black/20"
+      data-ref-card
+      className="reveal-card group block rounded-2xl overflow-hidden bg-card border hairline flex flex-col transition-all hover:border-foreground/20 hover:shadow-lg hover:shadow-black/20 [cursor:none]"
     >
       <div className={`relative overflow-hidden bg-muted ${masonry ? "" : "aspect-video"}`}>
         <BookmarkButton referenceId={r.id} />
