@@ -852,20 +852,26 @@ async function scrapeAndInsert(
   const meta = await inferMetadata(scraped, categories);
   const allImages = (scraped.images || []).filter(Boolean);
 
-  // ===== Keep only the MAIN campaign's images =====
-  // A page can still surface a few stray images from other work. Group them and
-  // keep only the project containing the hero image (index 0, the og:image), so
-  // we import a single draft of the main campaign — never an "Other projects" one.
+  // ===== Keep only the MAIN campaign's images — always one draft =====
+  // Rule 1: if >8 images survived stripping, this is almost certainly a listing /
+  //   gallery page, not a single campaign. Trust only the og:image (index 0).
+  // Rule 2: for smaller sets, use AI grouping and keep the group that contains
+  //   the og:image (index 0). That's always the main campaign on a genuine campaign page.
   let mainImages = allImages;
-  if (scraped.type === "image" && allImages.length >= 2) {
-    const groups = await groupImagesIntoProjects(allImages, scraped.title, scraped.source_url);
-    if (groups.length > 1) {
-      const mainGroup = groups.find((g) => g.image_indices.includes(0)) ?? groups[0];
-      mainImages = [...mainGroup.image_indices]
-        .sort((a, b) => a - b)
-        .map((i) => allImages[i])
-        .filter(Boolean);
-      if (mainImages.length === 0) mainImages = allImages;
+  if (scraped.type === "image") {
+    if (allImages.length > 8) {
+      // Listing-page guard: too many images to be a single campaign
+      mainImages = allImages.slice(0, 1);
+    } else if (allImages.length >= 2) {
+      const groups = await groupImagesIntoProjects(allImages, scraped.title, scraped.source_url);
+      if (groups.length > 1) {
+        const mainGroup = groups.find((g) => g.image_indices.includes(0)) ?? groups[0];
+        mainImages = [...mainGroup.image_indices]
+          .sort((a, b) => a - b)
+          .map((i) => allImages[i])
+          .filter(Boolean);
+        if (mainImages.length === 0) mainImages = allImages;
+      }
     }
   }
 
