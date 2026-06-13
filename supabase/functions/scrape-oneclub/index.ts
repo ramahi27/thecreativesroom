@@ -12,10 +12,24 @@ const corsHeaders = {
 
 const BASE = "https://www.oneclub.org";
 
-const AWARD_URLS: Record<string, string> = {
-  "one-show": `${BASE}/awards/oneshowawards/-award/`,
-  "adc":      `${BASE}/awards/adcawards/-award/`,
-  "young-ones": `${BASE}/awards/youngones/-award/`,
+// Real URL patterns confirmed from search results
+const AWARD_URL_PATTERNS: Record<string, string> = {
+  "one-show":   `${BASE}/awards/theoneshow/-archive/awards/{year}/all/{page}/select`,
+  "adc":        `${BASE}/awards/adcawards/-archive/awards/{year}/all/all/select`,
+  "young-ones": `${BASE}/awards/youngones/-archive/awards/{year}/all/all/select`,
+};
+
+const BROWSER_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Accept-Encoding": "gzip, deflate, br",
+  "Cache-Control": "no-cache",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+  "Upgrade-Insecure-Requests": "1",
 };
 
 interface Body {
@@ -201,39 +215,60 @@ Deno.serve(async (req) => {
 
       try {
         for (const awardKey of awards) {
-          const baseUrl = AWARD_URLS[awardKey];
-          if (!baseUrl) { send({ type: "warn", message: `Unknown award: ${awardKey}` }); continue; }
+          const urlPattern = AWARD_URL_PATTERNS[awardKey];
+          if (!urlPattern) { send({ type: "warn", message: `Unknown award: ${awardKey}` }); continue; }
           const awardLabel = awardKey === "adc" ? "ADC Annual Awards" : awardKey === "young-ones" ? "Young Ones" : "One Show";
 
           for (const year of years) {
-            const pageUrl = `${baseUrl}?year=${year}`;
-            send({ type: "progress", message: `Fetching ${awardLabel} ${year}…`, url: pageUrl });
+            const allEntries: Scraped[] = [];
 
-            let html = "";
-            try {
-              const resp = await fetch(pageUrl, {
-                headers: {
-                  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-                  "Accept": "text/html,application/xhtml+xml",
-                },
-              });
-              if (!resp.ok) {
-                send({ type: "warn", message: `${awardLabel} ${year}: HTTP ${resp.status}` });
-                summary.errors++;
-                continue;
+            // Paginate through results (One Show uses page numbers in the URL)
+            for (let page = 1; page <= 10; page++) {
+              const pageUrl = urlPattern
+                .replace("{year}", String(year))
+                .replace("{page}", String(page));
+              if (page === 1) send({ type: "progress", message: `Fetching ${awardLabel} ${year}…`, url: pageUrl });
+
+              let html = "";
+              try {
+                const resp = await fetch(pageUrl, { headers: BROWSER_HEADERS });
+                if (!resp.ok) {
+                  if (page === 1) {
+                    send({ type: "warn", message: `${awardLabel} ${year}: HTTP ${resp.status}` });
+                    summary.errors++;
+                  }
+                  break;
+                }
+                html = await resp.text();
+              } catch (e) {
+                if (page === 1) {
+                  send({ type: "warn", message: `${awardLabel} ${year}: fetch failed — ${(e as Error).message}` });
+                  summary.errors++;
+                }
+                break;
               }
-              html = await resp.text();
-            } catch (e) {
-              send({ type: "warn", message: `${awardLabel} ${year}: fetch failed — ${(e as Error).message}` });
-              summary.errors++;
-              continue;
+
+              let entries = extractFromNextData(html, year, awardLabel);
+              if (entries.length === 0) {
+                if (page === 1) send({ type: "progress", message: `No __NEXT_DATA__ for ${awardLabel} ${year}, trying HTML parse…` });
+                entries = extractFromHtml(html, year, awardLabel, pageUrl);
+              }
+
+              if (entries.length === 0) break; // no more pages
+              allEntries.push(...entries);
+
+              // Avoid hitting pagination for non-paginated patterns (adc, young-ones)
+              if (!urlPattern.includes("{page}")) break;
+              await new Promise((r) => setTimeout(r, 500));
             }
 
-            let entries = extractFromNextData(html, year, awardLabel);
-            if (entries.length === 0) {
-              send({ type: "progress", message: `No __NEXT_DATA__ for ${awardLabel} ${year}, trying HTML parse…` });
-              entries = extractFromHtml(html, year, awardLabel, pageUrl);
-            }
+            // Deduplicate across pages
+            const seen = new Set<string>();
+            const entries = allEntries.filter((e) => {
+              const k = e.source_url || e.title;
+              if (seen.has(k)) return false;
+              seen.add(k); return true;
+            });
 
             send({ type: "progress", message: `✓ ${awardLabel} ${year} — ${entries.length} entries found` });
             summary.total_fetched += entries.length;
