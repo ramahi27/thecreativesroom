@@ -102,7 +102,7 @@ const Users = () => {
       let loadedUsers: Row[] = [];
       try {
         const [profilesRes, rolesRes, refsRes, viewsRes] = await Promise.all([
-          supabase.rpc("admin_get_profiles" as any),
+          supabase.from("profiles").select("user_id, username, created_at, plan").limit(500),
           supabase.from("user_roles").select("user_id").eq("role", "admin").limit(500),
           supabase.from("references").select("created_by, approved_by").eq("published", true).limit(5000),
           supabase.from("page_views").select("user_id, duration_seconds").not("user_id", "is", null).limit(10000),
