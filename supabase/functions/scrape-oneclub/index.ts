@@ -12,10 +12,34 @@ const corsHeaders = {
 
 const BASE = "https://www.oneclub.org";
 
-const AWARD_URLS: Record<string, string> = {
-  "one-show": `${BASE}/awards/oneshowawards/-award/`,
-  "adc":      `${BASE}/awards/adcawards/-award/`,
-  "young-ones": `${BASE}/awards/youngones/-award/`,
+// URL patterns for One Club award archives — try each in order until one works.
+const AWARD_URL_PATTERNS: Record<string, string[]> = {
+  "one-show": [
+    `${BASE}/awards/theoneshow/-archive/awards/{year}/all/all/select`,
+    `${BASE}/awards/theoneshow/-archive/awards/{year}/`,
+    `${BASE}/awards/theoneshow/?year={year}`,
+  ],
+  "adc": [
+    `${BASE}/awards/adcawards/-archive/awards/{year}/all/all/select`,
+    `${BASE}/awards/adcawards/-archive/awards/{year}/`,
+  ],
+  "young-ones": [
+    `${BASE}/awards/youngones/-archive/awards/{year}/all/all/select`,
+    `${BASE}/awards/youngones/-archive/awards/{year}/`,
+  ],
+};
+
+const BROWSER_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Accept-Encoding": "gzip, deflate, br",
+  "Cache-Control": "no-cache",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+  "Upgrade-Insecure-Requests": "1",
 };
 
 interface Body {
@@ -39,6 +63,16 @@ interface Scraped {
 
 function upscale(url: string): string {
   return url.replace(/[?&](w|width)=\d+/gi, (m) => m.replace(/\d+/, "1200"));
+}
+
+function isCloudflareChallenge(html: string): boolean {
+  return (
+    html.includes("Just a moment") ||
+    html.includes("cf-challenge") ||
+    html.includes("Checking your browser") ||
+    html.includes("DDoS protection by Cloudflare") ||
+    (html.length < 10000 && html.includes("cloudflare"))
+  );
 }
 
 function isVideoDisc(disc: string): boolean {
@@ -201,39 +235,59 @@ Deno.serve(async (req) => {
 
       try {
         for (const awardKey of awards) {
-          const baseUrl = AWARD_URLS[awardKey];
-          if (!baseUrl) { send({ type: "warn", message: `Unknown award: ${awardKey}` }); continue; }
+          const urlPatterns = AWARD_URL_PATTERNS[awardKey];
+          if (!urlPatterns) { send({ type: "warn", message: `Unknown award: ${awardKey}` }); continue; }
           const awardLabel = awardKey === "adc" ? "ADC Annual Awards" : awardKey === "young-ones" ? "Young Ones" : "One Show";
 
           for (const year of years) {
-            const pageUrl = `${baseUrl}?year=${year}`;
-            send({ type: "progress", message: `Fetching ${awardLabel} ${year}…`, url: pageUrl });
+            const allEntries: Scraped[] = [];
 
-            let html = "";
-            try {
-              const resp = await fetch(pageUrl, {
-                headers: {
-                  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-                  "Accept": "text/html,application/xhtml+xml",
-                },
-              });
-              if (!resp.ok) {
-                send({ type: "warn", message: `${awardLabel} ${year}: HTTP ${resp.status}` });
-                summary.errors++;
+            // Try each URL pattern until one returns real content
+            let foundEntries = false;
+            for (const urlCandidate of urlPatterns) {
+              const pageUrl = urlCandidate.replace("{year}", String(year));
+              send({ type: "progress", message: `Trying ${awardLabel} ${year}…`, url: pageUrl });
+
+              let html = "";
+              try {
+                const resp = await fetch(pageUrl, { headers: BROWSER_HEADERS });
+                if (!resp.ok) {
+                  send({ type: "progress", message: `${awardLabel} ${year}: HTTP ${resp.status} at ${pageUrl}, trying next…` });
+                  continue;
+                }
+                html = await resp.text();
+              } catch (e) {
+                send({ type: "progress", message: `${awardLabel} ${year}: fetch error, trying next…` });
                 continue;
               }
-              html = await resp.text();
-            } catch (e) {
-              send({ type: "warn", message: `${awardLabel} ${year}: fetch failed — ${(e as Error).message}` });
-              summary.errors++;
-              continue;
+
+              if (isCloudflareChallenge(html)) {
+                send({ type: "progress", message: `${awardLabel} ${year}: blocked by Cloudflare at ${pageUrl}, trying next…` });
+                continue;
+              }
+
+              let entries = extractFromNextData(html, year, awardLabel);
+              if (entries.length === 0) {
+                entries = extractFromHtml(html, year, awardLabel, pageUrl);
+              }
+              allEntries.push(...entries);
+              send({ type: "progress", message: `✓ ${awardLabel} ${year} — ${entries.length} entries via ${pageUrl}` });
+              foundEntries = true;
+              break; // found a working URL, stop trying alternatives
             }
 
-            let entries = extractFromNextData(html, year, awardLabel);
-            if (entries.length === 0) {
-              send({ type: "progress", message: `No __NEXT_DATA__ for ${awardLabel} ${year}, trying HTML parse…` });
-              entries = extractFromHtml(html, year, awardLabel, pageUrl);
+            if (!foundEntries) {
+              send({ type: "warn", message: `${awardLabel} ${year}: all URL patterns failed` });
+              summary.errors++;
             }
+
+            // Deduplicate across pages
+            const seen = new Set<string>();
+            const entries = allEntries.filter((e) => {
+              const k = e.source_url || e.title;
+              if (seen.has(k)) return false;
+              seen.add(k); return true;
+            });
 
             send({ type: "progress", message: `✓ ${awardLabel} ${year} — ${entries.length} entries found` });
             summary.total_fetched += entries.length;

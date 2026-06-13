@@ -11,8 +11,27 @@ const corsHeaders = {
 };
 
 const BASE = "https://www.dandad.org";
+// Try multiple URL patterns — D&AD has changed their URL structure over the years
+const WINNERS_URLS = [
+  `${BASE}/en/d-ad-awards-pencil-winners/`,
+  `${BASE}/en/d-ad-professional-awards/`,
+  `${BASE}/en/awards/`,
+];
 
-// D&AD award level labels
+// Browser-like headers to avoid Cloudflare blocks
+const BROWSER_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Accept-Encoding": "gzip, deflate, br",
+  "Cache-Control": "no-cache",
+  "Pragma": "no-cache",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+  "Upgrade-Insecure-Requests": "1",
+};
 const PENCIL_LABELS: Record<string, string> = {
   "black": "Black Pencil",
   "yellow": "Yellow Pencil",
@@ -41,6 +60,16 @@ interface Scraped {
 
 function upscale(url: string): string {
   return url.replace(/[?&](w|width)=\d+/gi, (m) => m.replace(/\d+/, "1200"));
+}
+
+function isCloudflareChallenge(html: string): boolean {
+  return (
+    html.includes("Just a moment") ||
+    html.includes("cf-challenge") ||
+    html.includes("Checking your browser") ||
+    html.includes("DDoS protection by Cloudflare") ||
+    (html.length < 10000 && html.includes("cloudflare"))
+  );
 }
 
 function isVideoDisc(disc: string): boolean {
@@ -212,41 +241,69 @@ Deno.serve(async (req) => {
       const summary = { total_fetched: 0, saved: 0, skipped_duplicates: 0, skipped_no_image: 0, errors: 0 };
 
       try {
-        for (const year of years) {
-          const pageUrl = `${BASE}/awards/professional/${year}/winners/`;
-          send({ type: "progress", message: `Fetching D&AD ${year} winners…`, url: pageUrl });
-
-          let html = "";
+        // D&AD serves a single archive page; try multiple URLs until one works
+        let archiveHtml = "";
+        let usedUrl = "";
+        for (const candidateUrl of WINNERS_URLS) {
+          send({ type: "progress", message: `Trying D&AD URL…`, url: candidateUrl });
           try {
-            const resp = await fetch(pageUrl, {
-              headers: {
-                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml",
-              },
-            });
-            if (!resp.ok) {
-              send({ type: "warn", message: `D&AD ${year}: HTTP ${resp.status}` });
-              summary.errors++;
-              continue;
+            const resp = await fetch(candidateUrl, { headers: BROWSER_HEADERS });
+            if (resp.ok) {
+              const html = await resp.text();
+              if (!isCloudflareChallenge(html)) {
+                archiveHtml = html;
+                usedUrl = candidateUrl;
+                break;
+              }
+              send({ type: "progress", message: `${candidateUrl} blocked by Cloudflare, trying next…` });
+            } else {
+              send({ type: "progress", message: `${candidateUrl} → HTTP ${resp.status}, trying next…` });
             }
-            html = await resp.text();
-          } catch (e) {
-            send({ type: "warn", message: `D&AD ${year}: fetch failed — ${(e as Error).message}` });
+          } catch { /* try next */ }
+        }
+        if (!archiveHtml) {
+          send({ type: "warn", message: `D&AD: all URLs failed or blocked by Cloudflare` });
+          summary.errors++;
+        } else {
+          send({ type: "progress", message: `D&AD archive loaded from ${usedUrl}` });
+        }
+
+        for (const year of years) {
+          // Also try year-specific URL as some D&AD pages use category-year path
+          const yearUrl = `${BASE}/awards/d-ad-awards/categories-${year}/`;
+          let html = archiveHtml;
+
+          if (!html) {
+            send({ type: "progress", message: `Trying year URL for ${year}…`, url: yearUrl });
+            try {
+              const resp = await fetch(yearUrl, { headers: BROWSER_HEADERS });
+              if (resp.ok) html = await resp.text();
+            } catch { /* fall through */ }
+          }
+
+          if (!html) {
+            send({ type: "warn", message: `D&AD ${year}: no content retrieved` });
             summary.errors++;
             continue;
           }
+
+          send({ type: "progress", message: `Parsing D&AD ${year} entries…` });
 
           // Try __NEXT_DATA__ first, then HTML fallback
           let entries = extractFromNextData(html, year, awardWhitelist);
           if (entries.length === 0) {
             send({ type: "progress", message: `No __NEXT_DATA__ found for ${year}, trying HTML parse…` });
-            entries = extractFromHtml(html, year, pageUrl);
+            entries = extractFromHtml(html, year, WINNERS_URL);
           }
+          // Filter to requested year if entries have year metadata
+          const yearEntries = entries.filter((e) => !e.year || e.year === year);
 
-          send({ type: "progress", message: `✓ D&AD ${year} — ${entries.length} entries found` });
-          summary.total_fetched += entries.length;
+          send({ type: "progress", message: `✓ D&AD ${year} — ${yearEntries.length} entries found` });
+          summary.total_fetched += yearEntries.length;
+          // Replace loop body entries reference
+          const filteredEntries = yearEntries;
 
-          for (const r of entries) {
+          for (const r of filteredEntries) {
             if (!r.thumbnail_url) { summary.skipped_no_image++; continue; }
             if (!r.source_url) { summary.skipped_no_image++; continue; }
 
