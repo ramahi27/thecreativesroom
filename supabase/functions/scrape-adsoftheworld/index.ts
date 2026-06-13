@@ -64,6 +64,34 @@ function isCloudflareChallenge(html: string): boolean {
   );
 }
 
+async function fetchRendered(
+  url: string,
+  firecrawlKey: string,
+): Promise<{ html: string; via: string } | null> {
+  if (firecrawlKey) {
+    try {
+      const r = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url, formats: ["html"], waitFor: 2000, timeout: 30000 }),
+        signal: AbortSignal.timeout(40000),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        if (j?.success && j?.data?.html) return { html: j.data.html, via: "Firecrawl" };
+      }
+    } catch { /* fall through */ }
+  }
+  try {
+    const r = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(20000) });
+    if (r.ok) {
+      const xml = await r.text();
+      if (!isCloudflareChallenge(xml)) return { html: xml, via: "direct" };
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
 /** Extract thumbnail URL from RSS item raw XML string */
 function extractRssThumb(itemXml: string): string | null {
   // media:content url="..."
@@ -237,30 +265,30 @@ Deno.serve(async (req) => {
       const send = (obj: unknown) =>
         controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
 
+      const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY") ?? "";
+      if (!firecrawlKey) send({ type: "warn", message: "FIRECRAWL_API_KEY not set — falling back to direct fetch (may be blocked by Cloudflare)" });
+
       const summary = { total_fetched: 0, saved: 0, skipped_duplicates: 0, skipped_no_image: 0, errors: 0 };
 
       try {
         for (const medium of mediums) {
-          // Try RSS feeds first (bypass Cloudflare JS challenge)
+          // Try RSS feeds first (direct fetch — RSS typically bypasses Cloudflare JS challenge)
           const rssUrls = RSS_FEEDS[medium] || [];
           let rssEntries: Scraped[] = [];
           let rssSource = "";
 
           for (const rssUrl of rssUrls) {
             send({ type: "progress", message: `Trying RSS for ${medium}…`, url: rssUrl });
-            try {
-              const resp = await fetch(rssUrl, { headers: BROWSER_HEADERS });
-              if (resp.ok) {
-                const xml = await resp.text();
-                const parsed = parseRss(xml, medium);
-                if (parsed.length > 0) {
-                  rssEntries = parsed;
-                  rssSource = rssUrl;
-                  break;
-                }
-                send({ type: "progress", message: `RSS at ${rssUrl} returned 0 items, trying next…` });
+            const rssResult = await fetchRendered(rssUrl, ""); // always try RSS direct first (no Firecrawl credits)
+            if (rssResult) {
+              const parsed = parseRss(rssResult.html, medium);
+              if (parsed.length > 0) {
+                rssEntries = parsed;
+                rssSource = rssUrl;
+                break;
               }
-            } catch (_e) { /* try next */ }
+              send({ type: "progress", message: `RSS at ${rssUrl} returned 0 items, trying next…` });
+            }
           }
 
           if (rssEntries.length > 0) {
@@ -291,35 +319,22 @@ Deno.serve(async (req) => {
             continue; // RSS worked, skip HTML scraping for this medium
           }
 
-          // RSS failed — fall back to HTML listing pages
-          send({ type: "progress", message: `RSS unavailable for ${medium}, trying HTML pages…` });
+          // RSS failed — use Firecrawl to render the listing page
           const baseUrl = HTML_URLS[medium];
           if (!baseUrl) { send({ type: "warn", message: `Unknown medium: ${medium}` }); continue; }
 
           for (let p = 0; p < pages; p++) {
             const pageUrl = p === 0 ? baseUrl : `${baseUrl}?page=${p}`;
-            send({ type: "progress", message: `Fetching ${medium} page ${p + 1}…` });
+            send({ type: "progress", message: `Fetching ${medium} page ${p + 1}${firecrawlKey ? " via Firecrawl" : ""}…` });
 
-            let html = "";
-            try {
-              const resp = await fetch(pageUrl, { headers: BROWSER_HEADERS });
-              if (!resp.ok) {
-                send({ type: "warn", message: `${medium} p${p + 1}: HTTP ${resp.status}` });
-                summary.errors++;
-                break;
-              }
-              html = await resp.text();
-            } catch (e) {
-              send({ type: "warn", message: `${medium} p${p + 1}: fetch failed — ${(e as Error).message}` });
+            const result = await fetchRendered(pageUrl, firecrawlKey);
+            if (!result) {
+              send({ type: "warn", message: `${medium} p${p + 1}: failed to load${firecrawlKey ? "" : " — set FIRECRAWL_API_KEY to bypass Cloudflare"}` });
               summary.errors++;
               break;
             }
-
-            if (isCloudflareChallenge(html)) {
-              send({ type: "warn", message: `${medium} p${p + 1}: blocked by Cloudflare bot protection` });
-              summary.errors++;
-              break;
-            }
+            const html = result.html;
+            send({ type: "progress", message: `✓ loaded via ${result.via}` });
 
             const entries = parseHtml(html, medium);
             send({ type: "progress", message: `✓ ${medium} p${p + 1} — ${entries.length} entries found` });

@@ -78,6 +78,34 @@ function isCloudflareChallenge(html: string): boolean {
   );
 }
 
+async function fetchRendered(
+  url: string,
+  firecrawlKey: string,
+): Promise<{ html: string; via: string } | null> {
+  if (firecrawlKey) {
+    try {
+      const r = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url, formats: ["html"], waitFor: 2000, timeout: 30000 }),
+        signal: AbortSignal.timeout(40000),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        if (j?.success && j?.data?.html) return { html: j.data.html, via: "Firecrawl" };
+      }
+    } catch { /* fall through */ }
+  }
+  try {
+    const r = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(20000) });
+    if (r.ok) {
+      const html = await r.text();
+      if (!isCloudflareChallenge(html)) return { html, via: "direct" };
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
 function upscale(url: string): string {
   return url.replace(/[?&](w|width)=\d+/gi, (m) => m.replace(/\d+/, "1200"));
 }
@@ -285,36 +313,25 @@ Deno.serve(async (req) => {
         skipped_out_of_year: 0, errors: 0,
       };
 
+      const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY") ?? "";
+      if (!firecrawlKey) send({ type: "warn", message: "FIRECRAWL_API_KEY not set — falling back to direct fetch (may be blocked by Cloudflare)" });
+
       try {
         for (const { url, label } of startUrls) {
-          send({ type: "progress", message: `Fetching ${label} winners...`, url });
+          send({ type: "progress", message: `Fetching ${label} winners${firecrawlKey ? " via Firecrawl" : ""}...`, url });
 
-          let html = "";
-          try {
-            const resp = await fetch(url, { headers: BROWSER_HEADERS });
-            if (!resp.ok) {
-              summary.errors++;
-              send({ type: "warn", message: `${label}: HTTP ${resp.status}` });
-              continue;
-            }
-            html = await resp.text();
-          } catch (e) {
+          const result = await fetchRendered(url, firecrawlKey);
+          if (!result) {
             summary.errors++;
-            send({ type: "warn", message: `${label}: fetch failed (${(e as Error).message})` });
+            send({ type: "warn", message: `${label}: failed to load${firecrawlKey ? "" : " — set FIRECRAWL_API_KEY to bypass Cloudflare"}` });
             continue;
           }
-
-          if (isCloudflareChallenge(html)) {
-            summary.errors++;
-            send({ type: "warn", message: `${label}: blocked by Cloudflare bot protection` });
-            continue;
-          }
+          const html = result.html;
 
           const urlCategory = categoryFromUrl(url);
 
-          // Try __NEXT_DATA__ first — avoids DOM parsing issues with JS-rendered pages
           let rawResults = extractFromNextData(html, urlCategory);
-          const strategy = rawResults.length > 0 ? "__NEXT_DATA__" : "HTML parse";
+          const strategy = rawResults.length > 0 ? `__NEXT_DATA__ (${result.via})` : `HTML parse (${result.via})`;
 
           if (rawResults.length === 0) {
             rawResults = parsePage(html, url);

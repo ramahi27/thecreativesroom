@@ -72,6 +72,39 @@ function isCloudflareChallenge(html: string): boolean {
   );
 }
 
+/**
+ * Fetch a page via Firecrawl (headless Chrome, bypasses Cloudflare/JS-rendering).
+ * Falls back to direct fetch if no API key is configured.
+ */
+async function fetchRendered(
+  url: string,
+  firecrawlKey: string,
+): Promise<{ html: string; via: string } | null> {
+  if (firecrawlKey) {
+    try {
+      const r = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url, formats: ["html"], waitFor: 2000, timeout: 30000 }),
+        signal: AbortSignal.timeout(40000),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        if (j?.success && j?.data?.html) return { html: j.data.html, via: "Firecrawl" };
+      }
+    } catch { /* fall through */ }
+  }
+  // Direct fallback
+  try {
+    const r = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(20000) });
+    if (r.ok) {
+      const html = await r.text();
+      if (!isCloudflareChallenge(html)) return { html, via: "direct" };
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
 function isVideoDisc(disc: string): boolean {
   return ["film", "craft", "animation", "moving image"].some((k) => disc.toLowerCase().includes(k));
 }
@@ -238,47 +271,40 @@ Deno.serve(async (req) => {
       const send = (obj: unknown) =>
         controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
 
+      const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY") ?? "";
+      if (!firecrawlKey) send({ type: "warn", message: "FIRECRAWL_API_KEY not set — falling back to direct fetch (may be blocked by Cloudflare)" });
+
       const summary = { total_fetched: 0, saved: 0, skipped_duplicates: 0, skipped_no_image: 0, errors: 0 };
 
       try {
-        // D&AD serves a single archive page; try multiple URLs until one works
+        // Try each known D&AD URL until one returns real content
         let archiveHtml = "";
         let usedUrl = "";
         for (const candidateUrl of WINNERS_URLS) {
-          send({ type: "progress", message: `Trying D&AD URL…`, url: candidateUrl });
-          try {
-            const resp = await fetch(candidateUrl, { headers: BROWSER_HEADERS });
-            if (resp.ok) {
-              const html = await resp.text();
-              if (!isCloudflareChallenge(html)) {
-                archiveHtml = html;
-                usedUrl = candidateUrl;
-                break;
-              }
-              send({ type: "progress", message: `${candidateUrl} blocked by Cloudflare, trying next…` });
-            } else {
-              send({ type: "progress", message: `${candidateUrl} → HTTP ${resp.status}, trying next…` });
-            }
-          } catch { /* try next */ }
+          send({ type: "progress", message: `Fetching D&AD archive${firecrawlKey ? " via Firecrawl" : ""}…`, url: candidateUrl });
+          const result = await fetchRendered(candidateUrl, firecrawlKey);
+          if (result) {
+            archiveHtml = result.html;
+            usedUrl = candidateUrl;
+            send({ type: "progress", message: `✓ D&AD loaded via ${result.via} (${candidateUrl})` });
+            break;
+          }
+          send({ type: "progress", message: `${candidateUrl} failed, trying next…` });
         }
         if (!archiveHtml) {
-          send({ type: "warn", message: `D&AD: all URLs failed or blocked by Cloudflare` });
+          send({ type: "warn", message: `D&AD: all URLs failed${firecrawlKey ? "" : " — set FIRECRAWL_API_KEY to bypass Cloudflare"}` });
           summary.errors++;
-        } else {
-          send({ type: "progress", message: `D&AD archive loaded from ${usedUrl}` });
         }
 
         for (const year of years) {
-          // Also try year-specific URL as some D&AD pages use category-year path
-          const yearUrl = `${BASE}/awards/d-ad-awards/categories-${year}/`;
+          // Try year-specific URL; if archive already loaded, use that
+          const yearUrl = `${BASE}/en/d-ad-awards/${year}/categories/`;
           let html = archiveHtml;
 
           if (!html) {
             send({ type: "progress", message: `Trying year URL for ${year}…`, url: yearUrl });
-            try {
-              const resp = await fetch(yearUrl, { headers: BROWSER_HEADERS });
-              if (resp.ok) html = await resp.text();
-            } catch { /* fall through */ }
+            const result = await fetchRendered(yearUrl, firecrawlKey);
+            if (result) html = result.html;
           }
 
           if (!html) {
@@ -289,11 +315,10 @@ Deno.serve(async (req) => {
 
           send({ type: "progress", message: `Parsing D&AD ${year} entries…` });
 
-          // Try __NEXT_DATA__ first, then HTML fallback
           let entries = extractFromNextData(html, year, awardWhitelist);
           if (entries.length === 0) {
-            send({ type: "progress", message: `No __NEXT_DATA__ found for ${year}, trying HTML parse…` });
-            entries = extractFromHtml(html, year, WINNERS_URL);
+            send({ type: "progress", message: `No __NEXT_DATA__ for ${year}, trying HTML parse…` });
+            entries = extractFromHtml(html, year, usedUrl || yearUrl);
           }
           // Filter to requested year if entries have year metadata
           const yearEntries = entries.filter((e) => !e.year || e.year === year);

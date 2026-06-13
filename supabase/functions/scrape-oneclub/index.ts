@@ -75,6 +75,34 @@ function isCloudflareChallenge(html: string): boolean {
   );
 }
 
+async function fetchRendered(
+  url: string,
+  firecrawlKey: string,
+): Promise<{ html: string; via: string } | null> {
+  if (firecrawlKey) {
+    try {
+      const r = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url, formats: ["html"], waitFor: 2000, timeout: 30000 }),
+        signal: AbortSignal.timeout(40000),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        if (j?.success && j?.data?.html) return { html: j.data.html, via: "Firecrawl" };
+      }
+    } catch { /* fall through */ }
+  }
+  try {
+    const r = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(20000) });
+    if (r.ok) {
+      const html = await r.text();
+      if (!isCloudflareChallenge(html)) return { html, via: "direct" };
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
 function isVideoDisc(disc: string): boolean {
   return ["film", "tv", "video", "moving", "broadcast", "animation"].some((k) =>
     disc.toLowerCase().includes(k)
@@ -231,6 +259,9 @@ Deno.serve(async (req) => {
       const send = (obj: unknown) =>
         controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
 
+      const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY") ?? "";
+      if (!firecrawlKey) send({ type: "warn", message: "FIRECRAWL_API_KEY not set — falling back to direct fetch (may be blocked by Cloudflare)" });
+
       const summary = { total_fetched: 0, saved: 0, skipped_duplicates: 0, skipped_no_image: 0, errors: 0 };
 
       try {
@@ -246,34 +277,22 @@ Deno.serve(async (req) => {
             let foundEntries = false;
             for (const urlCandidate of urlPatterns) {
               const pageUrl = urlCandidate.replace("{year}", String(year));
-              send({ type: "progress", message: `Trying ${awardLabel} ${year}…`, url: pageUrl });
+              send({ type: "progress", message: `Fetching ${awardLabel} ${year}${firecrawlKey ? " via Firecrawl" : ""}…`, url: pageUrl });
 
-              let html = "";
-              try {
-                const resp = await fetch(pageUrl, { headers: BROWSER_HEADERS });
-                if (!resp.ok) {
-                  send({ type: "progress", message: `${awardLabel} ${year}: HTTP ${resp.status} at ${pageUrl}, trying next…` });
-                  continue;
-                }
-                html = await resp.text();
-              } catch (e) {
-                send({ type: "progress", message: `${awardLabel} ${year}: fetch error, trying next…` });
+              const result = await fetchRendered(pageUrl, firecrawlKey);
+              if (!result) {
+                send({ type: "progress", message: `${awardLabel} ${year}: no content from ${pageUrl}, trying next…` });
                 continue;
               }
 
-              if (isCloudflareChallenge(html)) {
-                send({ type: "progress", message: `${awardLabel} ${year}: blocked by Cloudflare at ${pageUrl}, trying next…` });
-                continue;
-              }
-
-              let entries = extractFromNextData(html, year, awardLabel);
+              let entries = extractFromNextData(result.html, year, awardLabel);
               if (entries.length === 0) {
-                entries = extractFromHtml(html, year, awardLabel, pageUrl);
+                entries = extractFromHtml(result.html, year, awardLabel, pageUrl);
               }
               allEntries.push(...entries);
-              send({ type: "progress", message: `✓ ${awardLabel} ${year} — ${entries.length} entries via ${pageUrl}` });
+              send({ type: "progress", message: `✓ ${awardLabel} ${year} — ${entries.length} entries (${result.via})` });
               foundEntries = true;
-              break; // found a working URL, stop trying alternatives
+              break;
             }
 
             if (!foundEntries) {
