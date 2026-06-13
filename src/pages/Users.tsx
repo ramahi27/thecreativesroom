@@ -16,6 +16,7 @@ type FilterKey = "all" | "free" | "pro" | "admin";
 type Row = {
   user_id: string;
   username: string;
+  email: string | null;
   created_at: string;
   is_admin: boolean;
   plan: Plan;
@@ -102,54 +103,28 @@ const Users = () => {
       let loadedUsers: Row[] = [];
       let fetchErr: string | null = null;
 
-      // ── 1. Try SECURITY DEFINER rpc (bypasses RLS + column grants) ──────────
-      const rpcRes = await (supabase as any).rpc("admin_get_profiles");
-      if (!rpcRes.error && Array.isArray(rpcRes.data) && rpcRes.data.length >= 0) {
-        const profiles: any[] = rpcRes.data;
-        const [rolesRes, refsRes, viewsRes] = await Promise.all([
-          supabase.from("user_roles").select("user_id").eq("role", "admin").limit(500),
-          supabase.from("references").select("created_by, approved_by").eq("published", true).limit(5000),
-          supabase.from("page_views").select("user_id, duration_seconds").not("user_id", "is", null).limit(10000),
-        ]);
-        const adminIds = new Set((rolesRes.data || []).map((r: any) => r.user_id));
-        const addedBy = new Map<string, number>();
-        const approvedBy = new Map<string, number>();
-        for (const r of refsRes.data || []) {
-          if (r.created_by) addedBy.set(r.created_by, (addedBy.get(r.created_by) || 0) + 1);
-          if (r.approved_by) approvedBy.set(r.approved_by, (approvedBy.get(r.approved_by) || 0) + 1);
-        }
-        const timeBy = new Map<string, number>();
-        for (const v of viewsRes.data || []) {
-          if (v.user_id) timeBy.set(v.user_id, (timeBy.get(v.user_id) || 0) + (v.duration_seconds || 0));
-        }
-        loadedUsers = profiles
-          .map((p: any) => ({
-            user_id: p.user_id, username: p.username, created_at: p.created_at,
-            is_admin: adminIds.has(p.user_id), plan: (p.plan as Plan) || "free",
-            references_added: addedBy.get(p.user_id) || 0,
-            references_approved: approvedBy.get(p.user_id) || 0,
-            time_spent_seconds: timeBy.get(p.user_id) || 0,
+      // get_user_overview() is a deployed SECURITY DEFINER function that checks
+      // admin role and returns every user (from auth.users) with their counts,
+      // admin flag and time-on-site — no RLS-locked table reads needed.
+      // It returns `email`; if an enhanced version also returns username/plan,
+      // we use those, otherwise we degrade gracefully (email as name, free plan).
+      const { data, error } = await (supabase as any).rpc("get_user_overview");
+      if (error) {
+        fetchErr = error.message;
+      } else if (Array.isArray(data)) {
+        loadedUsers = data
+          .map((u: any) => ({
+            user_id: u.user_id,
+            username: u.username || u.email || "—",
+            email: u.email ?? null,
+            created_at: u.created_at,
+            is_admin: !!u.is_admin,
+            plan: (u.plan as Plan) || "free",
+            references_added: u.references_added || 0,
+            references_approved: u.references_approved || 0,
+            time_spent_seconds: Number(u.time_spent_seconds || 0),
           }))
           .sort((a: Row, b: Row) => +new Date(b.created_at) - +new Date(a.created_at));
-      } else {
-        // ── 2. Fall back to edge function (service role, pre-joined) ─────────
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          const efRes = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-admin-users`,
-            { headers: { Authorization: `Bearer ${session?.access_token}` } },
-          );
-          if (efRes.ok) {
-            const payload = await efRes.json();
-            if (Array.isArray(payload.users)) loadedUsers = payload.users;
-            else fetchErr = payload.error || "Edge function returned no users";
-          } else {
-            const payload = await efRes.json().catch(() => ({}));
-            fetchErr = payload.error || `Edge function error ${efRes.status}`;
-          }
-        } catch {
-          fetchErr = rpcRes.error?.message || "Could not load users — try refreshing";
-        }
       }
 
       setRows(loadedUsers);
@@ -182,7 +157,9 @@ const Users = () => {
     if (filter === "free")  result = result.filter((r) => r.plan === "free" && !r.is_admin);
     if (filter === "admin") result = result.filter((r) => r.is_admin);
     const q = search.trim().toLowerCase();
-    if (q) result = result.filter((r) => (r.username || "").toLowerCase().includes(q));
+    if (q) result = result.filter((r) =>
+      (r.username || "").toLowerCase().includes(q) ||
+      (r.email || "").toLowerCase().includes(q));
     return result;
   }, [rows, search, filter]);
 
