@@ -222,6 +222,38 @@ function htmlToText(html: string): string {
     .trim();
 }
 
+/** Remove footer/nav/aside chrome that holds unrelated thumbnails (prev-next nav, sidebars). */
+function stripChrome(html: string): string {
+  return html
+    .replace(/<footer\b[\s\S]*?<\/footer>/gi, "")
+    .replace(/<nav\b[\s\S]*?<\/nav>/gi, "")
+    .replace(/<aside\b[\s\S]*?<\/aside>/gi, "");
+}
+
+/**
+ * Cut everything from the first "Related Campaigns / More / Recommended / prev-next"
+ * marker onward. Those trailing sections show OTHER campaigns' thumbnails, which
+ * otherwise get scraped as bogus extra projects (the exact bug reported on
+ * Ads of the World pages). Meta tags + JSON-LD live in <head> above any marker,
+ * so titles/brand detection are unaffected.
+ */
+function trimTrailingRelated(html: string): string {
+  const markers: RegExp[] = [
+    // headings that begin a "related/more/recommended" block
+    /<h[1-6][^>]*>\s*(?:related|more\b|you\s*may|recommended|popular|trending|similar|up\s*next)/i,
+    // containers whose class/id names a related / recommended / prev-next region
+    /\b(?:class|id)\s*=\s*["'][^"']*\b(?:related[-_]?(?:campaigns?|posts?|work|items?|content)?|recommend\w*|similar[-_]?\w*|more[-_]?(?:campaigns?|stories|posts|work|from)|you[-_]?may[-_]?also|up[-_]?next|post[-_]?navigation|nav[-_]?(?:links|previous|next)|adjacent[-_]?(?:posts?)?|prev[-_]?next)\b/i,
+    // literal heading text seen on Ads of the World
+    />\s*Related Campaigns\s*</i,
+  ];
+  let cut = html.length;
+  for (const re of markers) {
+    const m = re.exec(html);
+    if (m && m.index < cut) cut = m.index;
+  }
+  return cut < html.length ? html.slice(0, cut) : html;
+}
+
 /* ─────────────────────────────── Helpers ────────────────────────────────── */
 
 const BAD_IMG_RE =
@@ -497,7 +529,10 @@ function cleanTitle(title: string): string {
 async function scrapeGeneric(url: string): Promise<Scraped> {
   const { html } = await fetchPageHtml(url);
 
-  const articleHtml = extractArticleBody(html);
+  // Drop trailing "Related Campaigns" / prev-next / sidebar sections so we only
+  // scrape THIS campaign's images, not thumbnails of other campaigns.
+  const contentHtml = trimTrailingRelated(stripChrome(html));
+  const articleHtml = extractArticleBody(contentHtml);
   const articleText = htmlToText(articleHtml).slice(0, 4000);
   const ld = parseJsonLd(html);
 
@@ -554,7 +589,7 @@ async function scrapeGeneric(url: string): Promise<Scraped> {
 
   // ---- Image candidates → pick first verified ----
   const ogVideo = pickMeta(html, ["og:video", "og:video:url", "og:video:secure_url"]);
-  const candidates = buildImageCandidates(html, articleHtml, url);
+  const candidates = buildImageCandidates(contentHtml, articleHtml, url);
   const { url: primary, verified } = await pickFirstValidImage(candidates);
 
   // Some campaign CDNs (Cloudflare-fronted) reject HEAD/GET from the edge, so
