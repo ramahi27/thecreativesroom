@@ -58,6 +58,7 @@ const Index = () => {
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
   const focusedIdxRef = useRef<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const { toggle: toggleBookmark } = useBookmarks();
 
   // Keep ref in sync so keyboard handlers always read the latest value
@@ -473,6 +474,18 @@ const Index = () => {
     const el = gridRef.current.children[focusedIdx] as HTMLElement | undefined;
     el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }, [focusedIdx]);
+
+  // Infinite scroll — trigger loadMore when sentinel enters the viewport
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || !hasMore) return;
+    const io = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) loadMore(); },
+      { rootMargin: "400px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="min-h-screen grain">
@@ -915,15 +928,8 @@ const Index = () => {
               })()}
             </div>
             {hasMore && (
-              <div className="mt-12 flex flex-col items-center gap-3">
-                <Button
-                  variant="outline"
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                  className="font-mono text-xs uppercase tracking-widest"
-                >
-                  {loadingMore ? "Loading…" : "Load more"}
-                </Button>
+              <div ref={sentinelRef} className="mt-12 flex justify-center py-6">
+                {loadingMore && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
               </div>
             )}
           </>
