@@ -101,14 +101,43 @@ const Users = () => {
 
       let loadedUsers: Row[] = [];
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-admin-users`,
-          { headers: { Authorization: `Bearer ${session?.access_token}` } },
-        );
-        const payload = await res.json();
-        if (!res.ok) throw new Error(payload.error || "Failed to load users");
-        loadedUsers = payload.users || [];
+        const [profilesRes, rolesRes, refsRes, viewsRes] = await Promise.all([
+          supabase.rpc("admin_get_profiles" as any),
+          supabase.from("user_roles").select("user_id").eq("role", "admin").limit(500),
+          supabase.from("references").select("created_by, approved_by").eq("published", true).limit(5000),
+          supabase.from("page_views").select("user_id, duration_seconds").not("user_id", "is", null).limit(10000),
+        ]);
+
+        const firstError = profilesRes.error || rolesRes.error || refsRes.error || viewsRes.error;
+        if (firstError) throw new Error(firstError.message);
+
+        const adminIds = new Set((rolesRes.data || []).map((r: any) => r.user_id));
+
+        const addedBy = new Map<string, number>();
+        const approvedBy = new Map<string, number>();
+        for (const r of refsRes.data || []) {
+          if (r.created_by) addedBy.set(r.created_by, (addedBy.get(r.created_by) || 0) + 1);
+          if (r.approved_by) approvedBy.set(r.approved_by, (approvedBy.get(r.approved_by) || 0) + 1);
+        }
+
+        const timeBy = new Map<string, number>();
+        for (const v of viewsRes.data || []) {
+          if (v.user_id) timeBy.set(v.user_id, (timeBy.get(v.user_id) || 0) + (v.duration_seconds || 0));
+        }
+
+        loadedUsers = ((profilesRes.data as any[]) || [])
+          .map((p: any) => ({
+            user_id: p.user_id,
+            username: p.username,
+            created_at: p.created_at,
+            is_admin: adminIds.has(p.user_id),
+            plan: (p.plan as Plan) || "free",
+            references_added: addedBy.get(p.user_id) || 0,
+            references_approved: approvedBy.get(p.user_id) || 0,
+            time_spent_seconds: timeBy.get(p.user_id) || 0,
+          }))
+          .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+
         setRows(loadedUsers);
       } catch (e: any) {
         console.error(e);
