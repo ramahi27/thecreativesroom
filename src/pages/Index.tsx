@@ -15,7 +15,7 @@ import { usePageView } from "@/hooks/usePageView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, ArrowUpRight, X, Sparkles, Loader2, Zap, LayoutGrid, List } from "lucide-react";
+import { Search, Plus, Bookmark, Compass, ArrowUpRight, X, Sparkles, Loader2, Zap, LayoutGrid, List } from "lucide-react";
 import { rememberModalReturn, setModalNavOrder, clearModalNavOrder } from "@/lib/modalReturn";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -495,92 +495,87 @@ const Index = () => {
           {/* Description removed as requested */}
 
 
-          {/* Editorial image strip — live references lead, no marketing copy */}
-          <div className="mt-10">
-            {loading ? (
-              <div className="grid grid-cols-12 gap-1.5 h-[260px] md:h-[380px]">
-                <div className="col-span-7 rounded-xl bg-secondary animate-pulse" />
-                <div className="col-span-5 grid grid-rows-3 gap-1.5">
-                  {[0, 1, 2].map((i) => <div key={i} className="rounded-xl bg-secondary animate-pulse" />)}
-                </div>
+          {/* Visual quad — what you can do here */}
+          <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                document.querySelector<HTMLTextAreaElement>('textarea[placeholder^="What do you need"]')?.focus();
+                window.scrollTo({ top: window.innerHeight * 0.6, behavior: "smooth" });
+              }}
+              className="group relative overflow-hidden rounded-2xl border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-all hover:bg-secondary hover:border-foreground/20 text-left"
+            >
+              <div className="flex items-start justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 01 / Search by brief</span>
+                <Sparkles className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
-            ) : refs.length >= 1 ? (
-              <div className="grid grid-cols-12 gap-1.5 h-[260px] md:h-[380px]">
-                {/* Featured reference — left 7/12 */}
-                {(() => {
-                  const r = refs[0];
-                  const items = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
-                  const thumb = r.type === "image"
-                    ? (Array.isArray(items) ? items.find((it) => it?.kind === "image")?.url : undefined) || r.thumbnail_url || r.media_url
-                    : r.thumbnail_url;
-                  return (
-                    <Link
-                      to={refPath(r.id, r.title)}
-                      onClick={() => { rememberModalReturn(); if (filtered.length > 0) setModalNavOrder(filtered.map((x) => x.id)); else clearModalNavOrder(); }}
-                      className="col-span-7 relative overflow-hidden rounded-xl group"
-                    >
-                      {thumb ? (
-                        <img src={thumb} alt={r.title} loading="eager" fetchPriority="high"
-                          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.04]" />
-                      ) : (
-                        <div className="h-full w-full bg-secondary" />
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                      <div className="absolute bottom-0 left-0 p-5 pr-8">
-                        {(r.brand || r.agency) && (
-                          <p className="font-mono text-[9px] uppercase tracking-[0.3em] text-white/50 mb-1.5">{r.brand || r.agency}</p>
-                        )}
-                        <h3 className="font-display text-xl md:text-2xl font-light text-white leading-tight line-clamp-2">{r.title}</h3>
-                      </div>
-                      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <ArrowUpRight className="h-4 w-4 text-white" strokeWidth={1.5} />
-                      </div>
-                    </Link>
-                  );
-                })()}
+              <div>
+                <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
+                  Tell us what<br />you need.
+                </h3>
+                <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
+                  Tell us what you need, we'll find references that fit your direction.
+                </p>
+              </div>
+              <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+            </button>
 
-                {/* Three secondary references — right 5/12 stacked */}
-                <div className="col-span-5 grid grid-rows-3 gap-1.5">
-                  {refs.slice(1, 4).map((r) => {
-                    const items = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
-                    const thumb = r.type === "image"
-                      ? (Array.isArray(items) ? items.find((it) => it?.kind === "image")?.url : undefined) || r.thumbnail_url || r.media_url
-                      : r.thumbnail_url;
-                    return (
-                      <Link
-                        key={r.id}
-                        to={refPath(r.id, r.title)}
-                        onClick={() => { rememberModalReturn(); if (filtered.length > 0) setModalNavOrder(filtered.map((x) => x.id)); else clearModalNavOrder(); }}
-                        className="relative overflow-hidden rounded-xl group"
-                      >
-                        {thumb ? (
-                          <img src={thumb} alt={r.title} loading="eager"
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]" />
-                        ) : (
-                          <div className="h-full w-full bg-secondary" />
-                        )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                        <div className="absolute bottom-0 left-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                          <p className="font-display text-sm font-light text-white leading-tight line-clamp-1">{r.title}</p>
-                        </div>
-                      </Link>
-                    );
-                  })}
-                </div>
+            <a
+              href="#archive"
+              className="group relative overflow-hidden rounded-2xl border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-all hover:bg-secondary hover:border-foreground/20"
+            >
+              <div className="flex items-start justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 02 / Discover</span>
+                <Compass className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
-            ) : null}
+              <div>
+                <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
+                  Explore the<br />creative world.
+                </h3>
+                <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
+                  Browse references shared by other creatives, ad films, photography, design.
+                </p>
+              </div>
+              <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+            </a>
 
-            {/* Archive count line */}
-            {totalCount !== null && (
-              <div className="flex items-center justify-between mt-4 pt-4 border-t hairline">
-                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-                  {totalCount.toLocaleString()} references curated
-                </span>
-                <a href="#archive" className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1.5">
-                  Browse all <ArrowUpRight className="h-3 w-3" strokeWidth={1.5} />
-                </a>
+            <Link
+              to="/mycollection"
+              className="group relative overflow-hidden rounded-2xl border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-all hover:bg-secondary hover:border-foreground/20"
+            >
+              <div className="flex items-start justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 03 / Save</span>
+                <Bookmark className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
-            )}
+              <div>
+                <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
+                  Build your<br />collection.
+                </h3>
+                <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
+                  Bookmark anything that sparks an idea and find it later in <span className="italic">My collection</span>.
+                </p>
+              </div>
+              <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+            </Link>
+
+            <Link
+              to="/add"
+              className="group relative overflow-hidden rounded-2xl border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-all hover:bg-secondary hover:border-foreground/20"
+            >
+              <div className="flex items-start justify-between">
+                <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 04 / Add</span>
+                <Plus className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
+              </div>
+              <div>
+                <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
+                  Add your<br />favourite work.
+                </h3>
+                <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
+                  Save references from anywhere, no more lost links or messy folders
+                </p>
+              </div>
+              <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+            </Link>
           </div>
         </div>
       </section>
