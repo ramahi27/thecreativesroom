@@ -18,6 +18,7 @@ import { CannesLionsScraper } from "@/components/CannesLionsScraper";
 import { DandadScraper } from "@/components/DandadScraper";
 import { OneClubScraper } from "@/components/OneClubScraper";
 import { AdsOfTheWorldScraper } from "@/components/AdsOfTheWorldScraper";
+import { PexelsImporter, UnsplashImporter, ArenaImporter } from "@/components/BulkImporters";
 
 const PAGE_SIZE = 24;
 
@@ -25,6 +26,9 @@ const SOURCE_LABELS: Record<string, string> = {
   all: "All sources",
   deckofbrilliance: "Deck of Brilliance",
   adsoftheworld: "Ads of the World",
+  pexels: "Pexels",
+  unsplash: "Unsplash",
+  arena: "Are.na",
   manual: "Manually added",
 };
 
@@ -46,6 +50,7 @@ const Drafts = () => {
   const [scraping, setScraping] = useState(false);
   const [linkChecking, setLinkChecking] = useState(false);
   const [showScrapers, setShowScrapers] = useState(false);
+  const [showImporters, setShowImporters] = useState(false);
 
   async function handleCheckLinks() {
     setLinkChecking(true);
@@ -374,6 +379,25 @@ const Drafts = () => {
       </section>
 
       <main className="container py-12">
+
+        {/* Bulk photo importers (free APIs) */}
+        <div className="mb-8">
+          <button
+            onClick={() => setShowImporters((v) => !v)}
+            className="flex items-center gap-3 font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <span className={`transition-transform ${showImporters ? "rotate-90" : ""}`}>▶</span>
+            Bulk Photo Import — Pexels · Unsplash · Are.na
+          </button>
+
+          {showImporters && (
+            <div className="mt-8 space-y-12">
+              <PexelsImporter />
+              <UnsplashImporter />
+              <ArenaImporter />
+            </div>
+          )}
+        </div>
 
         {/* Award scrapers */}
         <div className="mb-12">
