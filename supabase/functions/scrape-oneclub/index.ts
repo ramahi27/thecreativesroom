@@ -12,11 +12,21 @@ const corsHeaders = {
 
 const BASE = "https://www.oneclub.org";
 
-// Real URL patterns confirmed from search results
-const AWARD_URL_PATTERNS: Record<string, string> = {
-  "one-show":   `${BASE}/awards/theoneshow/-archive/awards/{year}/all/{page}/select`,
-  "adc":        `${BASE}/awards/adcawards/-archive/awards/{year}/all/all/select`,
-  "young-ones": `${BASE}/awards/youngones/-archive/awards/{year}/all/all/select`,
+// URL patterns for One Club award archives — try each in order until one works.
+const AWARD_URL_PATTERNS: Record<string, string[]> = {
+  "one-show": [
+    `${BASE}/awards/theoneshow/-archive/awards/{year}/all/all/select`,
+    `${BASE}/awards/theoneshow/-archive/awards/{year}/`,
+    `${BASE}/awards/theoneshow/?year={year}`,
+  ],
+  "adc": [
+    `${BASE}/awards/adcawards/-archive/awards/{year}/all/all/select`,
+    `${BASE}/awards/adcawards/-archive/awards/{year}/`,
+  ],
+  "young-ones": [
+    `${BASE}/awards/youngones/-archive/awards/{year}/all/all/select`,
+    `${BASE}/awards/youngones/-archive/awards/{year}/`,
+  ],
 };
 
 const BROWSER_HEADERS = {
@@ -53,6 +63,16 @@ interface Scraped {
 
 function upscale(url: string): string {
   return url.replace(/[?&](w|width)=\d+/gi, (m) => m.replace(/\d+/, "1200"));
+}
+
+function isCloudflareChallenge(html: string): boolean {
+  return (
+    html.includes("Just a moment") ||
+    html.includes("cf-challenge") ||
+    html.includes("Checking your browser") ||
+    html.includes("DDoS protection by Cloudflare") ||
+    (html.length < 10000 && html.includes("cloudflare"))
+  );
 }
 
 function isVideoDisc(disc: string): boolean {
@@ -215,51 +235,50 @@ Deno.serve(async (req) => {
 
       try {
         for (const awardKey of awards) {
-          const urlPattern = AWARD_URL_PATTERNS[awardKey];
-          if (!urlPattern) { send({ type: "warn", message: `Unknown award: ${awardKey}` }); continue; }
+          const urlPatterns = AWARD_URL_PATTERNS[awardKey];
+          if (!urlPatterns) { send({ type: "warn", message: `Unknown award: ${awardKey}` }); continue; }
           const awardLabel = awardKey === "adc" ? "ADC Annual Awards" : awardKey === "young-ones" ? "Young Ones" : "One Show";
 
           for (const year of years) {
             const allEntries: Scraped[] = [];
 
-            // Paginate through results (One Show uses page numbers in the URL)
-            for (let page = 1; page <= 10; page++) {
-              const pageUrl = urlPattern
-                .replace("{year}", String(year))
-                .replace("{page}", String(page));
-              if (page === 1) send({ type: "progress", message: `Fetching ${awardLabel} ${year}…`, url: pageUrl });
+            // Try each URL pattern until one returns real content
+            let foundEntries = false;
+            for (const urlCandidate of urlPatterns) {
+              const pageUrl = urlCandidate.replace("{year}", String(year));
+              send({ type: "progress", message: `Trying ${awardLabel} ${year}…`, url: pageUrl });
 
               let html = "";
               try {
                 const resp = await fetch(pageUrl, { headers: BROWSER_HEADERS });
                 if (!resp.ok) {
-                  if (page === 1) {
-                    send({ type: "warn", message: `${awardLabel} ${year}: HTTP ${resp.status}` });
-                    summary.errors++;
-                  }
-                  break;
+                  send({ type: "progress", message: `${awardLabel} ${year}: HTTP ${resp.status} at ${pageUrl}, trying next…` });
+                  continue;
                 }
                 html = await resp.text();
               } catch (e) {
-                if (page === 1) {
-                  send({ type: "warn", message: `${awardLabel} ${year}: fetch failed — ${(e as Error).message}` });
-                  summary.errors++;
-                }
-                break;
+                send({ type: "progress", message: `${awardLabel} ${year}: fetch error, trying next…` });
+                continue;
+              }
+
+              if (isCloudflareChallenge(html)) {
+                send({ type: "progress", message: `${awardLabel} ${year}: blocked by Cloudflare at ${pageUrl}, trying next…` });
+                continue;
               }
 
               let entries = extractFromNextData(html, year, awardLabel);
               if (entries.length === 0) {
-                if (page === 1) send({ type: "progress", message: `No __NEXT_DATA__ for ${awardLabel} ${year}, trying HTML parse…` });
                 entries = extractFromHtml(html, year, awardLabel, pageUrl);
               }
-
-              if (entries.length === 0) break; // no more pages
               allEntries.push(...entries);
+              send({ type: "progress", message: `✓ ${awardLabel} ${year} — ${entries.length} entries via ${pageUrl}` });
+              foundEntries = true;
+              break; // found a working URL, stop trying alternatives
+            }
 
-              // Avoid hitting pagination for non-paginated patterns (adc, young-ones)
-              if (!urlPattern.includes("{page}")) break;
-              await new Promise((r) => setTimeout(r, 500));
+            if (!foundEntries) {
+              send({ type: "warn", message: `${awardLabel} ${year}: all URL patterns failed` });
+              summary.errors++;
             }
 
             // Deduplicate across pages

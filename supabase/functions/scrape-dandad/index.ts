@@ -11,7 +11,12 @@ const corsHeaders = {
 };
 
 const BASE = "https://www.dandad.org";
-const WINNERS_URL = `${BASE}/en/d-ad-awards-pencil-winners/`;
+// Try multiple URL patterns — D&AD has changed their URL structure over the years
+const WINNERS_URLS = [
+  `${BASE}/en/d-ad-awards-pencil-winners/`,
+  `${BASE}/en/d-ad-professional-awards/`,
+  `${BASE}/en/awards/`,
+];
 
 // Browser-like headers to avoid Cloudflare blocks
 const BROWSER_HEADERS = {
@@ -55,6 +60,16 @@ interface Scraped {
 
 function upscale(url: string): string {
   return url.replace(/[?&](w|width)=\d+/gi, (m) => m.replace(/\d+/, "1200"));
+}
+
+function isCloudflareChallenge(html: string): boolean {
+  return (
+    html.includes("Just a moment") ||
+    html.includes("cf-challenge") ||
+    html.includes("Checking your browser") ||
+    html.includes("DDoS protection by Cloudflare") ||
+    (html.length < 10000 && html.includes("cloudflare"))
+  );
 }
 
 function isVideoDisc(disc: string): boolean {
@@ -226,20 +241,31 @@ Deno.serve(async (req) => {
       const summary = { total_fetched: 0, saved: 0, skipped_duplicates: 0, skipped_no_image: 0, errors: 0 };
 
       try {
-        // D&AD serves a single archive page; year filtering happens via __NEXT_DATA__ or HTML
-        send({ type: "progress", message: `Fetching D&AD winners archive…`, url: WINNERS_URL });
+        // D&AD serves a single archive page; try multiple URLs until one works
         let archiveHtml = "";
-        try {
-          const resp = await fetch(WINNERS_URL, { headers: BROWSER_HEADERS });
-          if (!resp.ok) {
-            send({ type: "warn", message: `D&AD archive: HTTP ${resp.status}` });
-            summary.errors++;
-          } else {
-            archiveHtml = await resp.text();
-          }
-        } catch (e) {
-          send({ type: "warn", message: `D&AD archive: fetch failed — ${(e as Error).message}` });
+        let usedUrl = "";
+        for (const candidateUrl of WINNERS_URLS) {
+          send({ type: "progress", message: `Trying D&AD URL…`, url: candidateUrl });
+          try {
+            const resp = await fetch(candidateUrl, { headers: BROWSER_HEADERS });
+            if (resp.ok) {
+              const html = await resp.text();
+              if (!isCloudflareChallenge(html)) {
+                archiveHtml = html;
+                usedUrl = candidateUrl;
+                break;
+              }
+              send({ type: "progress", message: `${candidateUrl} blocked by Cloudflare, trying next…` });
+            } else {
+              send({ type: "progress", message: `${candidateUrl} → HTTP ${resp.status}, trying next…` });
+            }
+          } catch { /* try next */ }
+        }
+        if (!archiveHtml) {
+          send({ type: "warn", message: `D&AD: all URLs failed or blocked by Cloudflare` });
           summary.errors++;
+        } else {
+          send({ type: "progress", message: `D&AD archive loaded from ${usedUrl}` });
         }
 
         for (const year of years) {

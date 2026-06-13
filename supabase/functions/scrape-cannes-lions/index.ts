@@ -1,19 +1,31 @@
-// Cannes Lions scraper (lovethework.com) — direct fetch + cheerio parse.
-// Streams progress via NDJSON. Standalone: only writes to public.pending_refs.
+// Cannes Lions scraper (lovethework.com) — __NEXT_DATA__ extraction + HTML parse.
+// Streams progress via NDJSON. Writes to public.pending_refs.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import * as cheerio from "https://esm.sh/cheerio@1.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const BROWSER_HEADERS = {
+  "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  "Accept-Encoding": "gzip, deflate, br",
+  "Cache-Control": "no-cache",
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "none",
+  "Sec-Fetch-User": "?1",
+  "Upgrade-Insecure-Requests": "1",
 };
 
 interface Body {
   yearFrom?: number;
   yearTo?: number;
-  awardLevels?: string[]; // "grand-prix" | "gold"
+  awardLevels?: string[]; // "grand-prix" | "gold" | "silver" | "bronze"
   categories?: string[];  // film | print | photography | outdoor
   autoApproveGrandPrix?: boolean;
 }
@@ -56,63 +68,154 @@ function categoryFromUrl(url: string): string {
   return "Film";
 }
 
+function isCloudflareChallenge(html: string): boolean {
+  return (
+    html.includes("Just a moment") ||
+    html.includes("cf-challenge") ||
+    html.includes("Checking your browser") ||
+    html.includes("DDoS protection by Cloudflare") ||
+    (html.length < 10000 && html.includes("cloudflare"))
+  );
+}
+
+function upscale(url: string): string {
+  return url.replace(/[?&](w|width)=\d+/gi, (m) => m.replace(/\d+/, "1200"));
+}
+
+function detectAwardLevel(text: string): string {
+  const t = text.toLowerCase();
+  if (t.includes("grand prix")) return "Grand Prix";
+  if (t.includes("gold")) return "Gold Lion";
+  if (t.includes("silver")) return "Silver Lion";
+  if (t.includes("bronze")) return "Bronze Lion";
+  if (t.includes("shortlist")) return "Shortlisted";
+  return "Winner";
+}
+
+/** Extract from __NEXT_DATA__ JSON embedded by Next.js */
+function extractFromNextData(html: string, urlCategory: string): Scraped[] {
+  const match = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+  if (!match) return [];
+  try {
+    const data = JSON.parse(match[1]);
+    const format: "video" | "photo" = urlCategory.includes("Film") ? "video" : "photo";
+    const entries: Scraped[] = [];
+
+    function walk(obj: unknown, depth = 0): void {
+      if (depth > 12 || !obj || typeof obj !== "object") return;
+      if (Array.isArray(obj)) {
+        for (const item of obj) {
+          if (item && typeof item === "object" && !Array.isArray(item)) {
+            const k = item as Record<string, unknown>;
+            const title = (k.title || k.entryTitle || k.name || k.projectTitle || k.workTitle || "") as string;
+            const brand = (k.brand || k.client || k.advertiser || k.brandName || "") as string;
+            const agency = (k.agency || k.agencyName || k.company || "") as string;
+            const slug = (k.slug || k.url || k.permalink || k.path || k.entryUrl || "") as string;
+            const img = (k.imageUrl || k.image || k.thumbnailUrl || k.thumbnail || k.heroImage || k.coverImage || k.posterUrl || "") as string;
+            const award = (k.award || k.awardLevel || k.lionType || k.medalType || k.tier || "") as string;
+
+            if (title && title.length > 2 && (img || slug)) {
+              const source_url = slug
+                ? (slug.startsWith("http") ? slug : `https://www.lovethework.com${slug.startsWith("/") ? "" : "/"}${slug}`)
+                : "";
+              entries.push({
+                title: String(title).trim(),
+                brand: String(brand).trim(),
+                agency: String(agency).trim(),
+                category: urlCategory,
+                award_level: award ? detectAwardLevel(String(award)) : "Winner",
+                image_url: img ? (img.startsWith("http") ? upscale(img) : `https:${upscale(img)}`) : null,
+                source_url,
+                year: null,
+                format,
+                tags: ["cannes lions", urlCategory.toLowerCase()],
+                curatorial_note: `Cannes Lions — ${urlCategory}`,
+              });
+            }
+          }
+          walk(item, depth + 1);
+        }
+      } else {
+        for (const v of Object.values(obj as object)) walk(v, depth + 1);
+      }
+    }
+    walk(data);
+    const seen = new Set<string>();
+    return entries.filter((e) => {
+      const key = e.source_url || e.title;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  } catch {
+    return [];
+  }
+}
+
+/** HTML fallback — permissive: grab anything with a title + card structure */
 function parsePage(html: string, requestUrl: string): Scraped[] {
+  if (isCloudflareChallenge(html)) return [];
+
   const $ = cheerio.load(html);
   const results: Scraped[] = [];
   const urlCategory = categoryFromUrl(requestUrl);
   const format: "video" | "photo" = urlCategory.includes("Film") ? "video" : "photo";
 
-  $("h3, h2").each((_i, el) => {
+  // Broad selector — accept any card-like element
+  const cardSel = [
+    '[class*="card"]', '[class*="Card"]',
+    '[class*="entry"]', '[class*="Entry"]',
+    '[class*="work"]', '[class*="Work"]',
+    '[class*="campaign"]', '[class*="Campaign"]',
+    'article', 'li[class]',
+  ].join(", ");
+
+  $(cardSel).each((_i, el) => {
     const $el = $(el);
-    const $card = $el.closest('a, [class*="card"], [class*="Card"], article, section > div');
-    const containerText = ($card.length ? $card.text() : $el.parent().text()).toLowerCase();
+    // Skip nested cards
+    if ($el.parents(cardSel).length > 0) return;
 
-    const awardLevel = containerText.includes("grand prix")
-      ? "Grand Prix"
-      : containerText.includes("gold cannes")
-      ? "Gold Lion"
-      : null;
-    if (!awardLevel) return;
+    const title = $el
+      .find("h2, h3, h4, [class*='title'], [class*='Title'], [class*='name'], [class*='Name']")
+      .first().text().trim();
+    if (!title || title.length < 3) return;
 
-    const title = $el.text().trim();
-    if (!title || title.length < 2) return;
-
-    const metaText =
-      $el.next().text().trim() ||
-      ($card.length ? $card.find('p, [class*="meta"], [class*="brand"], [class*="client"]').first().text().trim() : "");
-    const [brandRaw, agencyRaw] = metaText.split(",");
-    const brand = (brandRaw || "").trim();
-    const agency = (agencyRaw || "").trim();
-
-    const $imgScope = $card.length ? $card : $el.closest("div");
-    const imgSrc =
-      $imgScope.find("img").first().attr("src") ||
-      $imgScope.find("img").first().attr("data-src") ||
-      null;
-
-    const href =
-      ($card.is("a") ? $card.attr("href") : "") ||
-      $card.find("a").first().attr("href") ||
-      $el.closest("a").attr("href") ||
-      "";
-    const sourceUrl = href.startsWith("http")
+    const $a = $el.is("a") ? $el : $el.find("a").first();
+    const href = $a.attr("href") || "";
+    const source_url = href.startsWith("http")
       ? href
       : href
       ? `https://www.lovethework.com${href}`
       : "";
 
+    const img = $el.find("img").first();
+    const image_url =
+      img.attr("src") || img.attr("data-src") || img.attr("data-lazy-src") || null;
+
+    const containerText = $el.text();
+    const award_level = detectAwardLevel(containerText);
+
+    const metaText = $el
+      .find("p, [class*='meta'], [class*='brand'], [class*='client'], [class*='agency']")
+      .first().text().trim();
+    const parts = metaText.split(",");
+
     results.push({
       title,
-      brand,
-      agency,
+      brand: parts[0]?.trim() || "",
+      agency: parts[1]?.trim() || "",
       category: urlCategory,
-      award_level: awardLevel,
-      image_url: imgSrc,
-      source_url: sourceUrl,
+      award_level,
+      image_url: image_url
+        ? image_url.startsWith("http")
+          ? upscale(image_url)
+          : `https:${upscale(image_url)}`
+        : null,
+      source_url,
       year: null,
       format,
-      tags: ["cannes lions", awardLevel.toLowerCase(), urlCategory.toLowerCase()],
-      curatorial_note: `Cannes Lions ${awardLevel} — ${urlCategory}`,
+      tags: ["cannes lions", award_level.toLowerCase(), urlCategory.toLowerCase()],
+      curatorial_note: `Cannes Lions ${award_level} — ${urlCategory}`,
     });
   });
 
@@ -124,7 +227,6 @@ function parsePage(html: string, requestUrl: string): Scraped[] {
     return true;
   });
 }
-
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -166,7 +268,7 @@ Deno.serve(async (req) => {
   const autoApprove = body.autoApproveGrandPrix ?? true;
 
   const awardWhitelist = new Set(
-    awards.map((a) => (a === "grand-prix" ? "Grand Prix" : "Gold Lion")),
+    awards.map((a) => (a === "grand-prix" ? "Grand Prix" : a === "gold" ? "Gold Lion" : a)),
   );
 
   const startUrls = buildStartUrls(categories);
@@ -178,14 +280,9 @@ Deno.serve(async (req) => {
         controller.enqueue(encoder.encode(JSON.stringify(obj) + "\n"));
 
       const summary = {
-        total_fetched: 0,
-        auto_published: 0,
-        sent_to_review: 0,
-        skipped_duplicates: 0,
-        skipped_no_image: 0,
-        skipped_invalid: 0,
-        skipped_out_of_year: 0,
-        errors: 0,
+        total_fetched: 0, auto_published: 0, sent_to_review: 0,
+        skipped_duplicates: 0, skipped_no_image: 0, skipped_invalid: 0,
+        skipped_out_of_year: 0, errors: 0,
       };
 
       try {
@@ -194,13 +291,7 @@ Deno.serve(async (req) => {
 
           let html = "";
           try {
-            const resp = await fetch(url, {
-              headers: {
-                "User-Agent":
-                  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml",
-              },
-            });
+            const resp = await fetch(url, { headers: BROWSER_HEADERS });
             if (!resp.ok) {
               summary.errors++;
               send({ type: "warn", message: `${label}: HTTP ${resp.status}` });
@@ -213,10 +304,28 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          const rawResults = parsePage(html, url);
+          if (isCloudflareChallenge(html)) {
+            summary.errors++;
+            send({ type: "warn", message: `${label}: blocked by Cloudflare bot protection` });
+            continue;
+          }
+
+          const urlCategory = categoryFromUrl(url);
+
+          // Try __NEXT_DATA__ first — avoids DOM parsing issues with JS-rendered pages
+          let rawResults = extractFromNextData(html, urlCategory);
+          const strategy = rawResults.length > 0 ? "__NEXT_DATA__" : "HTML parse";
+
+          if (rawResults.length === 0) {
+            rawResults = parsePage(html, url);
+          }
+
           const rawCount = rawResults.length;
 
-          let results = rawResults.filter((r) => awardWhitelist.has(r.award_level));
+          // Apply award level filter (only if specific levels requested)
+          let results = awardWhitelist.size > 0
+            ? rawResults.filter((r) => awardWhitelist.has(r.award_level))
+            : rawResults;
 
           results = results.filter((r) => {
             if (r.year == null) return true;
@@ -229,7 +338,7 @@ Deno.serve(async (req) => {
 
           send({
             type: "progress",
-            message: `✓ ${label} page scraped — ${rawCount} raw entries found, ${results.length} passed filters`,
+            message: `✓ ${label} (via ${strategy}) — ${rawCount} raw, ${results.length} passed filters`,
           });
 
           summary.total_fetched += results.length;
@@ -280,10 +389,6 @@ Deno.serve(async (req) => {
   });
 
   return new Response(stream, {
-    headers: {
-      ...corsHeaders,
-      "Content-Type": "application/x-ndjson",
-      "Cache-Control": "no-cache",
-    },
+    headers: { ...corsHeaders, "Content-Type": "application/x-ndjson", "Cache-Control": "no-cache" },
   });
 });
