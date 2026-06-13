@@ -500,44 +500,24 @@ const Index = () => {
             <button
               type="button"
               onClick={() => {
-                setBrief("emotional father-daughter spot — cinematic, no dialogue");
+                document.querySelector<HTMLTextAreaElement>('textarea[placeholder^="What do you need"]')?.focus();
                 window.scrollTo({ top: window.innerHeight * 0.6, behavior: "smooth" });
-                setTimeout(() => document.querySelector<HTMLTextAreaElement>("textarea")?.focus(), 400);
               }}
-              className="group relative overflow-hidden rounded-2xl border hairline bg-card p-5 flex flex-col gap-3 transition-all hover:bg-secondary hover:border-foreground/20 text-left"
+              className="group relative overflow-hidden rounded-2xl border hairline bg-card p-6 flex flex-col justify-between min-h-[180px] transition-all hover:bg-secondary hover:border-foreground/20 text-left"
             >
               <div className="flex items-start justify-between">
                 <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">⏵ 01 / Search by brief</span>
                 <Sparkles className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" strokeWidth={1.5} />
               </div>
-
-              {/* Static demo brief */}
-              <div className="rounded-lg bg-secondary/80 border hairline px-3 py-2.5">
-                <p className="font-mono text-[11px] text-foreground/70 leading-snug italic">
-                  "emotional father-daughter spot — cinematic, no dialogue"
+              <div>
+                <h3 className="font-display text-3xl font-black tracking-tighter leading-none">
+                  Tell us what<br />you need.
+                </h3>
+                <p className="mt-3 font-body text-sm text-muted-foreground leading-snug">
+                  Tell us what you need, we'll find references that fit your direction.
                 </p>
               </div>
-
-              {/* Live thumbnails from the archive as "matched results" */}
-              <div className="flex flex-col gap-1.5">
-                <p className="font-mono text-[9px] uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-1">
-                  <Sparkles className="h-2.5 w-2.5" strokeWidth={1.5} /> matched references
-                </p>
-                <div className="grid grid-cols-3 gap-1">
-                  {(loading ? [null, null, null] : refs.filter((r) => r.thumbnail_url).slice(0, 3)).map((r, i) =>
-                    r ? (
-                      <img key={r.id} src={r.thumbnail_url!} alt="" loading="lazy"
-                        className="aspect-video w-full object-cover rounded-md" />
-                    ) : (
-                      <div key={i} className="aspect-video w-full rounded-md bg-secondary animate-pulse" />
-                    )
-                  )}
-                </div>
-              </div>
-
-              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-primary/70 group-hover:text-primary transition-colors mt-auto">
-                Try it →
-              </p>
+              <ArrowUpRight className="absolute bottom-5 right-5 h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
             </button>
 
             <a
