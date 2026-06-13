@@ -101,15 +101,37 @@ const Users = () => {
 
       let loadedUsers: Row[] = [];
       try {
-        const [profilesRes, rolesRes, refsRes, viewsRes] = await Promise.all([
-          supabase.from("profiles").select("user_id, username, created_at, plan").limit(500),
+        // Fetch profiles via SECURITY DEFINER rpc (bypasses RLS + column grants).
+        // Falls back to edge function if the rpc isn't in the schema cache yet.
+        let profiles: any[] = [];
+        const rpcRes = await (supabase as any).rpc("admin_get_profiles");
+        if (!rpcRes.error && Array.isArray(rpcRes.data)) {
+          profiles = rpcRes.data;
+        } else {
+          // rpc not available yet — try the edge function
+          const { data: { session } } = await supabase.auth.getSession();
+          const efRes = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-admin-users`,
+            { headers: { Authorization: `Bearer ${session?.access_token}` } },
+          );
+          if (efRes.ok) {
+            const payload = await efRes.json();
+            if (payload.users) {
+              setRows(payload.users);
+              setLoading(false);
+              // still need to run the feedback block below
+              throw Object.assign(new Error("__ROWS_SET__"), { rowsSet: true });
+            }
+          }
+          // Both failed — surface the original rpc error
+          throw new Error(rpcRes.error?.message || "Could not load users");
+        }
+
+        const [rolesRes, refsRes, viewsRes] = await Promise.all([
           supabase.from("user_roles").select("user_id").eq("role", "admin").limit(500),
           supabase.from("references").select("created_by, approved_by").eq("published", true).limit(5000),
           supabase.from("page_views").select("user_id, duration_seconds").not("user_id", "is", null).limit(10000),
         ]);
-
-        const firstError = profilesRes.error || rolesRes.error || refsRes.error || viewsRes.error;
-        if (firstError) throw new Error(firstError.message);
 
         const adminIds = new Set((rolesRes.data || []).map((r: any) => r.user_id));
 
@@ -125,7 +147,7 @@ const Users = () => {
           if (v.user_id) timeBy.set(v.user_id, (timeBy.get(v.user_id) || 0) + (v.duration_seconds || 0));
         }
 
-        loadedUsers = ((profilesRes.data as any[]) || [])
+        loadedUsers = profiles
           .map((p: any) => ({
             user_id: p.user_id,
             username: p.username,
@@ -136,12 +158,14 @@ const Users = () => {
             references_approved: approvedBy.get(p.user_id) || 0,
             time_spent_seconds: timeBy.get(p.user_id) || 0,
           }))
-          .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+          .sort((a: Row, b: Row) => +new Date(b.created_at) - +new Date(a.created_at));
 
         setRows(loadedUsers);
       } catch (e: any) {
-        console.error(e);
-        setFetchError(e.message);
+        if (!e.rowsSet) {
+          console.error(e);
+          setFetchError(e.message);
+        }
       }
       setLoading(false);
 
