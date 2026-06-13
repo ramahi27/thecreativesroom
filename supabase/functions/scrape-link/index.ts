@@ -852,56 +852,27 @@ async function scrapeAndInsert(
   const meta = await inferMetadata(scraped, categories);
   const allImages = (scraped.images || []).filter(Boolean);
 
-  // ===== Image page with multiple potential projects =====
+  // ===== Keep only the MAIN campaign's images =====
+  // A page can still surface a few stray images from other work. Group them and
+  // keep only the project containing the hero image (index 0, the og:image), so
+  // we import a single draft of the main campaign — never an "Other projects" one.
+  let mainImages = allImages;
   if (scraped.type === "image" && allImages.length >= 2) {
     const groups = await groupImagesIntoProjects(allImages, scraped.title, scraped.source_url);
     if (groups.length > 1) {
-      const drafts: any[] = [];
-      for (let i = 0; i < groups.length; i++) {
-        const g = groups[i];
-        const items = g.image_indices.map((idx) => ({
-          url: allImages[idx],
-          kind: "image" as const,
-        }));
-        if (items.length === 0) continue;
-        const titleBase = (g.title && g.title.trim()) || meta.clean_title || scraped.title;
-        const title = groups.length > 1 && !g.title
-          ? `${titleBase} (${i + 1})`
-          : titleBase;
-        const row = {
-          title,
-          type: "image",
-          source_url: scraped.source_url,
-          thumbnail_url: items[0].url,
-          media_url: items[0].url,
-          media_items: items,
-          brand: meta.brand,
-          agency: meta.agency,
-          year: meta.year,
-          categories: meta.categories,
-          tags: meta.tags,
-          created_by: userId,
-          published: false,
-          source: "ai_scrape",
-        };
-        const { data: inserted, error: insErr } = await supabase
-          .from("references")
-          .insert(row)
-          .select("id, title, thumbnail_url, brand, categories, tags, type")
-          .single();
-        if (!insErr && inserted) drafts.push(inserted);
-        else if (insErr) console.error("insert split draft failed", insErr.message);
-      }
-      if (drafts.length > 0) {
-        return { ok: true, draft: drafts[0], drafts, split: true };
-      }
+      const mainGroup = groups.find((g) => g.image_indices.includes(0)) ?? groups[0];
+      mainImages = [...mainGroup.image_indices]
+        .sort((a, b) => a - b)
+        .map((i) => allImages[i])
+        .filter(Boolean);
+      if (mainImages.length === 0) mainImages = allImages;
     }
   }
 
   const mediaItems =
     scraped.type === "image"
-      ? (allImages.length > 0
-          ? allImages.map((u) => ({ url: u, kind: "image" as const }))
+      ? (mainImages.length > 0
+          ? mainImages.map((u) => ({ url: u, kind: "image" as const }))
           : (scraped.thumbnail_url ? [{ url: scraped.thumbnail_url, kind: "image" as const }] : []))
       : [];
 
