@@ -14,21 +14,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
-import { CannesLionsScraper } from "@/components/CannesLionsScraper";
-import { DandadScraper } from "@/components/DandadScraper";
-import { OneClubScraper } from "@/components/OneClubScraper";
-import { AdsOfTheWorldScraper } from "@/components/AdsOfTheWorldScraper";
-import { PexelsImporter, UnsplashImporter, ArenaImporter } from "@/components/BulkImporters";
 
 const PAGE_SIZE = 24;
 
 const SOURCE_LABELS: Record<string, string> = {
   all: "All sources",
   deckofbrilliance: "Deck of Brilliance",
-  adsoftheworld: "Ads of the World",
-  pexels: "Pexels",
-  unsplash: "Unsplash",
-  arena: "Are.na",
+  ai_scrape: "Imported via link",
   manual: "Manually added",
 };
 
@@ -49,8 +41,6 @@ const Drafts = () => {
   const [scrapeUrl, setScrapeUrl] = useState("");
   const [scraping, setScraping] = useState(false);
   const [linkChecking, setLinkChecking] = useState(false);
-  const [showScrapers, setShowScrapers] = useState(false);
-  const [showImporters, setShowImporters] = useState(false);
 
   async function handleCheckLinks() {
     setLinkChecking(true);
@@ -282,7 +272,8 @@ const Drafts = () => {
               <h2 className="font-mono text-xs uppercase tracking-widest">Import via link</h2>
             </div>
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-4">
-              YouTube (videos/playlists), Vimeo, or any web page. Multi-image campaigns import all images.
+              Paste a campaign page (Ads of the World, etc.), YouTube/Vimeo, or any web page.
+              Pulls every campaign photo plus title, brand &amp; agency. Cloudflare-protected sites supported.
             </p>
             <form onSubmit={handleScrape} className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 relative">
@@ -379,45 +370,6 @@ const Drafts = () => {
       </section>
 
       <main className="container py-12">
-
-        {/* Bulk photo importers (free APIs) */}
-        <div className="mb-8">
-          <button
-            onClick={() => setShowImporters((v) => !v)}
-            className="flex items-center gap-3 font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <span className={`transition-transform ${showImporters ? "rotate-90" : ""}`}>▶</span>
-            Bulk Photo Import — Pexels · Unsplash · Are.na
-          </button>
-
-          {showImporters && (
-            <div className="mt-8 space-y-12">
-              <PexelsImporter />
-              <UnsplashImporter />
-              <ArenaImporter />
-            </div>
-          )}
-        </div>
-
-        {/* Award scrapers */}
-        <div className="mb-12">
-          <button
-            onClick={() => setShowScrapers((v) => !v)}
-            className="flex items-center gap-3 font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <span className={`transition-transform ${showScrapers ? "rotate-90" : ""}`}>▶</span>
-            Award Scrapers — D&AD · The One Club · Ads of the World · Cannes Lions
-          </button>
-
-          {showScrapers && (
-            <div className="mt-8 space-y-12">
-              <DandadScraper />
-              <OneClubScraper />
-              <AdsOfTheWorldScraper />
-              <CannesLionsScraper />
-            </div>
-          )}
-        </div>
 
         {loading ? (
           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading drafts…</p>

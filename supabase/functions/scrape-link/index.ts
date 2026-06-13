@@ -150,6 +150,46 @@ async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
   return await fetch(url, { ...init, redirect: "manual" });
 }
 
+/**
+ * Fetch a page's rendered HTML. Tries Firecrawl first (headless Chrome — executes
+ * JavaScript and bypasses Cloudflare, so campaign sites like Ads of the World work),
+ * then falls back to a direct SSRF-guarded fetch. Returns the full rendered DOM.
+ */
+async function fetchPageHtml(url: string): Promise<{ html: string; via: string }> {
+  const fcKey = Deno.env.get("FIRECRAWL_API_KEY") ?? "";
+  if (fcKey) {
+    try {
+      const r = await fetch("https://api.firecrawl.dev/v1/scrape", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${fcKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url,
+          formats: ["rawHtml"],   // full rendered DOM — we want every campaign image
+          onlyMainContent: false,
+          waitFor: 2500,
+          timeout: 30000,
+        }),
+        signal: AbortSignal.timeout(45000),
+      });
+      if (r.ok) {
+        const j = await r.json();
+        const html = j?.data?.rawHtml || j?.data?.html;
+        if (j?.success && html) return { html, via: "firecrawl" };
+      }
+    } catch { /* fall through to direct */ }
+  }
+  // Direct fallback (SSRF-guarded, no redirect following)
+  const resp = await safeFetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; CreativesRoomBot/1.0; +https://thecreativesroom.com)",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+  if (resp.status >= 300 && resp.status < 400) throw new Error("Redirects not allowed");
+  return { html: await resp.text(), via: "direct" };
+}
+
 /* ─────────────────────────── Article body isolation ─────────────────────── */
 
 const ARTICLE_PATTERNS: RegExp[] = [
@@ -455,15 +495,7 @@ function cleanTitle(title: string): string {
 /* ─────────────────────────────── scrapeGeneric ──────────────────────────── */
 
 async function scrapeGeneric(url: string): Promise<Scraped> {
-  const r = await safeFetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (compatible; CreativesRoomBot/1.0; +https://thecreativesroom.com)",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
-  });
-  if (r.status >= 300 && r.status < 400) throw new Error("Redirects not allowed");
-  const html = await r.text();
+  const { html } = await fetchPageHtml(url);
 
   const articleHtml = extractArticleBody(html);
   const articleText = htmlToText(articleHtml).slice(0, 4000);
@@ -524,17 +556,27 @@ async function scrapeGeneric(url: string): Promise<Scraped> {
   const ogVideo = pickMeta(html, ["og:video", "og:video:url", "og:video:secure_url"]);
   const candidates = buildImageCandidates(html, articleHtml, url);
   const { url: primary, verified } = await pickFirstValidImage(candidates);
-  const image_warning = !primary && !ogVideo;
+
+  // Some campaign CDNs (Cloudflare-fronted) reject HEAD/GET from the edge, so
+  // verification can wrongly drop every image. When that happens but we DID find
+  // candidates, trust the ordered candidates rather than returning nothing.
+  let images = verified;
+  let thumb = primary;
+  if (verified.length === 0 && candidates.length > 0) {
+    images = candidates.slice(0, 12);
+    thumb = images[0];
+  }
+  const image_warning = !thumb && !ogVideo;
 
   return {
     title: title.slice(0, 250) || new URL(url).hostname,
     source_url: url,
-    thumbnail_url: primary,
-    type: ogVideo ? "video" : (primary ? "image" : "link"),
+    thumbnail_url: thumb,
+    type: ogVideo ? "video" : (thumb ? "image" : "link"),
     brand_guess: brandGuess || "",
     agency_guess: agencyGuess,
     year_guess: yearGuess,
-    images: verified,
+    images,
     body_text: articleText.slice(0, 3500),
     image_warning,
   };
