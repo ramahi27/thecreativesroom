@@ -6,7 +6,6 @@ import { Play, ImageIcon, Link2 } from "lucide-react";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { FolderPickerButton } from "@/components/FolderPickerButton";
 import { rememberModalReturn, setModalNavOrder, clearModalNavOrder } from "@/lib/modalReturn";
-import { getDominantColor } from "@/lib/dominantColor";
 import { refPath } from "@/lib/slug";
 
 interface Props {
@@ -48,42 +47,18 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
   const platform = detectPlatform(r.source_url);
   const [pos, setPos] = useState<string>("center 35%");
   const [thumbError, setThumbError] = useState(false);
-  // Accent glow pulled from the thumbnail's dominant colour (best-effort, on hover)
-  const [accent, setAccent] = useState<string | null>(null);
-  const [hovered, setHovered] = useState(false);
 
   const Icon = r.type === "video" ? Play : r.type === "image" ? ImageIcon : Link2;
-
-  const onEnter = () => {
-    setHovered(true);
-    if (accent === null && thumb) {
-      getDominantColor(thumb).then((rgb) => {
-        if (rgb) setAccent(rgb.join(", "));
-      });
-    }
-  };
-
-  const glowStyle =
-    hovered && accent
-      ? {
-          borderColor: `rgba(${accent}, 0.55)`,
-          boxShadow: `0 0 0 1px rgba(${accent}, 0.4), 0 24px 60px -18px rgba(${accent}, 0.45)`,
-        }
-      : undefined;
 
   return (
     <Link
       to={refPath(r.id, r.title)}
-      onMouseEnter={onEnter}
-      onMouseLeave={() => setHovered(false)}
-      style={glowStyle}
       onClick={() => {
         rememberModalReturn();
         if (orderedIds && orderedIds.length > 0) setModalNavOrder(orderedIds);
         else clearModalNavOrder();
       }}
-      data-ref-card
-      className="reveal-card group block rounded-2xl overflow-hidden bg-card border hairline flex flex-col transition-all hover:border-foreground/20 hover:shadow-lg hover:shadow-black/20 [cursor:none]"
+      className="reveal-card group block rounded-2xl overflow-hidden bg-card border hairline flex flex-col transition-all hover:border-foreground/20 hover:shadow-lg hover:shadow-black/20"
     >
       <div className={`relative overflow-hidden bg-muted ${masonry ? "" : "aspect-video"}`}>
         <BookmarkButton referenceId={r.id} />
