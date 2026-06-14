@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "overrides": {
+    "caniuse-lite": "latest"
+  },
   "scripts": {
     "predev": "bun scripts/generate-sitemap.ts",
     "dev": "vite",
