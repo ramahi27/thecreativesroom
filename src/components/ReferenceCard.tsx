@@ -26,10 +26,11 @@ interface Props {
 function smartPosition(w: number, h: number): string {
   if (!w || !h) return "center";
   const ratio = w / h;
-  if (ratio < 0.85) return "center 25%"; // portrait — face/copy usually upper
-  if (ratio < 1.2) return "center 30%";  // square-ish
-  if (ratio < 2) return "center 40%";    // standard landscape
-  return "center";                        // ultra-wide / cinematic
+  if (ratio < 0.75) return "center 10%";  // tall portrait — face/masthead at very top
+  if (ratio < 0.85) return "center 18%";  // portrait
+  if (ratio < 1.2) return "center 25%";   // square-ish
+  if (ratio < 2) return "center 35%";     // standard landscape
+  return "center";                         // ultra-wide / cinematic
 }
 
 export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: Props) {
