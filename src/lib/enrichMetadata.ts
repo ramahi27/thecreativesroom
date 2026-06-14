@@ -101,5 +101,7 @@ export async function enrichReferenceMetadata(referenceId: string) {
       .update(updates)
       .eq("id", referenceId);
     if (updateError) throw updateError;
+  } catch {
+    // best-effort, silent
   }
 }
