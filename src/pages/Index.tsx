@@ -899,16 +899,23 @@ const Index = () => {
                       </span>
 
                       {/* Contact-sheet hover peek */}
-                      {r.thumbnail_url && (
-                        <span className="pointer-events-none absolute right-28 top-1/2 -translate-y-1/2 z-20 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 hidden lg:block">
-                          <img
-                            src={r.thumbnail_url}
-                            alt=""
-                            loading="lazy"
-                            className="max-h-40 max-w-[200px] w-auto h-auto block rounded-sm border hairline shadow-cinema"
-                          />
-                        </span>
-                      )}
+                      {(() => {
+                        const mediaItems = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
+                        const peekSrc = r.type === "image"
+                          ? (Array.isArray(mediaItems) ? mediaItems.find((it) => it?.kind === "image")?.url : undefined) || r.media_url || r.thumbnail_url
+                          : r.thumbnail_url;
+                        if (!peekSrc) return null;
+                        return (
+                          <span className="pointer-events-none absolute right-28 top-1/2 -translate-y-1/2 z-20 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 hidden lg:block">
+                            <img
+                              src={peekSrc}
+                              alt=""
+                              loading="lazy"
+                              className="max-h-48 max-w-[240px] w-auto h-auto block rounded-sm border hairline shadow-cinema"
+                            />
+                          </span>
+                        );
+                      })()}
                     </Link>
                   );
                 });
