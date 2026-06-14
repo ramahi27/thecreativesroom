@@ -145,6 +145,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error("Failed to generate sitemap:", err);
-  process.exit(1);
+  console.warn("Sitemap generation skipped:", err?.message ?? err);
+  // Don't block the build if Supabase is unreachable at build time
 });

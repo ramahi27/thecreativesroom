@@ -7,9 +7,9 @@
     "caniuse-lite": "latest"
   },
   "scripts": {
-    "predev": "bun scripts/generate-sitemap.ts",
+    "predev": "bun scripts/generate-sitemap.ts || true",
     "dev": "vite",
-    "prebuild": "bun scripts/generate-sitemap.ts",
+    "prebuild": "bun scripts/generate-sitemap.ts || true",
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
