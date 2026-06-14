@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -23,6 +23,7 @@ const Contact = () => {
   const [type, setType]       = useState<FeedbackType>("suggestion");
   const [message, setMessage] = useState("");
   const [email, setEmail]     = useState(user?.email ?? "");
+  useEffect(() => { if (user?.email) setEmail(user.email); }, [user?.email]);
   const [loading, setLoading] = useState(false);
   const [sent, setSent]       = useState(false);
 

@@ -75,12 +75,11 @@ export function useFolders() {
   );
 
   const setVisibility = useCallback(async (id: string, is_public: boolean) => {
-    const prev = folders;
     setFolders((p) => p.map((f) => (f.id === id ? { ...f, is_public } : f)));
     const { error } = await supabase.from("folders").update({ is_public }).eq("id", id);
-    if (error) setFolders(prev);
+    if (error) setFolders((p) => p.map((f) => (f.id === id ? { ...f, is_public: !is_public } : f)));
     else broadcast();
-  }, [folders]);
+  }, []);
 
   const renameFolder = useCallback(
     async (id: string, name: string) => {

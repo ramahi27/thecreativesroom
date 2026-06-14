@@ -26,8 +26,16 @@ import { CyclingPlaceholder } from "@/components/CyclingPlaceholder";
 type MediaFilter = "all" | "videos" | "photos";
 type SortBy = "default" | "newest" | "oldest" | "campaign_newest" | "campaign_oldest" | "title";
 
-const FILTERS_KEY = "archive:filters";
 const PAGE_SIZE = 100;
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 const Index = () => {
   const { user, isAdmin } = useAuth();
@@ -255,21 +263,6 @@ const Index = () => {
     return cols;
   }, []);
 
-  useEffect(() => {
-    try {
-      sessionStorage.removeItem(FILTERS_KEY);
-    } catch {}
-  }, []);
-
-  const shuffle = <T,>(arr: T[]): T[] => {
-    const a = [...arr];
-    for (let i = a.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [a[i], a[j]] = [a[j], a[i]];
-    }
-    return a;
-  };
-
   const fetchPage = async (from: number) => {
     const { data, count, error } = await supabase
       .from("references")
@@ -298,14 +291,15 @@ const Index = () => {
     if (loadingMoreRef.current || !hasMore) return;
     loadingMoreRef.current = true;
     setLoadingMore(true);
-    const { list, total } = await fetchPage(refs.length);
+    const from = refs.length; // capture before async gap — refs.length in closure is stale after await
+    const { list, total } = await fetchPage(from);
     setRefs((prev) => {
       const seen = new Set(prev.map((r) => r.id));
       const fresh = list.filter((r) => !seen.has(r.id));
       return [...prev, ...shuffle(fresh)];
     });
     setTotalCount(total);
-    setHasMore(refs.length + list.length < total);
+    setHasMore(from + list.length < total);
     loadingMoreRef.current = false;
     setLoadingMore(false);
   };
@@ -332,10 +326,16 @@ const Index = () => {
     const q = search.trim().toLowerCase();
     const exp = expandedTerms.map((t) => t.toLowerCase()).filter((t) => t && t !== q);
 
+    // Cache compiled regexes — hit() is called ~7 fields × N refs per render
+    const reCache = new Map<string, RegExp>();
+    const getRe = (term: string) => {
+      let re = reCache.get(term);
+      if (!re) { re = new RegExp(`(^|[^a-z])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`); reCache.set(term, re); }
+      return re;
+    };
     const hit = (field: string, term: string, exact: number, partial: number): number => {
       if (!field || !term) return 0;
-      const whole = new RegExp(`(^|[^a-z])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`).test(field);
-      if (whole) return exact;
+      if (getRe(term).test(field)) return exact;
       return field.includes(term) ? partial : 0;
     };
 

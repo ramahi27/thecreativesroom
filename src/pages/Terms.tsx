@@ -21,7 +21,7 @@ const Terms = () => {
 
         <div className="space-y-8 font-body text-base leading-relaxed text-foreground/90">
           <p className="text-sm text-muted-foreground font-mono uppercase tracking-widest">
-            Last updated: {new Date().toLocaleDateString("en-GB", { year: "numeric", month: "long", day: "numeric" })}
+            Last updated: 14 June 2026
           </p>
 
           <section className="space-y-3">

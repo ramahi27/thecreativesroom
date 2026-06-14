@@ -104,19 +104,15 @@ export function useFollowedFolders() {
       .eq("is_public", true);
     const folderRows = (f as any[]) || [];
     const ownerIds = Array.from(new Set(folderRows.map((r) => r.user_id)));
-    const { data: owners } = ownerIds.length
-      ? await supabase
-          .from("profiles")
-          .select("user_id,username,avatar_url")
-          .in("user_id", ownerIds)
-      : { data: [] as any[] };
-    const ownerMap = new Map((owners || []).map((o: any) => [o.user_id, o]));
-
-    const { data: items } = await supabase
-      .from("folder_items")
-      .select("folder_id,reference_id")
-      .in("folder_id", folderRows.map((r) => r.id));
-    const refIds = Array.from(new Set((items || []).map((it: any) => it.reference_id)));
+    const [ownersRes, itemsRes] = await Promise.all([
+      ownerIds.length
+        ? supabase.from("profiles").select("user_id,username,avatar_url").in("user_id", ownerIds)
+        : Promise.resolve({ data: [] as any[] }),
+      supabase.from("folder_items").select("folder_id,reference_id").in("folder_id", folderRows.map((r) => r.id)),
+    ]);
+    const ownerMap = new Map((ownersRes.data || []).map((o: any) => [o.user_id, o]));
+    const items = itemsRes;
+    const refIds = Array.from(new Set((items.data || []).map((it: any) => it.reference_id)));
     const refsById = new Map<string, Reference>();
     if (refIds.length) {
       const { data: rs } = await supabase
@@ -127,7 +123,7 @@ export function useFollowedFolders() {
       for (const r of (rs as any[]) || []) refsById.set(r.id, r as Reference);
     }
     const itemsByFolder = new Map<string, string[]>();
-    for (const it of (items as any[]) || []) {
+    for (const it of (items.data as any[]) || []) {
       const arr = itemsByFolder.get(it.folder_id) || [];
       arr.push(it.reference_id);
       itemsByFolder.set(it.folder_id, arr);

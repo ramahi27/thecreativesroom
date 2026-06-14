@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import type { Reference } from "@/lib/references";
-import { detectPlatform } from "@/lib/references";
 import { Play, ImageIcon, Link2 } from "lucide-react";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { FolderPickerButton } from "@/components/FolderPickerButton";
@@ -45,7 +44,6 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
   const thumb = r.type === "image"
     ? (firstMediaImage || r.thumbnail_url || r.media_url)
     : (r.thumbnail_url || null);
-  const platform = detectPlatform(r.source_url);
   const [pos, setPos] = useState<string>("center 35%");
   const [thumbError, setThumbError] = useState(false);
 
@@ -122,7 +120,7 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
 
         {(() => {
           const isMagazine = (r.categories || []).includes("Magazine Covers");
-          const showAgency = !isMagazine && r.agency;
+          const showAgency = !isMagazine && r.agency && r.agency !== r.brand;
           if (!r.brand && !showAgency) return null;
           return (
             <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 truncate">
