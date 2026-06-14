@@ -905,7 +905,7 @@ const Index = () => {
                             src={r.thumbnail_url}
                             alt=""
                             loading="lazy"
-                            className="h-24 w-40 object-cover rounded-sm border hairline shadow-cinema"
+                            className="max-h-40 max-w-[200px] w-auto h-auto block rounded-sm border hairline shadow-cinema"
                           />
                         </span>
                       )}
