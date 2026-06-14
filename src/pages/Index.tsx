@@ -853,30 +853,14 @@ const Index = () => {
               {(() => {
                 const order = filtered.map((x) => x.id);
                 if (viewMode === "grid") {
-                  return filtered.map((r, i) => {
-                    const mediaItems = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
-                    const peekSrc = r.type === "image"
-                      ? (Array.isArray(mediaItems) ? mediaItems.find((it) => it?.kind === "image")?.url : undefined) || r.media_url || r.thumbnail_url
-                      : r.thumbnail_url;
-                    return (
-                      <div
-                        key={r.id}
-                        className={`relative group/peek ${focusedIdx === i ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}`}
-                      >
-                        <ReferenceCard reference={r} orderedIds={order} priority={i < 4} />
-                        {peekSrc && (
-                          <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 opacity-0 group-hover/peek:opacity-100 transition-opacity duration-200 hidden lg:block">
-                            <img
-                              src={peekSrc}
-                              alt=""
-                              loading="lazy"
-                              className="max-h-64 max-w-[300px] w-auto h-auto block rounded-sm border hairline shadow-cinema"
-                            />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  });
+                  return filtered.map((r, i) => (
+                    <div
+                      key={r.id}
+                      className={focusedIdx === i ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}
+                    >
+                      <ReferenceCard reference={r} orderedIds={order} priority={i < 4} />
+                    </div>
+                  ));
                 }
                 // Index / contact-sheet view
                 return filtered.map((r, i) => {
