@@ -9,11 +9,14 @@ import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
-import { Check, Trash2, Trash, Copy, Sparkles, Link2, Tag } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Check, Trash2, Trash, Copy, Sparkles, Link2, Tag, ChevronDown, ChevronUp } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
+import { PinterestBoardImporter } from "@/components/PinterestBoardImporter";
+import { RssScraper } from "@/components/RssScraper";
+import { DandadScraper } from "@/components/DandadScraper";
+import { OneClubScraper } from "@/components/OneClubScraper";
 
 const PAGE_SIZE = 24;
 
@@ -26,7 +29,6 @@ const SOURCE_LABELS: Record<string, string> = {
 
 const Drafts = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [drafts, setDrafts] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +43,7 @@ const Drafts = () => {
   const [scrapeUrl, setScrapeUrl] = useState("");
   const [scraping, setScraping] = useState(false);
   const [linkChecking, setLinkChecking] = useState(false);
+  const [scrapersOpen, setScrapersOpen] = useState(false);
 
   async function handleCheckLinks() {
     setLinkChecking(true);
@@ -59,11 +62,7 @@ const Drafts = () => {
       setLinkChecking(false);
     }
   }
-  
 
-  
-
-  // Keep URL in sync with filters/page so we can return here with the same view.
   useEffect(() => {
     const next = new URLSearchParams();
     if (sourceFilter && sourceFilter !== "all") next.set("source", sourceFilter);
@@ -71,19 +70,15 @@ const Drafts = () => {
     setSearchParams(next, { replace: true });
   }, [sourceFilter, page, setSearchParams]);
 
-  // Remember the return URL for when an admin approves a draft from the detail view.
   useEffect(() => {
     const qs = searchParams.toString();
     sessionStorage.setItem("draftsReturnUrl", `/drafts${qs ? `?${qs}` : ""}`);
   }, [searchParams]);
 
-
-
   useEffect(() => {
     document.title = "Drafts — The Creatives Room";
   }, []);
 
-  // Load source list with counts (only drafts)
   useEffect(() => {
     if (!isAdmin) return;
     (async () => {
@@ -100,7 +95,6 @@ const Drafts = () => {
     })();
   }, [isAdmin, drafts.length]);
 
-  // Reset to page 0 when filter changes
   useEffect(() => {
     setPage(0);
   }, [sourceFilter]);
@@ -128,9 +122,8 @@ const Drafts = () => {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const pageNumbers = useMemo(() => {
-    // Show all page numbers with ellipsis when too many
     const pages: (number | "…")[] = [];
-    const window = 2; // pages around current
+    const window = 2;
     const add = (n: number) => {
       if (!pages.includes(n)) pages.push(n);
     };
@@ -197,7 +190,6 @@ const Drafts = () => {
         toast.success("Ready to review", { description: data.draft.title });
       }
       setScrapeUrl("");
-      // Refresh drafts list
       setPage(0);
       const { data: refreshed, count } = await supabase
         .from("references")
@@ -224,7 +216,6 @@ const Drafts = () => {
     setDrafts((d) => d.filter((r) => r.id !== id));
     setTotal((t) => Math.max(0, t - 1));
     toast.success("Published");
-    // Backfill missing brand/agency/year from AI in the background.
     enrichReferenceMetadata(id);
   }
 
@@ -293,6 +284,35 @@ const Drafts = () => {
                 {scraping ? "Scraping…" : "Scrape & draft"}
               </Button>
             </form>
+          </div>
+
+          {/* Bulk scrapers */}
+          <div className="mt-6 max-w-2xl border hairline bg-muted/30">
+            <button
+              type="button"
+              onClick={() => setScrapersOpen((o) => !o)}
+              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" strokeWidth={1.5} />
+                <span className="font-mono text-xs uppercase tracking-widest">Bulk scrapers</span>
+                <span className="font-mono text-[10px] text-muted-foreground tracking-widest">
+                  — RSS feeds · Pinterest · D&AD · One Club
+                </span>
+              </div>
+              {scrapersOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </button>
+            {scrapersOpen && (
+              <div className="px-5 pb-6 space-y-8 border-t hairline pt-6">
+                <RssScraper />
+                <div className="border-t hairline" />
+                <PinterestBoardImporter />
+                <div className="border-t hairline" />
+                <DandadScraper />
+                <div className="border-t hairline" />
+                <OneClubScraper />
+              </div>
+            )}
           </div>
 
           {/* Source filter */}
