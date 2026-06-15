@@ -53,7 +53,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     let cancelled = false;
     const cols =
       "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,media_items,categories,published,source";
-    // 1) Fetch the single reference first so the modal opens immediately.
     supabase
       .from("references")
       .select(cols)
@@ -64,7 +63,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         setR(one ? (one as unknown as Reference) : null);
         if (one) {
           document.title = `${(one as any).title} — The Creatives Room`;
-          // Silently upgrade old /ref/uuid URLs to /ref/uuid-title-slug
           const canonical = refPath((one as any).id, (one as any).title);
           if (window.location.pathname !== canonical) {
             navigate(canonical, { replace: true });
@@ -72,7 +70,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         }
         setLoading(false);
       });
-    // 2) Fetch the lighter list in parallel for prev/next + related (no notes/media_items).
     const listCols =
       "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,categories,published,source,created_at,updated_at";
     supabase
@@ -85,12 +82,9 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         if (cancelled) return;
         setAllRefs((list as unknown as Reference[]) || []);
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [id]);
 
-  // JSON-LD CreativeWork schema for rich search results
   const jsonLd = useMemo(() => {
     if (!r) return null;
     const creator = r.brand || r.agency;
@@ -110,7 +104,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   }, [r]);
   useJsonLd(jsonLd, "reference-detail");
 
-  // Per-reference social/SEO meta (best-effort: client-rendered)
   const metaDescription = useMemo(() => {
     if (!r) return "";
     const bits = [r.brand, r.agency, r.year ? String(r.year) : null].filter(Boolean);
@@ -119,9 +112,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     return `${lead}${tail}`.slice(0, 200);
   }, [r]);
 
-  // Build a similarity-scored ordering across all refs. Used as a fallback
-  // for prev/next when the user didn't open the modal from a known list,
-  // and as the source for the related-projects strip below.
   const similarityOrdered = useMemo(() => {
     if (!r || allRefs.length === 0) return [] as Reference[];
     const myTags = new Set((r.tags || []).map((t) => t.toLowerCase()));
@@ -132,15 +122,9 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       .filter((x) => x.id !== r.id)
       .map((x) => {
         let score = 0;
-        const tagOverlap = (x.tags || []).reduce(
-          (n, t) => n + (myTags.has(t.toLowerCase()) ? 1 : 0),
-          0,
-        );
+        const tagOverlap = (x.tags || []).reduce((n, t) => n + (myTags.has(t.toLowerCase()) ? 1 : 0), 0);
         score += tagOverlap * 3;
-        const catOverlap = (x.categories || []).reduce(
-          (n, c) => n + (myCats.has(c.toLowerCase()) ? 1 : 0),
-          0,
-        );
+        const catOverlap = (x.categories || []).reduce((n, c) => n + (myCats.has(c.toLowerCase()) ? 1 : 0), 0);
         score += catOverlap * 2;
         if (myBrand && (x.brand || "").toLowerCase().trim() === myBrand) score += 4;
         if (myAgency && (x.agency || "").toLowerCase().trim() === myAgency) score += 2;
@@ -153,8 +137,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
   const related = useMemo(
     () => similarityOrdered.filter((x) => {
-      // Keep the related strip meaningful — only show items with at least
-      // some overlap. We re-score quickly here using tag/cat overlap.
       const myTags = new Set((r?.tags || []).map((t) => t.toLowerCase()));
       const myCats = new Set((r?.categories || []).map((c) => c.toLowerCase()));
       const tagOverlap = (x.tags || []).some((t) => myTags.has(t.toLowerCase()));
@@ -167,26 +149,20 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const { prev, next } = useMemo(() => {
     if (!r) return { prev: null as Reference | null, next: null as Reference | null };
     const byId = new Map(allRefs.map((x) => [x.id, x] as const));
-    // 1) Prefer the order captured from the page that opened the modal.
     if (navOrder.length > 0) {
       const idx = navOrder.indexOf(r.id);
       if (idx !== -1 && navOrder.length > 1) {
         const prevId = navOrder[(idx - 1 + navOrder.length) % navOrder.length];
         const nextId = navOrder[(idx + 1) % navOrder.length];
-        return {
-          prev: byId.get(prevId) || null,
-          next: byId.get(nextId) || null,
-        };
+        return { prev: byId.get(prevId) || null, next: byId.get(nextId) || null };
       }
     }
-    // 2) Fallback: walk through similar projects.
     if (similarityOrdered.length > 0) {
       return {
         prev: similarityOrdered[similarityOrdered.length - 1] || null,
         next: similarityOrdered[0] || null,
       };
     }
-    // 3) Last resort: chronological order from allRefs.
     if (allRefs.length === 0) return { prev: null, next: null };
     const idx = allRefs.findIndex((x) => x.id === r.id);
     if (idx === -1) return { prev: null, next: null };
@@ -241,7 +217,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (error) return toast.error(error.message);
     setR({ ...r, published: true } as Reference);
     toast.success("Published — now live on the main page");
-    // Backfill missing brand/agency/year using AI in the background.
     enrichReferenceMetadata(r.id);
     returnToOpener();
   }
@@ -277,18 +252,14 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!r) return;
     const slug = (r.title || "reference").replace(/[^a-z0-9]/gi, "-").toLowerCase().replace(/-+/g, "-");
 
-    // Embed-only (YouTube / Vimeo) — download via our Cloudflare Worker proxy,
-    // which fetches the video server-side and streams a finished MP4 back.
     if (currentIsEmbed || !current?.url) {
       const target = r.source_url || r.media_url || "";
       const ytId = extractYouTubeId(target);
-
       if (!ytId) {
         if (!target) { toast.error("No source URL available."); return; }
         toast.error("Only YouTube videos can be downloaded.");
         return;
       }
-
       setDownloading(true);
       const tId = toast.loading("Preparing download…");
       try {
@@ -313,7 +284,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     const rawExt = url.split("?")[0].split(".").pop() || "";
     const ext = rawExt.length <= 4 ? rawExt : "mp4";
 
-    // Supabase storage supports ?download= to force Content-Disposition: attachment
     if (url.includes(".supabase.co/storage/")) {
       const a = document.createElement("a");
       a.href = `${url}${url.includes("?") ? "&" : "?"}download=${slug}.${ext}`;
@@ -324,7 +294,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       return;
     }
 
-    // General: fetch as blob (works for CORS-enabled hosts)
     try {
       const res = await fetch(url, { mode: "cors" });
       if (!res.ok) throw new Error("fetch failed");
@@ -342,10 +311,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
   async function addTag(raw: string) {
     if (!r) return;
-    const parts = raw
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
+    const parts = raw.split(",").map((t) => t.trim()).filter(Boolean);
     if (parts.length === 0) return;
     const current = Array.isArray(r.tags) ? r.tags : [];
     const lower = new Set(current.map((t) => t.toLowerCase()));
@@ -354,10 +320,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     const nextTags = [...current, ...additions];
     setR({ ...r, tags: nextTags } as Reference);
     const { error } = await supabase.from("references").update({ tags: nextTags }).eq("id", r.id);
-    if (error) {
-      setR({ ...r, tags: current } as Reference);
-      toast.error(error.message);
-    }
+    if (error) { setR({ ...r, tags: current } as Reference); toast.error(error.message); }
   }
 
   async function removeTag(tag: string) {
@@ -366,10 +329,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     const nextTags = current.filter((t) => t !== tag);
     setR({ ...r, tags: nextTags } as Reference);
     const { error } = await supabase.from("references").update({ tags: nextTags }).eq("id", r.id);
-    if (error) {
-      setR({ ...r, tags: current } as Reference);
-      toast.error(error.message);
-    }
+    if (error) { setR({ ...r, tags: current } as Reference); toast.error(error.message); }
   }
 
   async function saveField(field: "title" | "brand" | "agency" | "year", value: string) {
@@ -384,10 +344,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     }
     setR({ ...r, ...update } as Reference);
     const { error } = await supabase.from("references").update(update).eq("id", r.id);
-    if (error) {
-      setR(prev as Reference);
-      toast.error(error.message);
-    }
+    if (error) { setR(prev as Reference); toast.error(error.message); }
   }
 
   async function toggleCategory(cat: string) {
@@ -396,10 +353,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     const nextCats = current.includes(cat) ? current.filter((c) => c !== cat) : [...current, cat];
     setR({ ...r, categories: nextCats } as Reference);
     const { error } = await supabase.from("references").update({ categories: nextCats }).eq("id", r.id);
-    if (error) {
-      setR({ ...r, categories: current } as Reference);
-      toast.error(error.message);
-    }
+    if (error) { setR({ ...r, categories: current } as Reference); toast.error(error.message); }
   }
 
   const platform = r ? detectPlatform(r.source_url) : null;
@@ -430,40 +384,27 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         className="max-w-[1600px] w-[96vw] max-h-[95vh] overflow-x-hidden overflow-y-auto p-0 bg-background grain"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
-        {/* Prev / Next side arrows */}
         {prev && (
-          <button
-            onClick={goPrev}
-            aria-label="Previous reference"
-            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors"
-          >
+          <button onClick={goPrev} aria-label="Previous reference"
+            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors">
             <ChevronLeft className="h-4 w-4" />
           </button>
         )}
         {next && (
-          <button
-            onClick={goNext}
-            aria-label="Next reference"
-            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors"
-          >
+          <button onClick={goNext} aria-label="Next reference"
+            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors">
             <ChevronRight className="h-4 w-4" />
           </button>
         )}
 
         {loading ? (
-          <div className="p-12">
-            <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p>
-          </div>
+          <div className="p-12"><p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading…</p></div>
         ) : !r ? (
-          <div className="p-12">
-            <p className="font-display text-3xl italic text-muted-foreground">Not found.</p>
-          </div>
+          <div className="p-12"><p className="font-display text-3xl italic text-muted-foreground">Not found.</p></div>
         ) : (
           <div className="p-6 md:p-10">
             <div className="flex items-center justify-end">
-              <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-                ← / → navigate
-              </p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">← / → navigate</p>
             </div>
 
             <div className="grid lg:grid-cols-3 gap-10 mt-4">
@@ -475,37 +416,23 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-secondary/60">
                           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Video unavailable</p>
                           {r.source_url && (
-                            <a
-                              href={r.source_url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:opacity-90 transition-opacity"
-                            >
+                            <a href={r.source_url} target="_blank" rel="noreferrer"
+                              className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:opacity-90 transition-opacity">
                               <ExternalLink className="h-3 w-3" />
                               Watch on {platform || "source"}
                             </a>
                           )}
                         </div>
                       ) : (
-                        <iframe
-                          ref={iframeRef}
-                          src={embedUrl}
-                          title={r.title}
-                          className="w-full h-full"
-                          allow="autoplay; fullscreen; picture-in-picture"
-                          allowFullScreen
-                          onError={() => setEmbedError(true)}
-                        />
+                        <iframe ref={iframeRef} src={embedUrl} title={r.title}
+                          className="w-full h-full" allow="autoplay; fullscreen; picture-in-picture"
+                          allowFullScreen onError={() => setEmbedError(true)} />
                       )}
                     </div>
                   ) : current ? (
                     current.kind === "video" ? (
-                      <video
-                        ref={videoRef}
-                        src={current.url}
-                        controls
-                        className="w-full bg-black object-contain max-h-[calc(95vh-16rem)]"
-                      />
+                      <video ref={videoRef} src={current.url} controls
+                        className="w-full bg-black object-contain max-h-[calc(95vh-16rem)]" />
                     ) : (
                       <div className="aspect-video bg-black">
                         <ZoomableImage src={current.url} alt={r.title} className="h-full" />
@@ -513,9 +440,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     )
                   ) : (
                     <div className="aspect-video flex items-center justify-center bg-secondary">
-                      <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-                        No preview
-                      </span>
+                      <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">No preview</span>
                     </div>
                   )}
                 </div>
@@ -523,9 +448,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                 {totalSlides > 1 && (
                   <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                     {uploaded.map((m, i) => (
-                      <button
-                        key={i}
-                        onClick={() => setActiveMedia(i)}
+                      <button key={i} onClick={() => setActiveMedia(i)}
                         draggable={isAdmin && uploaded.length > 1}
                         onDragStart={(e) => {
                           if (!isAdmin) return;
@@ -533,10 +456,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                           e.dataTransfer.effectAllowed = "move";
                         }}
                         onDragOver={(e) => {
-                          if (isAdmin && uploaded.length > 1) {
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = "move";
-                          }
+                          if (isAdmin && uploaded.length > 1) { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }
                         }}
                         onDrop={async (e) => {
                           if (!isAdmin || !r) return;
@@ -547,20 +467,14 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                           const [moved] = next.splice(from, 1);
                           next.splice(i, 0, moved);
                           const prevR = r;
-                          // For photo projects, the first photo is always the thumbnail.
                           const newThumb = r.type === "image"
                             ? (next.find((it) => it.kind === "image")?.url ?? r.thumbnail_url)
                             : r.thumbnail_url;
                           setR({ ...r, media_items: next, thumbnail_url: newThumb } as Reference);
                           setActiveMedia(i);
-                          const { error } = await supabase
-                            .from("references")
-                            .update({ media_items: next as any, thumbnail_url: newThumb })
-                            .eq("id", r.id);
-                          if (error) {
-                            setR(prevR);
-                            toast.error(error.message);
-                          }
+                          const { error } = await supabase.from("references")
+                            .update({ media_items: next as any, thumbnail_url: newThumb }).eq("id", r.id);
+                          if (error) { setR(prevR); toast.error(error.message); }
                         }}
                         className={`relative shrink-0 aspect-video w-28 rounded-xl overflow-hidden border hairline ${
                           safeIdx === i ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"
@@ -583,27 +497,21 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                                 : r.thumbnail_url;
                               setR({ ...r, media_items: next, thumbnail_url: newThumb } as Reference);
                               if (safeIdx >= next.length) setActiveMedia(Math.max(0, next.length - 1));
-                              const { error } = await supabase
-                                .from("references")
-                                .update({ media_items: next as any, thumbnail_url: newThumb })
-                                .eq("id", r.id);
+                              const { error } = await supabase.from("references")
+                                .update({ media_items: next as any, thumbnail_url: newThumb }).eq("id", r.id);
                               if (error) { setR(prevR); toast.error(error.message); }
                             }}
                             className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs leading-none hover:bg-destructive transition-colors"
                             aria-label="Remove photo"
-                          >
-                            ×
-                          </button>
+                          >×</button>
                         )}
                       </button>
                     ))}
                     {hasEmbed && (
-                      <button
-                        onClick={() => setActiveMedia(uploaded.length)}
+                      <button onClick={() => setActiveMedia(uploaded.length)}
                         className={`shrink-0 aspect-video w-28 rounded-xl flex items-center justify-center bg-secondary border hairline font-mono text-[10px] uppercase tracking-widest ${
                           currentIsEmbed ? "ring-2 ring-primary" : "opacity-70 hover:opacity-100"
-                        }`}
-                      >
+                        }`}>
                         ▶ {platform || "Link"}
                       </button>
                     )}
@@ -612,40 +520,29 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
                 <div className="mt-4 grid grid-cols-1 sm:flex sm:flex-wrap gap-3 [&>*]:justify-center sm:[&>*]:justify-start">
                   {embedUrl && !currentIsEmbed && (
-                    <button
-                      onClick={() => setActiveMedia(uploaded.length)}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-mono text-[11px] uppercase tracking-widest hover:opacity-90 transition-opacity"
-                    >
+                    <button onClick={() => setActiveMedia(uploaded.length)}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-mono text-[11px] uppercase tracking-widest hover:opacity-90 transition-opacity">
                       ▶ Watch here
                     </button>
                   )}
                   {r.source_url && r.type === "video" && (
-                    <a
-                      href={r.source_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary transition-colors"
-                    >
+                    <a href={r.source_url} target="_blank" rel="noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary transition-colors">
                       <ExternalLink className="h-3 w-3" />
                       Open on {platform || "source"}
                     </a>
                   )}
                   <BookmarkButton referenceId={r.id} variant="detail" />
-                  <button
-                    onClick={handleShare}
+                  <button onClick={handleShare}
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary transition-colors"
-                    aria-label="Share this reference"
-                  >
+                    aria-label="Share this reference">
                     <Share2 className="h-3 w-3" />
                     Share
                   </button>
                   {canDownload && (current?.url || r.source_url || r.media_url) && (
-                    <button
-                      onClick={handleDownload}
-                      disabled={downloading}
+                    <button onClick={handleDownload} disabled={downloading}
                       className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary disabled:opacity-50 disabled:cursor-wait"
-                      aria-label="Download"
-                    >
+                      aria-label="Download">
                       <Download className={`h-3 w-3 ${downloading ? "animate-pulse" : ""}`} />
                       {downloading ? "Downloading…" : "Download"}
                     </button>
@@ -690,27 +587,9 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   if (isAdmin) {
                     return (
                       <dl className="space-y-3 border-t hairline pt-6">
-                        <AdminRow
-                          label={isFilmTv ? "Title" : "Brand"}
-                          value={r.brand || ""}
-                          placeholder="Add brand…"
-                          onSave={(v) => saveField("brand", v)}
-                        />
-                        {!isMagazine && (
-                          <AdminRow
-                            label={isFilmTv ? "Director" : "Agency"}
-                            value={r.agency || ""}
-                            placeholder="Add agency…"
-                            onSave={(v) => saveField("agency", v)}
-                          />
-                        )}
-                        <AdminRow
-                          label="Year"
-                          value={r.year ? String(r.year) : ""}
-                          placeholder="Add year…"
-                          onSave={(v) => saveField("year", v)}
-                          inputType="number"
-                        />
+                        <AdminRow label={isFilmTv ? "Title" : "Brand"} value={r.brand || ""} placeholder="Add brand…" onSave={(v) => saveField("brand", v)} />
+                        {!isMagazine && <AdminRow label={isFilmTv ? "Director" : "Agency"} value={r.agency || ""} placeholder="Add agency…" onSave={(v) => saveField("agency", v)} />}
+                        <AdminRow label="Year" value={r.year ? String(r.year) : ""} placeholder="Add year…" onSave={(v) => saveField("year", v)} inputType="number" />
                       </dl>
                     );
                   }
@@ -723,25 +602,17 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   );
                 })()}
 
-                {/* Report a mistake */}
                 {!reportOpen ? (
-                  <button
-                    onClick={() => setReportOpen(true)}
-                    className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
-                  >
+                  <button onClick={() => setReportOpen(true)}
+                    className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors">
                     <Flag className="h-3 w-3" />
                     Report a mistake
                   </button>
                 ) : (
                   <form onSubmit={handleReport} className="rounded-2xl border hairline p-4 space-y-3">
-                    <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                      ⏵ Report a mistake
-                    </p>
-                    <select
-                      value={reportField}
-                      onChange={(e) => setReportField(e.target.value)}
-                      className="w-full rounded-xl bg-secondary/60 border border-border font-mono text-xs px-3 py-2 focus:outline-none"
-                    >
+                    <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">⏵ Report a mistake</p>
+                    <select value={reportField} onChange={(e) => setReportField(e.target.value)}
+                      className="w-full rounded-xl bg-secondary/60 border border-border font-mono text-xs px-3 py-2 focus:outline-none">
                       <option value="brand">Wrong brand</option>
                       <option value="agency">Wrong agency / director</option>
                       <option value="year">Wrong year</option>
@@ -749,28 +620,17 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       <option value="category">Wrong category</option>
                       <option value="other">Other</option>
                     </select>
-                    <textarea
-                      required
-                      maxLength={500}
-                      rows={3}
+                    <textarea required maxLength={500} rows={3}
                       placeholder="What's correct? e.g. 'Agency should be Droga5, not BBDO'"
-                      value={reportMsg}
-                      onChange={(e) => setReportMsg(e.target.value)}
-                      className="w-full rounded-xl bg-secondary/60 border border-border font-mono text-xs px-3 py-2 resize-none focus:outline-none placeholder:text-muted-foreground"
-                    />
+                      value={reportMsg} onChange={(e) => setReportMsg(e.target.value)}
+                      className="w-full rounded-xl bg-secondary/60 border border-border font-mono text-xs px-3 py-2 resize-none focus:outline-none placeholder:text-muted-foreground" />
                     <div className="flex gap-2">
-                      <button
-                        type="submit"
-                        disabled={reportSending || !reportMsg.trim()}
-                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 rounded-full bg-foreground text-background hover:opacity-80 disabled:opacity-40 transition-opacity"
-                      >
+                      <button type="submit" disabled={reportSending || !reportMsg.trim()}
+                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 rounded-full bg-foreground text-background hover:opacity-80 disabled:opacity-40 transition-opacity">
                         {reportSending ? "Sending…" : "Submit"}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => { setReportOpen(false); setReportMsg(""); }}
-                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 rounded-full border hairline hover:bg-secondary transition-colors"
-                      >
+                      <button type="button" onClick={() => { setReportOpen(false); setReportMsg(""); }}
+                        className="font-mono text-[10px] uppercase tracking-widest px-4 py-2 rounded-full border hairline hover:bg-secondary transition-colors">
                         Cancel
                       </button>
                     </div>
@@ -786,17 +646,11 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       {ALL_CATEGORIES.map((c) => {
                         const active = (r.categories || []).includes(c);
                         return (
-                          <button
-                            key={c}
-                            onClick={() => toggleCategory(c)}
+                          <button key={c} onClick={() => toggleCategory(c)}
                             className={`font-mono text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full border hairline transition-colors ${
-                              active
-                                ? "bg-primary text-primary-foreground border-primary"
-                                : "bg-transparent text-muted-foreground hover:bg-secondary"
-                            }`}
-                          >
-                            {active ? "✓ " : "+ "}
-                            {c}
+                              active ? "bg-primary text-primary-foreground border-primary" : "bg-transparent text-muted-foreground hover:bg-secondary"
+                            }`}>
+                            {active ? "✓ " : "+ "}{c}
                           </button>
                         );
                       })}
@@ -805,17 +659,10 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                 ) : (
                   r.categories?.length > 0 && (
                     <div className="border-t hairline pt-6">
-                      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">
-                        Categories
-                      </p>
+                      <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-2">Categories</p>
                       <div className="flex flex-wrap gap-2">
                         {r.categories.map((c) => (
-                          <span
-                            key={c}
-                            className="font-mono text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full bg-primary/10 text-primary"
-                          >
-                            {c}
-                          </span>
+                          <span key={c} className="font-mono text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full bg-primary/10 text-primary">{c}</span>
                         ))}
                       </div>
                     </div>
@@ -827,51 +674,25 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Tags (admin)</p>
                     <div className="flex flex-wrap gap-2">
                       {(r.tags || []).map((t: string) => (
-                        <span
-                          key={t}
-                          className="group inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-secondary text-muted-foreground"
-                        >
+                        <span key={t} className="group inline-flex items-center gap-1 font-mono text-[11px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-secondary text-muted-foreground">
                           {t}
-                          <button
-                            onClick={() => removeTag(t)}
-                            aria-label={`Remove ${t}`}
-                            className="opacity-50 hover:opacity-100 hover:text-destructive"
-                          >
-                            ×
-                          </button>
+                          <button onClick={() => removeTag(t)} aria-label={`Remove ${t}`}
+                            className="opacity-50 hover:opacity-100 hover:text-destructive">×</button>
                         </span>
                       ))}
                     </div>
                     <div className="mt-3 flex gap-2">
-                      <input
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
+                      <input value={tagInput} onChange={(e) => setTagInput(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === ",") {
-                            e.preventDefault();
-                            addTag(tagInput);
-                            setTagInput("");
-                          }
+                          if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(tagInput); setTagInput(""); }
                         }}
                         placeholder="Add tag(s), comma-separated"
-                        className="flex-1 h-8 px-3 rounded-xl bg-secondary/60 border border-border font-mono text-[11px] uppercase tracking-widest placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          addTag(tagInput);
-                          setTagInput("");
-                        }}
-                        className="h-8 rounded-full font-mono text-[10px] uppercase tracking-widest"
-                      >
-                        Add
-                      </Button>
+                        className="flex-1 h-8 px-3 rounded-xl bg-secondary/60 border border-border font-mono text-[11px] uppercase tracking-widest placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary" />
+                      <Button type="button" variant="outline" onClick={() => { addTag(tagInput); setTagInput(""); }}
+                        className="h-8 rounded-full font-mono text-[10px] uppercase tracking-widest">Add</Button>
                     </div>
                   </div>
                 )}
-
-                {/* Notes hidden from UI but kept in metadata */}
 
                 {isAdmin && (
                   <div className="border-t hairline pt-6 flex flex-wrap gap-3">
@@ -882,24 +703,12 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       </Button>
                     )}
                     {r.published !== false && (
-                      <span className="inline-flex items-center px-3 py-1 rounded-full font-mono text-[10px] uppercase tracking-widest bg-primary/10 text-primary">
-                        ✓ Live
-                      </span>
+                      <span className="inline-flex items-center px-3 py-1 rounded-full font-mono text-[10px] uppercase tracking-widest bg-primary/10 text-primary">✓ Live</span>
                     )}
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate(`/edit/${r.id}`)}
-                      className="rounded-full font-mono text-xs uppercase tracking-widest"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={handleDelete}
-                      className="rounded-full font-mono text-xs uppercase tracking-widest"
-                    >
-                      Delete
-                    </Button>
+                    <Button variant="outline" onClick={() => navigate(`/edit/${r.id}`)}
+                      className="rounded-full font-mono text-xs uppercase tracking-widest">Edit</Button>
+                    <Button variant="destructive" onClick={handleDelete}
+                      className="rounded-full font-mono text-xs uppercase tracking-widest">Delete</Button>
                   </div>
                 )}
               </aside>
@@ -907,41 +716,25 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
             {related.length > 0 && (
               <div className="mt-12 border-t hairline pt-8">
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-4">
-                  ⏵ You might also like
-                </p>
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-4">⏵ You might also like</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                   {related.map((rel) => {
                     const thumb = rel.thumbnail_url || (rel.type === "image" ? rel.media_url : null);
                     return (
-                      <button
-                        key={rel.id}
-                        onClick={() => navigate(refPath(rel.id, rel.title))}
-                        className="group text-left"
-                      >
+                      <button key={rel.id} onClick={() => navigate(refPath(rel.id, rel.title))} className="group text-left">
                         <div className="relative aspect-video overflow-hidden rounded-xl bg-secondary border hairline">
                           {thumb ? (
-                            <img
-                              src={thumb}
-                              alt={rel.title}
-                              loading="lazy"
-                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                            />
+                            <img src={thumb} alt={rel.title} loading="lazy"
+                              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center">
-                              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-                                {rel.type}
-                              </span>
+                              <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{rel.type}</span>
                             </div>
                           )}
                         </div>
-                        <p className="mt-2 font-serif text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
-                          {rel.title}
-                        </p>
+                        <p className="mt-2 font-serif text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">{rel.title}</p>
                         {(rel.brand || rel.agency) && (
-                          <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground line-clamp-1">
-                            {rel.brand || rel.agency}
-                          </p>
+                          <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground line-clamp-1">{rel.brand || rel.agency}</p>
                         )}
                       </button>
                     );
@@ -966,32 +759,18 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 function InlineEdit({
-  value,
-  placeholder,
-  onSave,
-  className,
-  inputType = "text",
+  value, placeholder, onSave, className, inputType = "text",
 }: {
-  value: string;
-  placeholder?: string;
-  onSave: (v: string) => void;
-  className?: string;
-  inputType?: string;
+  value: string; placeholder?: string; onSave: (v: string) => void; className?: string; inputType?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
 
-  function commit() {
-    onSave(draft.trim());
-    setEditing(false);
-  }
+  function commit() { onSave(draft.trim()); setEditing(false); }
 
   if (editing) {
     return (
-      <input
-        autoFocus
-        type={inputType}
-        value={draft}
+      <input autoFocus type={inputType} value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => {
@@ -1003,11 +782,8 @@ function InlineEdit({
     );
   }
   return (
-    <span
-      className={`cursor-text group/edit ${className ?? ""}`}
-      onClick={() => { setDraft(value); setEditing(true); }}
-      title="Click to edit"
-    >
+    <span className={`cursor-text group/edit ${className ?? ""}`}
+      onClick={() => { setDraft(value); setEditing(true); }} title="Click to edit">
       {value || <span className="text-muted-foreground/50 italic text-sm">{placeholder ?? "—"}</span>}
       <span className="ml-1.5 text-[10px] font-mono font-normal text-muted-foreground opacity-0 group-hover/edit:opacity-60">✎</span>
     </span>
@@ -1015,17 +791,9 @@ function InlineEdit({
 }
 
 function AdminRow({
-  label,
-  value,
-  placeholder,
-  onSave,
-  inputType,
+  label, value, placeholder, onSave, inputType,
 }: {
-  label: string;
-  value: string;
-  placeholder?: string;
-  onSave: (v: string) => void;
-  inputType?: string;
+  label: string; value: string; placeholder?: string; onSave: (v: string) => void; inputType?: string;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
