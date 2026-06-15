@@ -647,11 +647,11 @@ async function inferMetadata(
     `- categories: pick 0-2 from this allowed list ONLY: ${JSON.stringify(allowed)}.\n` +
     `- tags: 2-5 short lowercase keywords (style, medium, mood, theme).\n` +
     `- year: 4-digit release year if discernible (use article date if present), else null.\n` +
-    `- clean_title: the actual creative/campaign name. Strip the brand, the agency, ` +
-    `category-like words ("Case Study", "Commercial", "Promo", "Campaign"), publication ` +
-    `name suffixes (e.g. "| Famous Campaigns"), and " by <Agency>". Keep only the spot/campaign ` +
-    `name. If the raw title is just a headline ("Brand does X"), distill it into a short campaign title. ` +
-    `If nothing meaningful remains, return the original title.`;
+    `- clean_title: the actual creative/campaign name. NEVER include the brand or agency name in clean_title. ` +
+    `Strip: the brand name, the agency name, category words ("Case Study", "Commercial", "Promo", "Campaign"), ` +
+    `publication suffixes (e.g. "| Famous Campaigns"), and " by <Agency>". Keep only the campaign name or concept. ` +
+    `If the raw title is a headline like "Nike Does X", return only the concept ("Does X" or rephrase). ` +
+    `If nothing meaningful remains after stripping, infer a short name from the article body instead.`;
   const body = (scraped.body_text || "").slice(0, 2500);
   const user =
     `Raw title: ${scraped.title}\n` +
@@ -832,6 +832,21 @@ async function groupImagesIntoProjects(
   }
 }
 
+function stripBrandFromTitle(title: string, brand: string | null): string {
+  if (!brand || !title) return title;
+  const b = brand.trim().toLowerCase();
+  const t = title.trim();
+  const tl = t.toLowerCase();
+  if (tl.startsWith(b + ': ')) { const r = t.slice(b.length + 2).trim(); if (r.length > 2) return r; }
+  if (tl.startsWith(b + ' - ')) { const r = t.slice(b.length + 3).trim(); if (r.length > 2) return r; }
+  if (tl.startsWith(b + ' | ')) { const r = t.slice(b.length + 3).trim(); if (r.length > 2) return r; }
+  if (tl.startsWith(b + "'s ")) { const r = t.slice(b.length + 3).trim(); if (r.length > 2) return r; }
+  if (tl.endsWith(' | ' + b)) { const r = t.slice(0, t.length - b.length - 3).trim(); if (r.length > 2) return r; }
+  if (tl.endsWith(' - ' + b)) { const r = t.slice(0, t.length - b.length - 3).trim(); if (r.length > 2) return r; }
+  if (tl.endsWith(' by ' + b)) { const r = t.slice(0, t.length - b.length - 4).trim(); if (r.length > 2) return r; }
+  return t;
+}
+
 async function scrapeAndInsert(
   rawUrl: string,
   supabase: any,
@@ -883,7 +898,7 @@ async function scrapeAndInsert(
       : [];
 
   const insertRow = {
-    title: meta.clean_title || scraped.title,
+    title: stripBrandFromTitle(meta.clean_title || scraped.title, meta.brand),
     type: scraped.type,
     source_url: scraped.source_url,
     thumbnail_url: scraped.thumbnail_url || (mediaItems[0]?.url ?? null),
