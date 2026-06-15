@@ -657,12 +657,26 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-3">⏵ {r.type}</p>
                   {isAdmin ? (
-                    <InlineEdit
-                      value={r.title || ""}
-                      placeholder="Untitled"
-                      onSave={(v) => saveField("title", v)}
-                      className="font-display text-3xl md:text-4xl font-black tracking-tighter leading-[0.95]"
-                    />
+                    <>
+                      <InlineEdit
+                        value={r.title || ""}
+                        placeholder="Untitled"
+                        onSave={(v) => saveField("title", v)}
+                        className="font-display text-3xl md:text-4xl font-black tracking-tighter leading-[0.95]"
+                      />
+                      {r.brand && r.title?.toLowerCase().startsWith(r.brand.toLowerCase()) && (() => {
+                        const stripped = r.title.slice(r.brand.length).replace(/^[\s:–—\-,|]+/, "").trim();
+                        if (!stripped) return null;
+                        return (
+                          <button
+                            onClick={() => saveField("title", stripped)}
+                            className="mt-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors"
+                          >
+                            ✕ Remove "{r.brand}" from title
+                          </button>
+                        );
+                      })()}
+                    </>
                   ) : (
                     <h1 className="font-display text-3xl md:text-4xl font-black tracking-tighter leading-[0.95]">
                       {r.title}
