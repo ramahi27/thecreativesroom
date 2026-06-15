@@ -372,6 +372,24 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     }
   }
 
+  async function saveField(field: "title" | "brand" | "agency" | "year", value: string) {
+    if (!r) return;
+    const prev = { ...r };
+    let update: Record<string, unknown>;
+    if (field === "year") {
+      const parsed = value ? parseInt(value, 10) : null;
+      update = { year: Number.isNaN(parsed) ? null : parsed };
+    } else {
+      update = { [field]: value || null };
+    }
+    setR({ ...r, ...update } as Reference);
+    const { error } = await supabase.from("references").update(update).eq("id", r.id);
+    if (error) {
+      setR(prev as Reference);
+      toast.error(error.message);
+    }
+  }
+
   async function toggleCategory(cat: string) {
     if (!r) return;
     const current = r.categories || [];
@@ -553,6 +571,30 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                         ) : (
                           <img src={m.url} className="w-full h-full object-cover" alt="" />
                         )}
+                        {isAdmin && (
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!r) return;
+                              const next = uploaded.filter((_, idx) => idx !== i);
+                              const prevR = r;
+                              const newThumb = r.type === "image"
+                                ? (next.find((it) => it.kind === "image")?.url ?? null)
+                                : r.thumbnail_url;
+                              setR({ ...r, media_items: next, thumbnail_url: newThumb } as Reference);
+                              if (safeIdx >= next.length) setActiveMedia(Math.max(0, next.length - 1));
+                              const { error } = await supabase
+                                .from("references")
+                                .update({ media_items: next as any, thumbnail_url: newThumb })
+                                .eq("id", r.id);
+                              if (error) { setR(prevR); toast.error(error.message); }
+                            }}
+                            className="absolute top-1 right-1 z-10 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center text-xs leading-none hover:bg-destructive transition-colors"
+                            aria-label="Remove photo"
+                          >
+                            ×
+                          </button>
+                        )}
                       </button>
                     ))}
                     {hasEmbed && (
@@ -614,14 +656,50 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
               <aside className="lg:col-span-1 space-y-6">
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-3">⏵ {r.type}</p>
-                  <h1 className="font-display text-3xl md:text-4xl font-black tracking-tighter leading-[0.95]">
-                    {r.title}
-                  </h1>
+                  {isAdmin ? (
+                    <InlineEdit
+                      value={r.title || ""}
+                      placeholder="Untitled"
+                      onSave={(v) => saveField("title", v)}
+                      className="font-display text-3xl md:text-4xl font-black tracking-tighter leading-[0.95]"
+                    />
+                  ) : (
+                    <h1 className="font-display text-3xl md:text-4xl font-black tracking-tighter leading-[0.95]">
+                      {r.title}
+                    </h1>
+                  )}
                 </div>
 
                 {(() => {
                   const isFilmTv = (r.categories || []).includes("Film and TV scenes");
                   const isMagazine = (r.categories || []).includes("Magazine Covers");
+                  if (isAdmin) {
+                    return (
+                      <dl className="space-y-3 border-t hairline pt-6">
+                        <AdminRow
+                          label={isFilmTv ? "Title" : "Brand"}
+                          value={r.brand || ""}
+                          placeholder="Add brand…"
+                          onSave={(v) => saveField("brand", v)}
+                        />
+                        {!isMagazine && (
+                          <AdminRow
+                            label={isFilmTv ? "Director" : "Agency"}
+                            value={r.agency || ""}
+                            placeholder="Add agency…"
+                            onSave={(v) => saveField("agency", v)}
+                          />
+                        )}
+                        <AdminRow
+                          label="Year"
+                          value={r.year ? String(r.year) : ""}
+                          placeholder="Add year…"
+                          onSave={(v) => saveField("year", v)}
+                          inputType="number"
+                        />
+                      </dl>
+                    );
+                  }
                   return (
                     <dl className="space-y-3 border-t hairline pt-6">
                       {r.brand && <Row label={isFilmTv ? "Title" : "Brand"} value={r.brand} />}
@@ -869,6 +947,78 @@ function Row({ label, value }: { label: string; value: string }) {
     <div className="flex items-baseline justify-between gap-4">
       <dt className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">{label}</dt>
       <dd className="font-display text-lg">{value}</dd>
+    </div>
+  );
+}
+
+function InlineEdit({
+  value,
+  placeholder,
+  onSave,
+  className,
+  inputType = "text",
+}: {
+  value: string;
+  placeholder?: string;
+  onSave: (v: string) => void;
+  className?: string;
+  inputType?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  function commit() {
+    onSave(draft.trim());
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        type={inputType}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") { e.preventDefault(); commit(); }
+          if (e.key === "Escape") { setDraft(value); setEditing(false); }
+        }}
+        className={`bg-transparent border-b border-primary focus:outline-none w-full ${className ?? ""}`}
+      />
+    );
+  }
+  return (
+    <span
+      className={`cursor-text group/edit ${className ?? ""}`}
+      onClick={() => { setDraft(value); setEditing(true); }}
+      title="Click to edit"
+    >
+      {value || <span className="text-muted-foreground/50 italic text-sm">{placeholder ?? "—"}</span>}
+      <span className="ml-1.5 text-[10px] font-mono font-normal text-muted-foreground opacity-0 group-hover/edit:opacity-60">✎</span>
+    </span>
+  );
+}
+
+function AdminRow({
+  label,
+  value,
+  placeholder,
+  onSave,
+  inputType,
+}: {
+  label: string;
+  value: string;
+  placeholder?: string;
+  onSave: (v: string) => void;
+  inputType?: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground shrink-0">{label}</dt>
+      <dd className="font-display text-lg min-w-0">
+        <InlineEdit value={value} placeholder={placeholder} onSave={onSave} inputType={inputType} />
+      </dd>
     </div>
   );
 }
