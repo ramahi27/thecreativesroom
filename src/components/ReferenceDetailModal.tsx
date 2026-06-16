@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { Reference, MediaItem } from "@/lib/references";
-import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
+import { detectPlatform, getEmbedUrl, isVideoFile, safeHref } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2, Flag, Download } from "lucide-react";
