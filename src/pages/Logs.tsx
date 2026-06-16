@@ -50,6 +50,11 @@ type LogRow = {
 type SortCol = "added" | "approved" | "title";
 type SortDir = "asc" | "desc";
 
+type AuditChange = { field: string; from: unknown; to: unknown };
+type AuditEntry =
+  | { kind: "fix"; title: string; changes: AuditChange[]; reason: string | null }
+  | { kind: "warn"; message: string };
+
 const formatDate = (s: string | null) => {
   if (!s) return "—";
   const d = new Date(s);
@@ -112,7 +117,7 @@ const Logs = () => {
   const [backfillProgress, setBackfillProgress] = useState<string>("");
   const [auditing, setAuditing] = useState(false);
   const [auditProgress, setAuditProgress] = useState<string>("");
-  const [auditLog, setAuditLog] = useState<string[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
 
   // Link health
   const [linkChecking, setLinkChecking] = useState(false);
@@ -337,8 +342,12 @@ const Logs = () => {
           let msg: any;
           try { msg = JSON.parse(line); } catch { continue; }
           if (msg.type === "progress") { setAuditProgress(msg.message); }
-          else if (msg.type === "fix") { fixed++; setAuditProgress(msg.message); setAuditLog((prev) => [msg.message, ...prev].slice(0, 50)); }
-          else if (msg.type === "warn") { setAuditLog((prev) => [`⚠ ${msg.message}`, ...prev].slice(0, 50)); }
+          else if (msg.type === "fix") {
+            fixed++;
+            setAuditProgress(`Fixed "${msg.title}"`);
+            setAuditLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
+          }
+          else if (msg.type === "warn") { setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50)); }
           else if (msg.type === "error") { throw new Error(msg.message); }
           else if (msg.type === "done") {
             setAuditProgress(msg.message);
@@ -464,13 +473,44 @@ const Logs = () => {
         </div>
         {(auditing || auditLog.length > 0) && (
           <div className="container pb-3">
-            <div className="border hairline bg-secondary/40 max-h-40 overflow-auto p-3 font-mono text-[11px] leading-relaxed">
-              {auditing && <p className="text-primary mb-1">{auditProgress}</p>}
-              {auditLog.length === 0 && auditing
-                ? <p className="text-muted-foreground">Checking entries…</p>
-                : auditLog.map((line, i) => (
-                    <p key={i} className={line.startsWith("⚠") ? "text-muted-foreground" : ""}>{line}</p>
-                  ))}
+            <div className="border hairline bg-secondary/40 max-h-72 overflow-auto p-3 font-mono text-[11px] leading-relaxed space-y-1.5">
+              {auditing && (
+                <p className="text-primary sticky top-0 bg-secondary/90 backdrop-blur-sm -mx-3 px-3 py-1 mb-1 z-10">
+                  {auditProgress}
+                </p>
+              )}
+              {auditLog.length === 0 && auditing ? (
+                <p className="text-muted-foreground">Checking entries…</p>
+              ) : (
+                auditLog.map((e, i) =>
+                  e.kind === "warn" ? (
+                    <p key={i} className="text-yellow-600/80 py-0.5">⚠ {e.message}</p>
+                  ) : (
+                    <div key={i} className="border hairline bg-background/40 p-2.5">
+                      <p className="font-semibold text-foreground mb-1.5 truncate">{e.title}</p>
+                      <div className="space-y-1">
+                        {e.changes.map((c, j) => (
+                          <div key={j} className="flex items-baseline gap-2">
+                            <span className="w-14 shrink-0 uppercase tracking-widest text-muted-foreground text-[9px]">
+                              {c.field}
+                            </span>
+                            <span className="line-through text-muted-foreground/60 truncate max-w-[38%]">
+                              {c.from == null || c.from === "" ? "(empty)" : String(c.from)}
+                            </span>
+                            <span className="text-muted-foreground shrink-0">→</span>
+                            <span className={`truncate ${c.to == null ? "italic text-muted-foreground" : "text-foreground"}`}>
+                              {c.to == null ? "(cleared)" : String(c.to)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      {e.reason && (
+                        <p className="text-[10px] italic text-muted-foreground/70 mt-1.5">{e.reason}</p>
+                      )}
+                    </div>
+                  ),
+                )
+              )}
             </div>
           </div>
         )}
@@ -811,7 +851,7 @@ const Logs = () => {
             )}
           </TabsContent>
 
-          {/* ── REPORTS TAB ──────────────────────────────────────────────── */}
+          {/* ── REPORTS TAB ──────────────────────────────────────────── */}
           <TabsContent value="reports">
             {reports.length === 0 ? (
               <p className="font-mono text-xs text-muted-foreground">No pending reports.</p>
