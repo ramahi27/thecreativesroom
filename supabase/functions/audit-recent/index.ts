@@ -16,24 +16,28 @@ const corsHeaders = {
 };
 
 // Bound the work so we stay under the edge-function wall-clock limit and the
-// AI gateway rate limit.
-const MAX_ENTRIES = 150;
-const CONCURRENCY = 5;
+// AI gateway rate limit. Firecrawl makes each entry slower, so keep concurrency
+// modest and the cap lower than a purely-AI pass.
+const MAX_ENTRIES = 80;
+const CONCURRENCY = 4;
 
 const SYSTEM_PROMPT = `You are a meticulous fact-checker for an advertising & photography reference archive. You have deep knowledge of brands, agencies, photographers, directors, and notable campaigns.
 
-You receive ONE reference's current fields (title, type, brand, agency, year, source_url, notes). Your job is to detect MISTAKES and return corrections. Each field gets an action:
-- "keep"  → the current value is fine (or you are not certain it is wrong). THIS IS THE DEFAULT.
-- "set"   → the current value is wrong/placeholder and you KNOW the correct value (provide it).
-- "clear" → the current value is wrong/junk and you do NOT know a correct value (brand/agency/year only; title can never be cleared).
+You receive ONE reference's current fields (title, type, brand, agency, year, source_url, notes) PLUS, when available, a "page_context" block scraped from source_url containing the page title, meta description, and an AI summary of the page. Use page_context as PRIMARY evidence — it usually states the real brand, agency, campaign title, and year.
+
+Each field gets an action:
+- "keep"  → current value is correct, or you have no reliable evidence it is wrong.
+- "set"   → current value is wrong/placeholder/missing AND you have strong evidence (from page_context, or unambiguous well-known campaign knowledge) of the correct value.
+- "clear" → current value is wrong/junk and you have no reliable replacement (brand/agency/year only; title can never be cleared).
+
+Be ASSERTIVE when page_context clearly states the answer — that is the whole reason it was scraped. Be CONSERVATIVE when there is no page_context and you would be guessing from the title alone.
 
 Rules:
-1. Be conservative. When in doubt, "keep". Only "set"/"clear" when you are confident based on verifiable knowledge of the ACTUAL campaign (matching title + source_url + notes). Never speculate or fill a plausible-sounding value.
-2. TITLE: If the title is a generic placeholder ("Video", "YouTube video", "Untitled", "Vimeo", a bare URL, etc.) and you know the real campaign/film title from the source_url or notes, "set" the proper title. If the brand name redundantly prefixes the title (e.g. brand "Kit Kat" + title "Kit Kat: Take a break"), "set" the title to the cleaned version without the redundant brand prefix. Otherwise "keep". Never "set" an empty title.
-3. BRAND: If brand holds something that is clearly NOT a brand — an agency name, an award/publisher name, a random tag/acronym (e.g. "COTW"), or it contradicts the known campaign — then "set" the correct brand if known, else "clear". If the brand looks correct, "keep".
-4. AGENCY: If agency actually holds the brand, or is wrong, "set" the correct agency if known, else "clear". Otherwise "keep".
-5. YEAR: Must be a 4-digit integer between 1950 and the current year, and the verified release year. If clearly wrong, "set" the correct year if known, else "clear". Otherwise "keep".
-6. Provide a one-line "reason" summarising what (if anything) you changed and why.
+1. TITLE: If the title is a generic placeholder ("Video", "YouTube video", "Untitled", "Vimeo", a bare URL, the brand name alone, etc.) and page_context names the campaign/film, "set" the proper title. Strip a redundant brand prefix (e.g. brand "Nike" + title "Nike — Just Do It" → "Just Do It"). Never "set" an empty title.
+2. BRAND: The advertiser/client (e.g. Nike, Apple, IKEA) — never an agency, never an awards site ("Cannes", "D&AD", "One Club", "COTW", "Adweek", "Campaign"), never a director/photographer name. If brand is clearly junk or wrong and page_context names the real brand, "set" it. If junk and no replacement is known, "clear".
+3. AGENCY: The creative agency that made the work (e.g. Wieden+Kennedy, AMV BBDO, Mother). If page_context names it, "set" it. If the field holds the brand or an obvious mistake and no agency is known, "clear".
+4. YEAR: A 4-digit integer between 1950 and the current year, matching the campaign's release year. If page_context gives a publish/award date, use it. Else "clear" if obviously wrong, otherwise "keep".
+5. Provide a one-line "reason" naming WHICH evidence drove each change (e.g. "page_context says client is Nike, agency W+K, released 2023").
 
 Return only the structured tool call.`;
 
@@ -78,7 +82,38 @@ interface RefRow {
   notes: string | null;
 }
 
-async function auditOne(ref: RefRow, apiKey: string): Promise<Record<string, unknown> | null> {
+async function fetchPageContext(url: string | null, firecrawlKey: string | null): Promise<string | null> {
+  if (!url || !firecrawlKey) return null;
+  try {
+    const resp = await fetch("https://api.firecrawl.dev/v2/scrape", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url,
+        formats: ["summary"],
+        onlyMainContent: true,
+        timeout: 15000,
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!resp.ok) return null;
+    const json = await resp.json().catch(() => null);
+    const d = json?.data ?? json;
+    const meta = d?.metadata ?? {};
+    const parts = [
+      meta.title ? `page_title: ${String(meta.title).slice(0, 300)}` : null,
+      meta.description ? `meta_description: ${String(meta.description).slice(0, 500)}` : null,
+      meta.ogTitle && meta.ogTitle !== meta.title ? `og_title: ${String(meta.ogTitle).slice(0, 300)}` : null,
+      d?.summary ? `page_summary: ${String(d.summary).slice(0, 1800)}` : null,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join("\n") : null;
+  } catch {
+    return null;
+  }
+}
+
+async function auditOne(ref: RefRow, apiKey: string, firecrawlKey: string | null): Promise<Record<string, unknown> | null> {
+  const pageContext = await fetchPageContext(ref.source_url, firecrawlKey);
   const userContext = [
     `title: ${ref.title}`,
     `type: ${ref.type || "(unknown)"}`,
@@ -87,13 +122,14 @@ async function auditOne(ref: RefRow, apiKey: string): Promise<Record<string, unk
     `year: ${ref.year ?? "(none)"}`,
     `source_url: ${ref.source_url ?? "(none)"}`,
     `notes: ${ref.notes ?? "(none)"}`,
+    pageContext ? `\npage_context:\n${pageContext}` : `\npage_context: (unavailable)`,
   ].join("\n");
 
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-2.5-pro",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContext },
@@ -168,6 +204,7 @@ Deno.serve(async (req) => {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const apiKey = Deno.env.get("LOVABLE_API_KEY");
+        const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY") ?? null;
         const authHeader = req.headers.get("Authorization") || "";
 
         const userClient = createClient(supabaseUrl, serviceKey, {
@@ -213,7 +250,7 @@ Deno.serve(async (req) => {
           await Promise.all(
             chunk.map(async (ref) => {
               try {
-                const corrections = await auditOne(ref, apiKey);
+                const corrections = await auditOne(ref, apiKey, firecrawlKey);
                 checked++;
                 if (!corrections) return;
                 const update = buildUpdate(ref, corrections);
