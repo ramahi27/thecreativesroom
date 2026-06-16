@@ -72,6 +72,8 @@ const Logs = () => {
   const [linkChecking, setLinkChecking] = useState(false);
   const [linkResults, setLinkResults] = useState<{ checked: number; ok: number; dead: number; errored: number; message: string } | null>(null);
   const [deadLinks, setDeadLinks] = useState<Array<{ id: string; title: string; source_url: string | null; link_status: string; link_checked_at: string }>>([]);
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [draftUrl, setDraftUrl] = useState("");
 
   async function loadDeadLinks() {
     const { data } = await supabase
@@ -101,6 +103,19 @@ const Logs = () => {
     } finally {
       setLinkChecking(false);
     }
+  }
+
+  async function saveLinkUrl(id: string) {
+    const url = draftUrl.trim();
+    if (!url) { setEditingLinkId(null); return; }
+    const { error } = await supabase
+      .from("references")
+      .update({ source_url: url, link_status: null, link_checked_at: null })
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    setDeadLinks((prev) => prev.filter((r) => r.id !== id));
+    setEditingLinkId(null);
+    toast.success("URL updated — run Check all links to verify");
   }
 
   // Fact-check the last 3 days of entries and auto-correct mistakes in
@@ -515,13 +530,35 @@ const Logs = () => {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      {ref.source_url ? (
-                        <a href={ref.source_url} target="_blank" rel="noopener noreferrer"
-                          className="font-mono text-xs text-muted-foreground hover:text-foreground truncate max-w-[300px] block">
-                          {ref.source_url}
-                        </a>
+                      {editingLinkId === ref.id ? (
+                        <input
+                          autoFocus
+                          type="url"
+                          value={draftUrl}
+                          onChange={(e) => setDraftUrl(e.target.value)}
+                          onBlur={() => saveLinkUrl(ref.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); saveLinkUrl(ref.id); }
+                            if (e.key === "Escape") setEditingLinkId(null);
+                          }}
+                          className="w-full bg-transparent border-b border-primary font-mono text-xs focus:outline-none text-foreground"
+                        />
+                      ) : ref.source_url ? (
+                        <span
+                          onClick={() => { setDraftUrl(ref.source_url ?? ""); setEditingLinkId(ref.id); }}
+                          className="font-mono text-xs text-muted-foreground hover:text-foreground truncate max-w-[300px] flex items-center gap-1 cursor-text group"
+                          title="Click to edit URL"
+                        >
+                          <span className="truncate">{ref.source_url}</span>
+                          <span className="opacity-0 group-hover:opacity-60 text-[10px] shrink-0">✎</span>
+                        </span>
                       ) : (
-                        <span className="font-mono text-xs text-muted-foreground">—</span>
+                        <button
+                          onClick={() => { setDraftUrl(""); setEditingLinkId(ref.id); }}
+                          className="font-mono text-xs text-muted-foreground/50 hover:text-muted-foreground italic"
+                        >
+                          + add URL
+                        </button>
                       )}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
