@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff,
-  ArrowUpDown, ArrowUp, ArrowDown,
+  ArrowUpDown, ArrowUp, ArrowDown, Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -792,17 +792,18 @@ const Logs = () => {
                                 ? <Check className="h-3 w-3" strokeWidth={2.5} />
                                 : <ImageOff className="h-3 w-3" strokeWidth={1.5} />}
                             </span>
+                            <span className="w-px h-3.5 bg-border mx-0.5 shrink-0" />
                             <button
                               onClick={() => handleAuditOne(r.id, r.title)}
                               disabled={!!auditingId}
-                              title="Audit this reference"
-                              className={`inline-flex h-5 w-5 items-center justify-center border hairline transition-colors ${
+                              title="Re-audit this reference with AI"
+                              className={`inline-flex h-5 w-5 items-center justify-center border transition-colors ${
                                 auditingId === r.id
-                                  ? "text-primary border-primary animate-pulse"
-                                  : "text-muted-foreground/40 hover:text-primary hover:border-primary/50"
+                                  ? "border-primary text-primary animate-pulse"
+                                  : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
                               }`}
                             >
-                              <Sparkles className="h-3 w-3" strokeWidth={1.5} />
+                              <Wand2 className="h-3 w-3" strokeWidth={1.5} />
                             </button>
                           </div>
                         </TableCell>
