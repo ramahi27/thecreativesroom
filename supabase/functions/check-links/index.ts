@@ -123,11 +123,15 @@ Deno.serve(async (req) => {
     .maybeSingle();
   if (!role) return new Response("Forbidden", { status: 403 });
 
-  // Check every reference that has a source URL.
+  // Check every reference that has a source URL. Order by link_checked_at
+  // NULLS FIRST so never-checked rows (including drafts) get processed before
+  // we re-verify already-known links. This guarantees the whole archive gets
+  // covered across runs even if a single invocation hits the wall-clock limit.
   const { data: refs, error } = await supabase
     .from("references")
     .select("id, source_url")
     .not("source_url", "is", null)
+    .order("link_checked_at", { ascending: true, nullsFirst: true })
     .limit(10000);
 
   if (error) return Response.json({ error: error.message }, { status: 500, headers: cors });
