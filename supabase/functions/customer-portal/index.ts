@@ -38,9 +38,18 @@ Deno.serve(async (req) => {
   }
 
   const { returnUrl } = await req.json().catch(() => ({}));
+  const ALLOWED_ORIGINS = [
+    "https://thecreativesroom.com",
+    "https://www.thecreativesroom.com",
+    "https://thecreativesroom.lovable.app",
+  ];
+  const isSafeReturnUrl = typeof returnUrl === "string"
+    && ALLOWED_ORIGINS.some((origin) => returnUrl === origin || returnUrl.startsWith(origin + "/"));
+  const safeReturnUrl = isSafeReturnUrl ? returnUrl : "https://thecreativesroom.com/account/edit";
+
   const session = await stripe.billingPortal.sessions.create({
     customer: customerId,
-    return_url: returnUrl || "https://thecreativesroom.com/account/edit",
+    return_url: safeReturnUrl,
   });
 
   return Response.json({ url: session.url }, { headers: cors });

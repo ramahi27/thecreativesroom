@@ -118,3 +118,9 @@ export function detectPlatform(url: string | null): string | null {
     return null;
   }
 }
+
+/** Returns the URL only if it is a safe http(s) link. Prevents javascript:/data: XSS in href. */
+export function safeHref(url: string | null | undefined): string | undefined {
+  if (!url) return undefined;
+  return /^https?:\/\//i.test(url.trim()) ? url : undefined;
+}

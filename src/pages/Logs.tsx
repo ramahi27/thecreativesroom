@@ -522,7 +522,7 @@ const Logs = () => {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      {ref.source_url ? (
+                      {ref.source_url && /^https?:\/\//i.test(ref.source_url) ? (
                         <a href={ref.source_url} target="_blank" rel="noopener noreferrer"
                           className="font-mono text-xs text-muted-foreground hover:text-foreground truncate max-w-[300px] block">
                           {ref.source_url}

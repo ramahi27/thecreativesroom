@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { Reference, MediaItem } from "@/lib/references";
-import { detectPlatform, getEmbedUrl, isVideoFile } from "@/lib/references";
+import { detectPlatform, getEmbedUrl, isVideoFile, safeHref } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2, Flag, Download } from "lucide-react";
@@ -356,8 +356,9 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (error) { setR({ ...r, categories: current } as Reference); toast.error(error.message); }
   }
 
-  const platform = r ? detectPlatform(r.source_url) : null;
-  const embedUrl = r ? getEmbedUrl(r.source_url) : null;
+  const safeSourceUrl = r ? safeHref(r.source_url) : undefined;
+  const platform = r ? detectPlatform(safeSourceUrl ?? null) : null;
+  const embedUrl = r ? getEmbedUrl(safeSourceUrl ?? null) : null;
   const items: MediaItem[] = r && Array.isArray(r.media_items) ? r.media_items : [];
   const fallback: MediaItem[] =
     r && items.length === 0 && r.media_url
@@ -415,8 +416,8 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       {embedError ? (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-secondary/60">
                           <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Video unavailable</p>
-                          {r.source_url && (
-                            <a href={r.source_url} target="_blank" rel="noreferrer"
+                          {safeSourceUrl && (
+                            <a href={safeSourceUrl} target="_blank" rel="noreferrer"
                               className="flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest hover:opacity-90 transition-opacity">
                               <ExternalLink className="h-3 w-3" />
                               Watch on {platform || "source"}
@@ -525,8 +526,8 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       ▶ Watch here
                     </button>
                   )}
-                  {r.source_url && r.type === "video" && (
-                    <a href={r.source_url} target="_blank" rel="noreferrer"
+                  {safeSourceUrl && r.type === "video" && (
+                    <a href={safeSourceUrl} target="_blank" rel="noreferrer"
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-full border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary transition-colors">
                       <ExternalLink className="h-3 w-3" />
                       Open on {platform || "source"}
