@@ -204,6 +204,7 @@ Deno.serve(async (req) => {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const apiKey = Deno.env.get("LOVABLE_API_KEY");
+        const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY") ?? null;
         const authHeader = req.headers.get("Authorization") || "";
 
         const userClient = createClient(supabaseUrl, serviceKey, {
