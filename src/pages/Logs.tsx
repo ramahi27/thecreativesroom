@@ -45,6 +45,7 @@ type LogRow = {
   has_ai_metadata?: boolean;
   link_status?: string | null;
   link_checked_at?: string | null;
+  audited_at?: string | null;
 };
 
 type SortCol = "added" | "approved" | "title";
