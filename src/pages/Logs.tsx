@@ -619,7 +619,7 @@ const Logs = () => {
           </div>
         ) : (
           <p className="font-mono text-xs text-muted-foreground">
-            No dead links detected. Run a check to scan up to 40 stale references.
+            No dead links detected. Run a check to scan every reference across the site (published + drafts).
           </p>
         )}
       </section>
