@@ -444,6 +444,7 @@ export type Database = {
           agency: string | null
           approved_at: string | null
           approved_by: string | null
+          audited_at: string | null
           brand: string | null
           categories: string[]
           created_at: string
@@ -471,6 +472,7 @@ export type Database = {
           agency?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          audited_at?: string | null
           brand?: string | null
           categories?: string[]
           created_at?: string
@@ -498,6 +500,7 @@ export type Database = {
           agency?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          audited_at?: string | null
           brand?: string | null
           categories?: string[]
           created_at?: string
