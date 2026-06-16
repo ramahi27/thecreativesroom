@@ -74,6 +74,7 @@ const Logs = () => {
   const [deadLinks, setDeadLinks] = useState<Array<{ id: string; title: string; source_url: string | null; link_status: string; link_checked_at: string }>>([]);
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
   const [draftUrl, setDraftUrl] = useState("");
+  const [deletingDead, setDeletingDead] = useState(false);
 
   async function loadDeadLinks() {
     const { data } = await supabase
@@ -103,6 +104,29 @@ const Logs = () => {
     } finally {
       setLinkChecking(false);
     }
+  }
+
+  // Delete a single dead-link reference entirely (used by per-row × and bulk delete).
+  async function deleteDeadLink(id: string) {
+    const { error } = await supabase.from("references").delete().eq("id", id);
+    if (error) { toast.error(error.message); return false; }
+    setDeadLinks((prev) => prev.filter((r) => r.id !== id));
+    setRows((prev) => prev.filter((r) => r.id !== id));
+    return true;
+  }
+
+  // Remove every reference currently listed in the dead-links table.
+  async function deleteAllDeadLinks() {
+    if (deadLinks.length === 0) return;
+    if (!confirm(`Permanently delete all ${deadLinks.length} broken-link reference(s)? This cannot be undone.`)) return;
+    setDeletingDead(true);
+    const ids = deadLinks.map((r) => r.id);
+    const { error } = await supabase.from("references").delete().in("id", ids);
+    setDeletingDead(false);
+    if (error) { toast.error(error.message); return; }
+    setRows((prev) => prev.filter((r) => !ids.includes(r.id)));
+    setDeadLinks([]);
+    toast.success(`Deleted ${ids.length} broken-link reference${ids.length === 1 ? "" : "s"}`);
   }
 
   async function saveLinkUrl(id: string) {
@@ -496,16 +520,30 @@ const Logs = () => {
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
             ⏵ Link health
           </p>
-          <Button
-            type="button"
-            onClick={handleCheckLinks}
-            disabled={linkChecking}
-            variant="outline"
-            className="font-mono text-[11px] uppercase tracking-widest h-9"
-          >
-            <Link2 className="h-3.5 w-3.5 mr-2" strokeWidth={1.8} />
-            {linkChecking ? "Checking…" : "Check all links"}
-          </Button>
+          <div className="flex items-center gap-3">
+            {deadLinks.length > 0 && (
+              <Button
+                type="button"
+                onClick={deleteAllDeadLinks}
+                disabled={deletingDead}
+                variant="outline"
+                className="font-mono text-[11px] uppercase tracking-widest h-9 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+              >
+                <XIcon className="h-3.5 w-3.5 mr-2" strokeWidth={1.8} />
+                {deletingDead ? "Deleting…" : `Delete all (${deadLinks.length})`}
+              </Button>
+            )}
+            <Button
+              type="button"
+              onClick={handleCheckLinks}
+              disabled={linkChecking}
+              variant="outline"
+              className="font-mono text-[11px] uppercase tracking-widest h-9"
+            >
+              <Link2 className="h-3.5 w-3.5 mr-2" strokeWidth={1.8} />
+              {linkChecking ? "Checking…" : "Check all links"}
+            </Button>
+          </div>
         </div>
         {linkResults && (
           <p className="font-mono text-xs text-muted-foreground mb-4">{linkResults.message}</p>
@@ -518,6 +556,7 @@ const Logs = () => {
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Reference</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">URL</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Checked at</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -563,6 +602,15 @@ const Logs = () => {
                     </TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {formatDate(ref.link_checked_at)}
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        onClick={() => deleteDeadLink(ref.id)}
+                        title="Delete this reference"
+                        className="inline-flex h-6 w-6 items-center justify-center text-muted-foreground/50 hover:text-destructive transition-colors"
+                      >
+                        <XIcon className="h-3.5 w-3.5" strokeWidth={1.8} />
+                      </button>
                     </TableCell>
                   </TableRow>
                 ))}
