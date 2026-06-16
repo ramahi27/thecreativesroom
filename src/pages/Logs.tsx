@@ -312,7 +312,7 @@ const Logs = () => {
 
   // ── Audit recent ────────────────────────────────────────────────────────────
   async function handleAuditRecent() {
-    if (!confirm("Audit entries added in the last 3 days and auto-fix mistakes in title, brand, agency and year?")) return;
+    if (!confirm("Audit entries added in the last 3 days that haven't been audited yet, and auto-fix mistakes in title, brand, agency and year?")) return;
     setAuditing(true);
     setAuditProgress("Starting…");
     setAuditLog([]);
