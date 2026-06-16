@@ -7,13 +7,12 @@ import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff, Minus, Trash2, ExternalLink } from "lucide-react";
+import { Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { rememberModalReturn, setModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 import { refPath } from "@/lib/slug";
-import { safeHref, detectPlatform } from "@/lib/references";
 
 function hasValue(value: string | null | undefined) {
   return typeof value === "string" ? value.trim().length > 0 : false;
@@ -73,8 +72,8 @@ const Logs = () => {
   const [linkChecking, setLinkChecking] = useState(false);
   const [linkResults, setLinkResults] = useState<{ checked: number; ok: number; dead: number; errored: number; message: string } | null>(null);
   const [deadLinks, setDeadLinks] = useState<Array<{ id: string; title: string; source_url: string | null; link_status: string; link_checked_at: string }>>([]);
-  const [deletingDeadId, setDeletingDeadId] = useState<string | null>(null);
-  const [deletingAllDead, setDeletingAllDead] = useState(false);
+  const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
+  const [draftUrl, setDraftUrl] = useState("");
 
   async function loadDeadLinks() {
     const { data } = await supabase
@@ -82,7 +81,7 @@ const Logs = () => {
       .select("id,title,source_url,link_status,link_checked_at")
       .eq("link_status", "dead")
       .order("link_checked_at", { ascending: false })
-      .limit(1000);
+      .limit(100);
     setDeadLinks((data as any) || []);
   }
 
@@ -106,27 +105,17 @@ const Logs = () => {
     }
   }
 
-  async function deleteDeadLink(id: string) {
-    setDeletingDeadId(id);
-    const { error } = await supabase.from("references").delete().eq("id", id);
-    setDeletingDeadId(null);
-    if (error) return toast.error(error.message);
-    setDeadLinks((d) => d.filter((r) => r.id !== id));
-    setRows((rs) => rs.filter((r) => r.id !== id));
-    toast.success("Reference deleted");
-  }
-
-  async function deleteAllDeadLinks() {
-    if (deadLinks.length === 0) return;
-    if (!confirm(`Delete all ${deadLinks.length} references with dead links? This cannot be undone.`)) return;
-    setDeletingAllDead(true);
-    const ids = deadLinks.map((r) => r.id);
-    const { error } = await supabase.from("references").delete().in("id", ids);
-    setDeletingAllDead(false);
-    if (error) return toast.error(error.message);
-    setDeadLinks([]);
-    setRows((rs) => rs.filter((r) => !ids.includes(r.id)));
-    toast.success(`Deleted ${ids.length} references`);
+  async function saveLinkUrl(id: string) {
+    const url = draftUrl.trim();
+    if (!url) { setEditingLinkId(null); return; }
+    const { error } = await supabase
+      .from("references")
+      .update({ source_url: url, link_status: null, link_checked_at: null })
+      .eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    setDeadLinks((prev) => prev.filter((r) => r.id !== id));
+    setEditingLinkId(null);
+    toast.success("URL updated — run Check all links to verify");
   }
 
   // Fact-check the last 3 days of entries and auto-correct mistakes in
@@ -507,30 +496,16 @@ const Logs = () => {
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">
             ⏵ Link health
           </p>
-          <div className="flex items-center gap-2">
-            {deadLinks.length > 0 && (
-              <Button
-                type="button"
-                onClick={deleteAllDeadLinks}
-                disabled={deletingAllDead}
-                variant="destructive"
-                className="font-mono text-[11px] uppercase tracking-widest h-9"
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-2" strokeWidth={1.8} />
-                {deletingAllDead ? "Deleting…" : `Delete all (${deadLinks.length})`}
-              </Button>
-            )}
-            <Button
-              type="button"
-              onClick={handleCheckLinks}
-              disabled={linkChecking}
-              variant="outline"
-              className="font-mono text-[11px] uppercase tracking-widest h-9"
-            >
-              <Link2 className="h-3.5 w-3.5 mr-2" strokeWidth={1.8} />
-              {linkChecking ? "Checking…" : "Check all links"}
-            </Button>
-          </div>
+          <Button
+            type="button"
+            onClick={handleCheckLinks}
+            disabled={linkChecking}
+            variant="outline"
+            className="font-mono text-[11px] uppercase tracking-widest h-9"
+          >
+            <Link2 className="h-3.5 w-3.5 mr-2" strokeWidth={1.8} />
+            {linkChecking ? "Checking…" : "Check all links"}
+          </Button>
         </div>
         {linkResults && (
           <p className="font-mono text-xs text-muted-foreground mb-4">{linkResults.message}</p>
@@ -541,66 +516,62 @@ const Logs = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Reference</TableHead>
-                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">Link</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">URL</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Checked at</TableHead>
-                  <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {deadLinks.map((ref) => {
-                  const href = safeHref(ref.source_url);
-                  const platform = detectPlatform(ref.source_url);
-                  return (
-                    <TableRow key={ref.id}>
-                      <TableCell>
-                        <Link to={refPath(ref.id, ref.title)} className="flex items-center gap-2 hover:opacity-80">
-                          <Link2Off className="h-3.5 w-3.5 text-destructive shrink-0" strokeWidth={1.8} />
-                          <span className="font-mono text-xs truncate max-w-[260px]">{ref.title}</span>
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        {href ? (
-                          <a
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 font-mono text-xs text-muted-foreground hover:text-foreground max-w-[360px]"
-                            title={ref.source_url ?? ""}
-                          >
-                            <span className="px-1.5 py-0.5 bg-muted/40 text-[10px] uppercase tracking-widest shrink-0">
-                              {platform ?? "Link"}
-                            </span>
-                            <span className="truncate">{ref.source_url}</span>
-                            <ExternalLink className="h-3 w-3 shrink-0 opacity-60" strokeWidth={1.8} />
-                          </a>
-                        ) : (
-                          <span className="font-mono text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground">
-                        {formatDate(ref.link_checked_at)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          type="button"
-                          onClick={() => deleteDeadLink(ref.id)}
-                          disabled={deletingDeadId === ref.id}
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 px-2 font-mono text-[11px] uppercase tracking-widest text-destructive hover:text-destructive hover:bg-destructive/10"
+                {deadLinks.map((ref) => (
+                  <TableRow key={ref.id}>
+                    <TableCell>
+                      <Link to={refPath(ref.id, ref.title)} className="flex items-center gap-2 hover:opacity-80">
+                        <Link2Off className="h-3.5 w-3.5 text-destructive shrink-0" strokeWidth={1.8} />
+                        <span className="font-mono text-xs truncate max-w-[260px]">{ref.title}</span>
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      {editingLinkId === ref.id ? (
+                        <input
+                          autoFocus
+                          type="url"
+                          value={draftUrl}
+                          onChange={(e) => setDraftUrl(e.target.value)}
+                          onBlur={() => saveLinkUrl(ref.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") { e.preventDefault(); saveLinkUrl(ref.id); }
+                            if (e.key === "Escape") setEditingLinkId(null);
+                          }}
+                          className="w-full bg-transparent border-b border-primary font-mono text-xs focus:outline-none text-foreground"
+                        />
+                      ) : ref.source_url ? (
+                        <span
+                          onClick={() => { setDraftUrl(ref.source_url ?? ""); setEditingLinkId(ref.id); }}
+                          className="font-mono text-xs text-muted-foreground hover:text-foreground truncate max-w-[300px] flex items-center gap-1 cursor-text group"
+                          title="Click to edit URL"
                         >
-                          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                          <span className="truncate">{ref.source_url}</span>
+                          <span className="opacity-0 group-hover:opacity-60 text-[10px] shrink-0">✎</span>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => { setDraftUrl(""); setEditingLinkId(ref.id); }}
+                          className="font-mono text-xs text-muted-foreground/50 hover:text-muted-foreground italic"
+                        >
+                          + add URL
+                        </button>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {formatDate(ref.link_checked_at)}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>
         ) : (
           <p className="font-mono text-xs text-muted-foreground">
-            No dead links detected. Run a check to scan every reference with a source URL.
+            No dead links detected. Run a check to scan up to 40 stale references.
           </p>
         )}
       </section>
