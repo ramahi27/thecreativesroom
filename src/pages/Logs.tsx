@@ -655,7 +655,7 @@ const Logs = () => {
                     { label: "Image", value: "image" as const },
                   ]}
                   value={typeFilter}
-                  onChange={setTypeFilter}
+                  onChange={(v) => setTypeFilter(v as typeof typeFilter)}
                 />
                 <Chips
                   options={[
