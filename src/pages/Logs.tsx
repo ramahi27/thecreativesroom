@@ -104,57 +104,69 @@ const Logs = () => {
   // Fact-check the last 3 days of entries and auto-correct mistakes in
   // title / brand / agency / year (e.g. a wrong brand applied in bulk).
   async function handleAuditRecent() {
-    if (!confirm("Audit entries added in the last 3 days and auto-fix mistakes in title, brand, agency and year?")) return;
+    if (!confirm("Audit ALL entries added in the last 3 days and auto-fix mistakes in title, brand, agency and year? This may take several minutes.")) return;
     setAuditing(true);
     setAuditProgress("Starting…");
     setAuditLog([]);
+    let totalFixed = 0;
+    let totalChecked = 0;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-recent`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ days: 3 }),
-      });
-      if (!res.ok || !res.body) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(txt || `Audit failed (HTTP ${res.status})`);
-      }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let fixed = 0;
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          let msg: any;
-          try { msg = JSON.parse(line); } catch { continue; }
-          if (msg.type === "progress") {
-            setAuditProgress(msg.message);
-          } else if (msg.type === "fix") {
-            fixed++;
-            setAuditProgress(msg.message);
-            setAuditLog((prev) => [msg.message, ...prev].slice(0, 50));
-          } else if (msg.type === "warn") {
-            setAuditLog((prev) => [`⚠ ${msg.message}`, ...prev].slice(0, 50));
-          } else if (msg.type === "error") {
-            throw new Error(msg.message);
-          } else if (msg.type === "done") {
-            setAuditProgress(msg.message);
-            if (msg.fixed > 0) {
-              toast.success(msg.message);
-            } else {
-              toast.info(msg.message);
+      let offset = 0;
+      let hasMore = true;
+      while (hasMore) {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-recent`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ days: 3, offset, limit: 60 }),
+        });
+        if (!res.ok || !res.body) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(txt || `Audit failed (HTTP ${res.status})`);
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        let batchAdvance = 0;
+        let nextHasMore = false;
+        let nextOffset = offset;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            let msg: any;
+            try { msg = JSON.parse(line); } catch { continue; }
+            if (msg.type === "progress") {
+              setAuditProgress(msg.message);
+            } else if (msg.type === "fix") {
+              totalFixed++;
+              setAuditProgress(msg.message);
+              setAuditLog((prev) => [msg.message, ...prev].slice(0, 100));
+            } else if (msg.type === "warn") {
+              setAuditLog((prev) => [`⚠ ${msg.message}`, ...prev].slice(0, 100));
+            } else if (msg.type === "error") {
+              throw new Error(msg.message);
+            } else if (msg.type === "done") {
+              totalChecked += msg.checked ?? 0;
+              batchAdvance = (msg.nextOffset ?? offset) - offset;
+              nextHasMore = !!msg.hasMore;
+              nextOffset = msg.nextOffset ?? offset;
+              setAuditProgress(msg.message);
             }
           }
         }
+        if (batchAdvance <= 0) break;
+        offset = nextOffset;
+        hasMore = nextHasMore;
       }
-      if (fixed > 0) {
-        // Refresh the table so corrected fields show without a manual reload.
+      const summary = `Audited ${totalChecked} entries — ${totalFixed} corrected.`;
+      setAuditProgress(summary);
+      if (totalFixed > 0) toast.success(summary); else toast.info(summary);
+      if (totalFixed > 0) {
         const { data } = await supabase.rpc("get_reference_logs");
         if (data) {
           setRows((prev) => {
@@ -172,6 +184,7 @@ const Logs = () => {
       setAuditing(false);
     }
   }
+
 
   type Report = {
     id: string;
