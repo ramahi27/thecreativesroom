@@ -7,7 +7,7 @@ import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Sparkles, Check, X as XIcon, Link2, Link2Off } from "lucide-react";
+import { Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { rememberModalReturn, setModalNavOrder } from "@/lib/modalReturn";
@@ -42,6 +42,8 @@ type LogRow = {
   editing_style?: string | null;
   visual_summary?: string | null;
   has_ai_metadata?: boolean;
+  link_status?: string | null;
+  link_checked_at?: string | null;
 };
 
 const formatDate = (s: string | null) => {
@@ -104,69 +106,57 @@ const Logs = () => {
   // Fact-check the last 3 days of entries and auto-correct mistakes in
   // title / brand / agency / year (e.g. a wrong brand applied in bulk).
   async function handleAuditRecent() {
-    if (!confirm("Audit ALL entries added in the last 3 days and auto-fix mistakes in title, brand, agency and year? This may take several minutes.")) return;
+    if (!confirm("Audit entries added in the last 3 days and auto-fix mistakes in title, brand, agency and year?")) return;
     setAuditing(true);
     setAuditProgress("Starting…");
     setAuditLog([]);
-    let totalFixed = 0;
-    let totalChecked = 0;
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      let offset = 0;
-      let hasMore = true;
-      while (hasMore) {
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-recent`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ days: 3, offset, limit: 60 }),
-        });
-        if (!res.ok || !res.body) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(txt || `Audit failed (HTTP ${res.status})`);
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        let batchAdvance = 0;
-        let nextHasMore = false;
-        let nextOffset = offset;
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split("\n");
-          buf = lines.pop() ?? "";
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            let msg: any;
-            try { msg = JSON.parse(line); } catch { continue; }
-            if (msg.type === "progress") {
-              setAuditProgress(msg.message);
-            } else if (msg.type === "fix") {
-              totalFixed++;
-              setAuditProgress(msg.message);
-              setAuditLog((prev) => [msg.message, ...prev].slice(0, 100));
-            } else if (msg.type === "warn") {
-              setAuditLog((prev) => [`⚠ ${msg.message}`, ...prev].slice(0, 100));
-            } else if (msg.type === "error") {
-              throw new Error(msg.message);
-            } else if (msg.type === "done") {
-              totalChecked += msg.checked ?? 0;
-              batchAdvance = (msg.nextOffset ?? offset) - offset;
-              nextHasMore = !!msg.hasMore;
-              nextOffset = msg.nextOffset ?? offset;
-              setAuditProgress(msg.message);
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-recent`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ days: 3 }),
+      });
+      if (!res.ok || !res.body) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(txt || `Audit failed (HTTP ${res.status})`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let fixed = 0;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let msg: any;
+          try { msg = JSON.parse(line); } catch { continue; }
+          if (msg.type === "progress") {
+            setAuditProgress(msg.message);
+          } else if (msg.type === "fix") {
+            fixed++;
+            setAuditProgress(msg.message);
+            setAuditLog((prev) => [msg.message, ...prev].slice(0, 50));
+          } else if (msg.type === "warn") {
+            setAuditLog((prev) => [`⚠ ${msg.message}`, ...prev].slice(0, 50));
+          } else if (msg.type === "error") {
+            throw new Error(msg.message);
+          } else if (msg.type === "done") {
+            setAuditProgress(msg.message);
+            if (msg.fixed > 0) {
+              toast.success(msg.message);
+            } else {
+              toast.info(msg.message);
             }
           }
         }
-        if (batchAdvance <= 0) break;
-        offset = nextOffset;
-        hasMore = nextHasMore;
       }
-      const summary = `Audited ${totalChecked} entries — ${totalFixed} corrected.`;
-      setAuditProgress(summary);
-      if (totalFixed > 0) toast.success(summary); else toast.info(summary);
-      if (totalFixed > 0) {
+      if (fixed > 0) {
+        // Refresh the table so corrected fields show without a manual reload.
         const { data } = await supabase.rpc("get_reference_logs");
         if (data) {
           setRows((prev) => {
@@ -184,7 +174,6 @@ const Logs = () => {
       setAuditing(false);
     }
   }
-
 
   type Report = {
     id: string;
@@ -337,13 +326,13 @@ const Logs = () => {
       // The RPC doesn't include all AI-derived fields; fetch them once in chunks
       // and compute completeness from the same source of truth.
       const ids = baseRows.map((r) => r.id);
-      const infoMap = new Map<string, { brand: string | null; agency: string | null; year: number | null; editing_style: string | null; visual_summary: string | null }>();
+      const infoMap = new Map<string, { brand: string | null; agency: string | null; year: number | null; editing_style: string | null; visual_summary: string | null; link_status: string | null; link_checked_at: string | null }>();
       const CHUNK = 150;
       for (let i = 0; i < ids.length; i += CHUNK) {
         const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
-          .select("id,brand,agency,year,editing_style,visual_summary")
+          .select("id,brand,agency,year,editing_style,visual_summary,link_status,link_checked_at")
           .in("id", slice);
         (extra || []).forEach((t: any) =>
           infoMap.set(t.id, {
@@ -352,6 +341,8 @@ const Logs = () => {
             year: t.year ?? null,
             editing_style: t.editing_style ?? null,
             visual_summary: t.visual_summary ?? null,
+            link_status: t.link_status ?? null,
+            link_checked_at: t.link_checked_at ?? null,
           }),
         );
       }
@@ -365,6 +356,8 @@ const Logs = () => {
             year: info?.year ?? r.year ?? null,
             editing_style: info?.editing_style ?? null,
             visual_summary: info?.visual_summary ?? null,
+            link_status: info?.link_status ?? null,
+            link_checked_at: info?.link_checked_at ?? null,
           };
           return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) } as LogRow;
         }),
@@ -522,7 +515,7 @@ const Logs = () => {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      {ref.source_url && /^https?:\/\//i.test(ref.source_url) ? (
+                      {ref.source_url ? (
                         <a href={ref.source_url} target="_blank" rel="noopener noreferrer"
                           className="font-mono text-xs text-muted-foreground hover:text-foreground truncate max-w-[300px] block">
                           {ref.source_url}
@@ -558,7 +551,7 @@ const Logs = () => {
                 <TableRow>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">#</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Reference</TableHead>
-                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">AI</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">Checks</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Added by</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Approved by</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Approved at</TableHead>
@@ -590,15 +583,44 @@ const Logs = () => {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      {r.has_ai_metadata ? (
-                        <span title="Has AI metadata" className="inline-flex h-5 w-5 items-center justify-center border hairline bg-primary/10 text-primary">
-                          <Check className="h-3 w-3" strokeWidth={2.5} />
+                      <div className="flex items-center gap-1.5">
+                        {/* AI metadata */}
+                        <span
+                          title={r.has_ai_metadata ? "AI metadata complete" : "Missing AI metadata (visual summary)"}
+                          className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.has_ai_metadata ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
+                        >
+                          <Sparkles className="h-3 w-3" strokeWidth={r.has_ai_metadata ? 2 : 1.5} />
                         </span>
-                      ) : (
-                        <span title="Missing AI metadata" className="inline-flex h-5 w-5 items-center justify-center border hairline text-muted-foreground">
-                          <XIcon className="h-3 w-3" strokeWidth={2} />
+                        {/* Link status */}
+                        <span
+                          title={
+                            r.link_status === "ok" ? `Link OK · checked ${formatDate(r.link_checked_at ?? null)}` :
+                            r.link_status === "dead" ? `Dead link · checked ${formatDate(r.link_checked_at ?? null)}` :
+                            r.link_status === "error" ? `Link error · checked ${formatDate(r.link_checked_at ?? null)}` :
+                            "Link not yet checked"
+                          }
+                          className={`inline-flex h-5 w-5 items-center justify-center border hairline ${
+                            r.link_status === "ok" ? "bg-primary/10 text-primary" :
+                            r.link_status === "dead" ? "bg-destructive/15 text-destructive" :
+                            r.link_status === "error" ? "bg-yellow-500/10 text-yellow-500" :
+                            "text-muted-foreground/40"
+                          }`}
+                        >
+                          {r.link_status === "ok" ? <Link2 className="h-3 w-3" strokeWidth={2} /> :
+                           r.link_status === "dead" ? <Link2Off className="h-3 w-3" strokeWidth={2} /> :
+                           r.link_status === "error" ? <Link2 className="h-3 w-3" strokeWidth={1.5} /> :
+                           <Link2 className="h-3 w-3" strokeWidth={1} />}
                         </span>
-                      )}
+                        {/* Thumbnail */}
+                        <span
+                          title={r.thumbnail_url ? "Has thumbnail" : "No thumbnail"}
+                          className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.thumbnail_url ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
+                        >
+                          {r.thumbnail_url
+                            ? <Check className="h-3 w-3" strokeWidth={2.5} />
+                            : <ImageOff className="h-3 w-3" strokeWidth={1.5} />}
+                        </span>
+                      </div>
                     </TableCell>
                     <TableCell className="font-mono text-xs">
                       {r.created_by_email || (r.created_by ? "—" : "system")}
