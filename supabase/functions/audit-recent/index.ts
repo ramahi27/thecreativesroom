@@ -15,11 +15,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Bound the work so we stay under the edge-function wall-clock limit and the
-// AI gateway rate limit. Firecrawl makes each entry slower, so keep concurrency
-// modest and the cap lower than a purely-AI pass.
-const MAX_ENTRIES = 80;
-const CONCURRENCY = 4;
+// Bound the work per invocation so we stay under the edge-function wall-clock
+// limit. The client paginates by passing `offset` and looping until the server
+// reports no more entries to audit.
+const DEFAULT_LIMIT = 60;
+const MAX_LIMIT = 100;
+const CONCURRENCY = 5;
 
 const SYSTEM_PROMPT = `You are a meticulous fact-checker for an advertising & photography reference archive. You have deep knowledge of brands, agencies, photographers, directors, and notable campaigns.
 
@@ -221,26 +222,30 @@ Deno.serve(async (req) => {
 
         const body = await req.json().catch(() => ({}));
         const days = Math.min(Math.max(1, parseInt(body?.days ?? "3", 10) || 3), 30);
+        const offset = Math.max(0, parseInt(body?.offset ?? "0", 10) || 0);
+        const limit = Math.min(Math.max(1, parseInt(body?.limit ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT), MAX_LIMIT);
         const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
         const admin = createClient(supabaseUrl, serviceKey);
-        const { data: refs, error } = await admin
+        const { data: refs, error, count } = await admin
           .from("references")
-          .select("id,title,type,brand,agency,year,source_url,notes")
+          .select("id,title,type,brand,agency,year,source_url,notes", { count: "exact" })
           .gte("created_at", since)
           .order("created_at", { ascending: false })
-          .limit(MAX_ENTRIES);
+          .range(offset, offset + limit - 1);
 
         if (error) { send({ type: "error", message: error.message }); controller.close(); return; }
         const list = (refs as RefRow[]) || [];
+        const total = count ?? list.length;
 
         if (list.length === 0) {
-          send({ type: "done", checked: 0, fixed: 0, message: `No entries added in the last ${days} day(s).` });
+          send({ type: "done", checked: 0, fixed: 0, total, offset, message: offset === 0 ? `No entries added in the last ${days} day(s).` : `Reached end (${total} total).` });
           controller.close();
           return;
         }
 
-        send({ type: "progress", message: `Auditing ${list.length} entries from the last ${days} day(s)…` });
+        send({ type: "progress", message: `Auditing ${list.length} entries (${offset + 1}–${offset + list.length} of ${total})…` });
+
 
         let checked = 0;
         let fixed = 0;
@@ -272,11 +277,17 @@ Deno.serve(async (req) => {
           );
         }
 
+        const nextOffset = offset + list.length;
+        const hasMore = nextOffset < total;
         send({
           type: "done",
           checked,
           fixed,
-          message: `Audited ${checked} entries — ${fixed} corrected.`,
+          total,
+          offset,
+          nextOffset,
+          hasMore,
+          message: `Audited ${offset + 1}–${nextOffset} of ${total} — ${fixed} corrected${hasMore ? " (continuing…)" : "."}`,
         });
       } catch (e) {
         send({ type: "error", message: e instanceof Error ? e.message : String(e) });
