@@ -250,7 +250,7 @@ Deno.serve(async (req) => {
           await Promise.all(
             chunk.map(async (ref) => {
               try {
-                const corrections = await auditOne(ref, apiKey);
+                const corrections = await auditOne(ref, apiKey, firecrawlKey);
                 checked++;
                 if (!corrections) return;
                 const update = buildUpdate(ref, corrections);
