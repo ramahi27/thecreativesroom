@@ -526,8 +526,8 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       ▶ Watch here
                     </button>
                   )}
-                  {r.source_url && r.type === "video" && (
-                    <a href={r.source_url} target="_blank" rel="noreferrer"
+                  {safeSourceUrl && r.type === "video" && (
+                    <a href={safeSourceUrl} target="_blank" rel="noreferrer"
                       className="inline-flex items-center gap-2 px-4 py-2 rounded-full border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary transition-colors">
                       <ExternalLink className="h-3 w-3" />
                       Open on {platform || "source"}
