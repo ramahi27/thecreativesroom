@@ -277,11 +277,17 @@ Deno.serve(async (req) => {
           );
         }
 
+        const nextOffset = offset + list.length;
+        const hasMore = nextOffset < total;
         send({
           type: "done",
           checked,
           fixed,
-          message: `Audited ${checked} entries — ${fixed} corrected.`,
+          total,
+          offset,
+          nextOffset,
+          hasMore,
+          message: `Audited ${offset + 1}–${nextOffset} of ${total} — ${fixed} corrected${hasMore ? " (continuing…)" : "."}`,
         });
       } catch (e) {
         send({ type: "error", message: e instanceof Error ? e.message : String(e) });
