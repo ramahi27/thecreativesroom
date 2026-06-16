@@ -267,10 +267,22 @@ Deno.serve(async (req) => {
                   return;
                 }
                 fixed++;
-                const changed = Object.keys(update)
-                  .map((k) => `${k}→${update[k] === null ? "(cleared)" : update[k]}`)
+                const changes = Object.keys(update).map((k) => ({
+                  field: k,                                       // "title" | "brand" | "agency" | "year"
+                  from: (ref as Record<string, unknown>)[k] ?? null,
+                  to: update[k] ?? null,                          // null means cleared
+                }));
+                const summary = changes
+                  .map((c) => `${c.field}→${c.to === null ? "(cleared)" : c.to}`)
                   .join(", ");
-                send({ type: "fix", message: `✓ ${ref.title}: ${changed}`, reason: corrections.reason });
+                send({
+                  type: "fix",
+                  refId: ref.id,
+                  title: ref.title,
+                  changes,
+                  reason: corrections.reason ?? null,
+                  message: `✓ ${ref.title}: ${summary}`,          // kept for any string consumer
+                });
               } catch (e) {
                 send({ type: "warn", message: `Skipped "${ref.title}": ${e instanceof Error ? e.message : String(e)}` });
               }
