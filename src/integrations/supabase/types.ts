@@ -371,8 +371,6 @@ export type Database = {
           bio: string | null
           created_at: string
           plan: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
           submissions_public: boolean
           updated_at: string
           user_id: string
@@ -383,8 +381,6 @@ export type Database = {
           bio?: string | null
           created_at?: string
           plan?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           submissions_public?: boolean
           updated_at?: string
           user_id: string
@@ -395,8 +391,6 @@ export type Database = {
           bio?: string | null
           created_at?: string
           plan?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
           submissions_public?: boolean
           updated_at?: string
           user_id?: string
@@ -582,8 +576,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_list_user_plans: {
+        Args: never
+        Returns: {
+          plan: string
+          user_id: string
+        }[]
+      }
+      admin_set_plan: {
+        Args: { p_plan: string; p_user_id: string }
+        Returns: undefined
+      }
+      check_pro_access: { Args: never; Returns: boolean }
       get_admin_stats: { Args: never; Returns: Json }
       get_my_folders: { Args: { p_user_id: string }; Returns: Json }
+      get_my_plan: { Args: never; Returns: string }
       get_profile_by_username: { Args: { _username: string }; Returns: Json }
       get_reference_logs: {
         Args: never
@@ -607,14 +614,15 @@ export type Database = {
         Args: never
         Returns: {
           bookmarks_count: number
-          country: string
           created_at: string
           email: string
           is_admin: boolean
+          plan: string
           references_added: number
           references_approved: number
           time_spent_seconds: number
           user_id: string
+          username: string
         }[]
       }
       has_role: {
@@ -634,6 +642,15 @@ export type Database = {
         }[]
       }
       rename_category: { Args: { _new: string; _old: string }; Returns: number }
+      update_my_profile: {
+        Args: {
+          p_avatar_url?: string
+          p_bio?: string
+          p_submissions_public?: boolean
+          p_username?: string
+        }
+        Returns: undefined
+      }
       username_available: { Args: { _username: string }; Returns: boolean }
     }
     Enums: {

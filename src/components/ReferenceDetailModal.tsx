@@ -343,7 +343,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       update = { [field]: value || null };
     }
     setR({ ...r, ...update } as Reference);
-    const { error } = await supabase.from("references").update(update).eq("id", r.id);
+    const { error } = await supabase.from("references").update(update as any).eq("id", r.id);
     if (error) { setR(prev as Reference); toast.error(error.message); }
   }
 
