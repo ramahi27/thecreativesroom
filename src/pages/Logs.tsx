@@ -73,6 +73,8 @@ const Logs = () => {
   const [linkChecking, setLinkChecking] = useState(false);
   const [linkResults, setLinkResults] = useState<{ checked: number; ok: number; dead: number; errored: number; message: string } | null>(null);
   const [deadLinks, setDeadLinks] = useState<Array<{ id: string; title: string; source_url: string | null; link_status: string; link_checked_at: string }>>([]);
+  const [deletingDeadId, setDeletingDeadId] = useState<string | null>(null);
+  const [deletingAllDead, setDeletingAllDead] = useState(false);
 
   async function loadDeadLinks() {
     const { data } = await supabase
@@ -80,7 +82,7 @@ const Logs = () => {
       .select("id,title,source_url,link_status,link_checked_at")
       .eq("link_status", "dead")
       .order("link_checked_at", { ascending: false })
-      .limit(100);
+      .limit(1000);
     setDeadLinks((data as any) || []);
   }
 
@@ -102,6 +104,29 @@ const Logs = () => {
     } finally {
       setLinkChecking(false);
     }
+  }
+
+  async function deleteDeadLink(id: string) {
+    setDeletingDeadId(id);
+    const { error } = await supabase.from("references").delete().eq("id", id);
+    setDeletingDeadId(null);
+    if (error) return toast.error(error.message);
+    setDeadLinks((d) => d.filter((r) => r.id !== id));
+    setRows((rs) => rs.filter((r) => r.id !== id));
+    toast.success("Reference deleted");
+  }
+
+  async function deleteAllDeadLinks() {
+    if (deadLinks.length === 0) return;
+    if (!confirm(`Delete all ${deadLinks.length} references with dead links? This cannot be undone.`)) return;
+    setDeletingAllDead(true);
+    const ids = deadLinks.map((r) => r.id);
+    const { error } = await supabase.from("references").delete().in("id", ids);
+    setDeletingAllDead(false);
+    if (error) return toast.error(error.message);
+    setDeadLinks([]);
+    setRows((rs) => rs.filter((r) => !ids.includes(r.id)));
+    toast.success(`Deleted ${ids.length} references`);
   }
 
   // Fact-check the last 3 days of entries and auto-correct mistakes in
