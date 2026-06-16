@@ -45,6 +45,7 @@ type LogRow = {
   has_ai_metadata?: boolean;
   link_status?: string | null;
   link_checked_at?: string | null;
+  audited_at?: string | null;
 };
 
 type SortCol = "added" | "approved" | "title";
@@ -221,19 +222,21 @@ const Logs = () => {
         brand: string | null; agency: string | null; year: number | null;
         editing_style: string | null; visual_summary: string | null;
         link_status: string | null; link_checked_at: string | null;
+        audited_at: string | null;
       }>();
       const CHUNK = 150;
       for (let i = 0; i < ids.length; i += CHUNK) {
         const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
-          .select("id,brand,agency,year,editing_style,visual_summary,link_status,link_checked_at")
+          .select("id,brand,agency,year,editing_style,visual_summary,link_status,link_checked_at,audited_at")
           .in("id", slice);
         (extra || []).forEach((t: any) =>
           infoMap.set(t.id, {
             brand: t.brand ?? null, agency: t.agency ?? null, year: t.year ?? null,
             editing_style: t.editing_style ?? null, visual_summary: t.visual_summary ?? null,
             link_status: t.link_status ?? null, link_checked_at: t.link_checked_at ?? null,
+            audited_at: t.audited_at ?? null,
           }),
         );
       }
@@ -249,6 +252,7 @@ const Logs = () => {
             visual_summary: info?.visual_summary ?? null,
             link_status: info?.link_status ?? null,
             link_checked_at: info?.link_checked_at ?? null,
+            audited_at: info?.audited_at ?? null,
           };
           return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) } as LogRow;
         }),
@@ -796,14 +800,20 @@ const Logs = () => {
                             <button
                               onClick={() => handleAuditOne(r.id, r.title)}
                               disabled={!!auditingId}
-                              title="Re-audit this reference with AI"
+                              title={
+                                auditingId === r.id ? "Auditing…" :
+                                r.audited_at ? `Audited · ${formatDate(r.audited_at)} — click to re-audit` :
+                                "Not yet audited — click to audit with AI"
+                              }
                               className={`inline-flex h-5 w-5 items-center justify-center border transition-colors ${
                                 auditingId === r.id
                                   ? "border-primary text-primary animate-pulse"
-                                  : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
+                                  : r.audited_at
+                                    ? "bg-primary/10 border-primary/40 text-primary hover:bg-primary/20"
+                                    : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
                               }`}
                             >
-                              <Wand2 className="h-3 w-3" strokeWidth={1.5} />
+                              <Wand2 className="h-3 w-3" strokeWidth={r.audited_at ? 2 : 1.5} />
                             </button>
                           </div>
                         </TableCell>
