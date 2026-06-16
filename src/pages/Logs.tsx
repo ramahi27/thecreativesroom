@@ -800,14 +800,20 @@ const Logs = () => {
                             <button
                               onClick={() => handleAuditOne(r.id, r.title)}
                               disabled={!!auditingId}
-                              title="Re-audit this reference with AI"
+                              title={
+                                auditingId === r.id ? "Auditing…" :
+                                r.audited_at ? `Audited · ${formatDate(r.audited_at)} — click to re-audit` :
+                                "Not yet audited — click to audit with AI"
+                              }
                               className={`inline-flex h-5 w-5 items-center justify-center border transition-colors ${
                                 auditingId === r.id
                                   ? "border-primary text-primary animate-pulse"
-                                  : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
+                                  : r.audited_at
+                                    ? "bg-primary/10 border-primary/40 text-primary hover:bg-primary/20"
+                                    : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
                               }`}
                             >
-                              <Wand2 className="h-3 w-3" strokeWidth={1.5} />
+                              <Wand2 className="h-3 w-3" strokeWidth={r.audited_at ? 2 : 1.5} />
                             </button>
                           </div>
                         </TableCell>
