@@ -221,20 +221,69 @@ Deno.serve(async (req) => {
         if (!apiKey) { send({ type: "error", message: "LOVABLE_API_KEY not configured" }); controller.close(); return; }
 
         const body = await req.json().catch(() => ({}));
+        const singleId: string | null = typeof body?.id === "string" ? body.id : null;
+
+        const admin = createClient(supabaseUrl, serviceKey);
+
+        // Single-reference mode: audit one entry by ID, bypass date filter
+        if (singleId) {
+          const { data: singleRef, error: singleErr } = await admin
+            .from("references")
+            .select("id,title,type,brand,agency,year,source_url,notes")
+            .eq("id", singleId)
+            .eq("published", true)
+            .maybeSingle();
+          if (singleErr || !singleRef) {
+            send({ type: "error", message: singleErr?.message ?? "Reference not found" });
+            controller.close(); return;
+          }
+          send({ type: "progress", message: `Auditing "${singleRef.title}"…` });
+          let fixed = 0;
+          try {
+            const corrections = await auditOne(singleRef as RefRow, apiKey, firecrawlKey);
+            if (corrections) {
+              const update = buildUpdate(singleRef as RefRow, corrections);
+              if (update) {
+                const { error: upErr } = await admin.from("references").update(update).eq("id", singleRef.id);
+                if (upErr) {
+                  send({ type: "warn", message: `Could not update "${singleRef.title}": ${upErr.message}` });
+                } else {
+                  fixed++;
+                  const changes = Object.keys(update).map((k) => ({
+                    field: k,
+                    from: (singleRef as Record<string, unknown>)[k] ?? null,
+                    to: update[k] ?? null,
+                  }));
+                  const summary = changes.map((c) => `${c.field}→${c.to === null ? "(cleared)" : c.to}`).join(", ");
+                  send({
+                    type: "fix",
+                    refId: singleRef.id,
+                    title: singleRef.title,
+                    changes,
+                    reason: corrections.reason ?? null,
+                    message: `✓ ${singleRef.title}: ${summary}`,
+                  });
+                }
+              }
+            }
+          } catch (e) {
+            send({ type: "warn", message: `Skipped "${singleRef.title}": ${e instanceof Error ? e.message : String(e)}` });
+          }
+          send({ type: "done", checked: 1, fixed, total: 1, offset: 0, nextOffset: 1, hasMore: false, message: fixed > 0 ? `1 field(s) corrected.` : `No changes needed.` });
+          controller.close(); return;
+        }
+
+        // Batch mode: audit entries added in the last N days
         const days = Math.min(Math.max(1, parseInt(body?.days ?? "3", 10) || 3), 30);
         const offset = Math.max(0, parseInt(body?.offset ?? "0", 10) || 0);
         const limit = Math.min(Math.max(1, parseInt(body?.limit ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT), MAX_LIMIT);
         const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-        const admin = createClient(supabaseUrl, serviceKey);
-        // Skip entries already audited within this same window so re-runs
-        // only touch new / never-audited references.
         const { data: refs, error, count } = await admin
           .from("references")
           .select("id,title,type,brand,agency,year,source_url,notes", { count: "exact" })
           .eq("published", true)
           .gte("created_at", since)
-          .or(`audited_at.is.null,audited_at.lt.${since}`)
           .order("created_at", { ascending: false })
           .range(offset, offset + limit - 1);
 
@@ -261,21 +310,19 @@ Deno.serve(async (req) => {
               try {
                 const corrections = await auditOne(ref, apiKey, firecrawlKey);
                 checked++;
-                const update = corrections ? buildUpdate(ref, corrections) : null;
-                // Always stamp audited_at so this row is skipped on re-runs,
-                // even when nothing needed correcting.
-                const finalUpdate: Record<string, unknown> = { ...(update ?? {}), audited_at: new Date().toISOString() };
-                const { error: upErr } = await admin.from("references").update(finalUpdate).eq("id", ref.id);
+                if (!corrections) return;
+                const update = buildUpdate(ref, corrections);
+                if (!update) return;
+                const { error: upErr } = await admin.from("references").update(update).eq("id", ref.id);
                 if (upErr) {
                   send({ type: "warn", message: `Could not update "${ref.title}": ${upErr.message}` });
                   return;
                 }
-                if (!update) return;
                 fixed++;
                 const changes = Object.keys(update).map((k) => ({
-                  field: k,
+                  field: k,                                       // "title" | "brand" | "agency" | "year"
                   from: (ref as Record<string, unknown>)[k] ?? null,
-                  to: update[k] ?? null,
+                  to: update[k] ?? null,                          // null means cleared
                 }));
                 const summary = changes
                   .map((c) => `${c.field}→${c.to === null ? "(cleared)" : c.to}`)
@@ -285,8 +332,8 @@ Deno.serve(async (req) => {
                   refId: ref.id,
                   title: ref.title,
                   changes,
-                  reason: corrections?.reason ?? null,
-                  message: `✓ ${ref.title}: ${summary}`,
+                  reason: corrections.reason ?? null,
+                  message: `✓ ${ref.title}: ${summary}`,          // kept for any string consumer
                 });
               } catch (e) {
                 send({ type: "warn", message: `Skipped "${ref.title}": ${e instanceof Error ? e.message : String(e)}` });

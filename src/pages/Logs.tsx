@@ -116,13 +116,14 @@ const Logs = () => {
   const [backfilling, setBackfilling] = useState(false);
   const [backfillProgress, setBackfillProgress] = useState<string>("");
   const [auditing, setAuditing] = useState(false);
+  const [auditingId, setAuditingId] = useState<string | null>(null);
   const [auditProgress, setAuditProgress] = useState<string>("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
 
   // Link health
   const [linkChecking, setLinkChecking] = useState(false);
   const [linkResults, setLinkResults] = useState<{ checked: number; ok: number; dead: number; errored: number; message: string } | null>(null);
-  const [deadLinks, setDeadLinks] = useState<Array<{ id: string; title: string; source_url: string | null; link_status: string; link_checked_at: string }>>([]);
+  const [deadLinks, setDeadLinks] = useState<Array<{ id: string; title: string; source_url: string | null; link_status: string; link_checked_at: string }>>([])
   const [editingLinkId, setEditingLinkId] = useState<string | null>(null);
   const [draftUrl, setDraftUrl] = useState("");
   const [deletingDead, setDeletingDead] = useState(false);
@@ -312,7 +313,7 @@ const Logs = () => {
 
   // ── Audit recent ────────────────────────────────────────────────────────────
   async function handleAuditRecent() {
-    if (!confirm("Audit entries added in the last 3 days that haven't been audited yet, and auto-fix mistakes in title, brand, agency and year?")) return;
+    if (!confirm("Audit entries added in the last 3 days and auto-fix mistakes in title, brand, agency and year?")) return;
     setAuditing(true);
     setAuditProgress("Starting…");
     setAuditLog([]);
@@ -368,6 +369,69 @@ const Logs = () => {
       toast.error(err.message);
     } finally {
       setAuditing(false);
+    }
+  }
+
+  // ── Audit single reference ───────────────────────────────────────────────
+  async function handleAuditOne(id: string, title: string) {
+    if (auditingId) return;
+    setAuditingId(id);
+    setAuditLog([]);
+    setAuditProgress(`Auditing "${title}"…`);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-recent`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok || !res.body) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(txt || `Audit failed (HTTP ${res.status})`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let fixed = 0;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let msg: any;
+          try { msg = JSON.parse(line); } catch { continue; }
+          if (msg.type === "progress") { setAuditProgress(msg.message); }
+          else if (msg.type === "fix") {
+            fixed++;
+            setAuditLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
+          } else if (msg.type === "warn") {
+            setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50));
+          } else if (msg.type === "error") {
+            throw new Error(msg.message);
+          } else if (msg.type === "done") {
+            setAuditProgress(msg.message);
+            if (msg.fixed > 0) toast.success(`"${title}": ${msg.fixed} field(s) corrected`);
+            else toast.info(`"${title}": no changes needed`);
+          }
+        }
+      }
+      if (fixed > 0) {
+        const { data: fresh } = await supabase
+          .from("references")
+          .select("id,title,brand,agency,year")
+          .eq("id", id)
+          .maybeSingle();
+        if (fresh) {
+          setRows((prev) => prev.map((r) => r.id === id ? { ...r, ...(fresh as any) } : r));
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setAuditingId(null);
     }
   }
 
@@ -471,15 +535,15 @@ const Logs = () => {
             {auditing ? auditProgress || "Auditing…" : "Audit recent (3d)"}
           </Button>
         </div>
-        {(auditing || auditLog.length > 0) && (
+        {(auditing || auditingId !== null || auditLog.length > 0) && (
           <div className="container pb-3">
             <div className="border hairline bg-secondary/40 max-h-72 overflow-auto p-3 font-mono text-[11px] leading-relaxed space-y-1.5">
-              {auditing && (
+              {(auditing || auditingId !== null) && (
                 <p className="text-primary sticky top-0 bg-secondary/90 backdrop-blur-sm -mx-3 px-3 py-1 mb-1 z-10">
                   {auditProgress}
                 </p>
               )}
-              {auditLog.length === 0 && auditing ? (
+              {auditLog.length === 0 && (auditing || auditingId !== null) ? (
                 <p className="text-muted-foreground">Checking entries…</p>
               ) : (
                 auditLog.map((e, i) =>
@@ -586,40 +650,40 @@ const Logs = () => {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <Chips
                   options={[
-                    { label: "All types", value: "all" },
-                    { label: "Video", value: "video" },
-                    { label: "Image", value: "image" },
+                    { label: "All types", value: "all" as const },
+                    { label: "Video", value: "video" as const },
+                    { label: "Image", value: "image" as const },
                   ]}
                   value={typeFilter}
-                  onChange={(v) => setTypeFilter(v as typeof typeFilter)}
+                  onChange={setTypeFilter}
                 />
                 <Chips
                   options={[
-                    { label: "All links", value: "all" },
-                    { label: "OK", value: "ok" },
-                    { label: "Dead", value: "dead" },
-                    { label: "Unchecked", value: "unchecked" },
+                    { label: "All links", value: "all" as const },
+                    { label: "OK", value: "ok" as const },
+                    { label: "Dead", value: "dead" as const },
+                    { label: "Unchecked", value: "unchecked" as const },
                   ]}
                   value={linkFilter}
-                  onChange={(v) => setLinkFilter(v as typeof linkFilter)}
+                  onChange={setLinkFilter}
                 />
                 <Chips
                   options={[
-                    { label: "All AI", value: "all" },
-                    { label: "Complete", value: "complete" },
-                    { label: "Missing", value: "missing" },
+                    { label: "All AI", value: "all" as const },
+                    { label: "Complete", value: "complete" as const },
+                    { label: "Missing", value: "missing" as const },
                   ]}
                   value={aiFilter}
-                  onChange={(v) => setAiFilter(v as typeof aiFilter)}
+                  onChange={setAiFilter}
                 />
                 <Chips
                   options={[
-                    { label: "All thumbs", value: "all" },
-                    { label: "Has", value: "has" },
-                    { label: "Missing", value: "missing" },
+                    { label: "All thumbs", value: "all" as const },
+                    { label: "Has", value: "has" as const },
+                    { label: "Missing", value: "missing" as const },
                   ]}
                   value={thumbFilter}
-                  onChange={(v) => setThumbFilter(v as typeof thumbFilter)}
+                  onChange={setThumbFilter}
                 />
               </div>
               <div className="flex items-center gap-4">
@@ -728,6 +792,18 @@ const Logs = () => {
                                 ? <Check className="h-3 w-3" strokeWidth={2.5} />
                                 : <ImageOff className="h-3 w-3" strokeWidth={1.5} />}
                             </span>
+                            <button
+                              onClick={() => handleAuditOne(r.id, r.title)}
+                              disabled={!!auditingId}
+                              title="Audit this reference"
+                              className={`inline-flex h-5 w-5 items-center justify-center border hairline transition-colors ${
+                                auditingId === r.id
+                                  ? "text-primary border-primary animate-pulse"
+                                  : "text-muted-foreground/40 hover:text-primary hover:border-primary/50"
+                              }`}
+                            >
+                              <Sparkles className="h-3 w-3" strokeWidth={1.5} />
+                            </button>
                           </div>
                         </TableCell>
                         <TableCell className="font-mono text-xs">
