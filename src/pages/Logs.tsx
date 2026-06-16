@@ -586,40 +586,40 @@ const Logs = () => {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <Chips
                   options={[
-                    { label: "All types", value: "all" as const },
-                    { label: "Video", value: "video" as const },
-                    { label: "Image", value: "image" as const },
+                    { label: "All types", value: "all" },
+                    { label: "Video", value: "video" },
+                    { label: "Image", value: "image" },
                   ]}
                   value={typeFilter}
-                  onChange={setTypeFilter}
+                  onChange={(v) => setTypeFilter(v as typeof typeFilter)}
                 />
                 <Chips
                   options={[
-                    { label: "All links", value: "all" as const },
-                    { label: "OK", value: "ok" as const },
-                    { label: "Dead", value: "dead" as const },
-                    { label: "Unchecked", value: "unchecked" as const },
+                    { label: "All links", value: "all" },
+                    { label: "OK", value: "ok" },
+                    { label: "Dead", value: "dead" },
+                    { label: "Unchecked", value: "unchecked" },
                   ]}
                   value={linkFilter}
-                  onChange={setLinkFilter}
+                  onChange={(v) => setLinkFilter(v as typeof linkFilter)}
                 />
                 <Chips
                   options={[
-                    { label: "All AI", value: "all" as const },
-                    { label: "Complete", value: "complete" as const },
-                    { label: "Missing", value: "missing" as const },
+                    { label: "All AI", value: "all" },
+                    { label: "Complete", value: "complete" },
+                    { label: "Missing", value: "missing" },
                   ]}
                   value={aiFilter}
-                  onChange={setAiFilter}
+                  onChange={(v) => setAiFilter(v as typeof aiFilter)}
                 />
                 <Chips
                   options={[
-                    { label: "All thumbs", value: "all" as const },
-                    { label: "Has", value: "has" as const },
-                    { label: "Missing", value: "missing" as const },
+                    { label: "All thumbs", value: "all" },
+                    { label: "Has", value: "has" },
+                    { label: "Missing", value: "missing" },
                   ]}
                   value={thumbFilter}
-                  onChange={setThumbFilter}
+                  onChange={(v) => setThumbFilter(v as typeof thumbFilter)}
                 />
               </div>
               <div className="flex items-center gap-4">
