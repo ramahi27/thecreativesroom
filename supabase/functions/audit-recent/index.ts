@@ -284,6 +284,7 @@ Deno.serve(async (req) => {
           .select("id,title,type,brand,agency,year,source_url,notes", { count: "exact" })
           .eq("published", true)
           .gte("created_at", since)
+          .is("audited_at", null)
           .order("created_at", { ascending: false })
           .range(offset, offset + limit - 1);
 
@@ -307,22 +308,23 @@ Deno.serve(async (req) => {
           const chunk = list.slice(i, i + CONCURRENCY);
           await Promise.all(
             chunk.map(async (ref) => {
+              const nowIso = new Date().toISOString();
               try {
                 const corrections = await auditOne(ref, apiKey, firecrawlKey);
                 checked++;
-                if (!corrections) return;
-                const update = buildUpdate(ref, corrections);
-                if (!update) return;
-                const { error: upErr } = await admin.from("references").update(update).eq("id", ref.id);
+                const update = corrections ? buildUpdate(ref, corrections) : null;
+                const finalUpdate: Record<string, unknown> = { ...(update || {}), audited_at: nowIso };
+                const { error: upErr } = await admin.from("references").update(finalUpdate).eq("id", ref.id);
                 if (upErr) {
                   send({ type: "warn", message: `Could not update "${ref.title}": ${upErr.message}` });
                   return;
                 }
+                if (!update) return;
                 fixed++;
                 const changes = Object.keys(update).map((k) => ({
-                  field: k,                                       // "title" | "brand" | "agency" | "year"
+                  field: k,
                   from: (ref as Record<string, unknown>)[k] ?? null,
-                  to: update[k] ?? null,                          // null means cleared
+                  to: update[k] ?? null,
                 }));
                 const summary = changes
                   .map((c) => `${c.field}→${c.to === null ? "(cleared)" : c.to}`)
@@ -332,8 +334,8 @@ Deno.serve(async (req) => {
                   refId: ref.id,
                   title: ref.title,
                   changes,
-                  reason: corrections.reason ?? null,
-                  message: `✓ ${ref.title}: ${summary}`,          // kept for any string consumer
+                  reason: corrections?.reason ?? null,
+                  message: `✓ ${ref.title}: ${summary}`,
                 });
               } catch (e) {
                 send({ type: "warn", message: `Skipped "${ref.title}": ${e instanceof Error ? e.message : String(e)}` });
