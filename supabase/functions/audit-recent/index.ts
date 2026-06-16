@@ -15,11 +15,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Bound the work so we stay under the edge-function wall-clock limit and the
-// AI gateway rate limit. Firecrawl makes each entry slower, so keep concurrency
-// modest and the cap lower than a purely-AI pass.
-const MAX_ENTRIES = 80;
-const CONCURRENCY = 4;
+// Bound the work per invocation so we stay under the edge-function wall-clock
+// limit. The client paginates by passing `offset` and looping until the server
+// reports no more entries to audit.
+const DEFAULT_LIMIT = 60;
+const MAX_LIMIT = 100;
+const CONCURRENCY = 5;
 
 const SYSTEM_PROMPT = `You are a meticulous fact-checker for an advertising & photography reference archive. You have deep knowledge of brands, agencies, photographers, directors, and notable campaigns.
 
