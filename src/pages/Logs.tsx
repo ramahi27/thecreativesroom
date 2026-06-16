@@ -222,19 +222,21 @@ const Logs = () => {
         brand: string | null; agency: string | null; year: number | null;
         editing_style: string | null; visual_summary: string | null;
         link_status: string | null; link_checked_at: string | null;
+        audited_at: string | null;
       }>();
       const CHUNK = 150;
       for (let i = 0; i < ids.length; i += CHUNK) {
         const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
-          .select("id,brand,agency,year,editing_style,visual_summary,link_status,link_checked_at")
+          .select("id,brand,agency,year,editing_style,visual_summary,link_status,link_checked_at,audited_at")
           .in("id", slice);
         (extra || []).forEach((t: any) =>
           infoMap.set(t.id, {
             brand: t.brand ?? null, agency: t.agency ?? null, year: t.year ?? null,
             editing_style: t.editing_style ?? null, visual_summary: t.visual_summary ?? null,
             link_status: t.link_status ?? null, link_checked_at: t.link_checked_at ?? null,
+            audited_at: t.audited_at ?? null,
           }),
         );
       }
@@ -250,6 +252,7 @@ const Logs = () => {
             visual_summary: info?.visual_summary ?? null,
             link_status: info?.link_status ?? null,
             link_checked_at: info?.link_checked_at ?? null,
+            audited_at: info?.audited_at ?? null,
           };
           return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) } as LogRow;
         }),
