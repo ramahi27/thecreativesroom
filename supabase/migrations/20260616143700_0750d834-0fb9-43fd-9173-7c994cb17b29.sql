@@ -1,0 +1,1 @@
+ALTER TABLE public.references ADD COLUMN IF NOT EXISTS audited_at timestamptz; CREATE INDEX IF NOT EXISTS idx_references_audited_at ON public.references (audited_at);
