@@ -63,6 +63,9 @@ const Logs = () => {
   const [search, setSearch] = useState("");
   const [backfilling, setBackfilling] = useState(false);
   const [backfillProgress, setBackfillProgress] = useState<string>("");
+  const [auditing, setAuditing] = useState(false);
+  const [auditProgress, setAuditProgress] = useState<string>("");
+  const [auditLog, setAuditLog] = useState<string[]>([]);
 
   const [linkChecking, setLinkChecking] = useState(false);
   const [linkResults, setLinkResults] = useState<{ checked: number; ok: number; dead: number; errored: number; message: string } | null>(null);
@@ -95,6 +98,78 @@ const Logs = () => {
       toast.error(err.message);
     } finally {
       setLinkChecking(false);
+    }
+  }
+
+  // Fact-check the last 3 days of entries and auto-correct mistakes in
+  // title / brand / agency / year (e.g. a wrong brand applied in bulk).
+  async function handleAuditRecent() {
+    if (!confirm("Audit entries added in the last 3 days and auto-fix mistakes in title, brand, agency and year?")) return;
+    setAuditing(true);
+    setAuditProgress("Starting…");
+    setAuditLog([]);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-recent`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ days: 3 }),
+      });
+      if (!res.ok || !res.body) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(txt || `Audit failed (HTTP ${res.status})`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let fixed = 0;
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let msg: any;
+          try { msg = JSON.parse(line); } catch { continue; }
+          if (msg.type === "progress") {
+            setAuditProgress(msg.message);
+          } else if (msg.type === "fix") {
+            fixed++;
+            setAuditProgress(msg.message);
+            setAuditLog((prev) => [msg.message, ...prev].slice(0, 50));
+          } else if (msg.type === "warn") {
+            setAuditLog((prev) => [`⚠ ${msg.message}`, ...prev].slice(0, 50));
+          } else if (msg.type === "error") {
+            throw new Error(msg.message);
+          } else if (msg.type === "done") {
+            setAuditProgress(msg.message);
+            if (msg.fixed > 0) {
+              toast.success(msg.message);
+            } else {
+              toast.info(msg.message);
+            }
+          }
+        }
+      }
+      if (fixed > 0) {
+        // Refresh the table so corrected fields show without a manual reload.
+        const { data } = await supabase.rpc("get_reference_logs");
+        if (data) {
+          setRows((prev) => {
+            const byId = new Map((data as LogRow[]).map((r) => [r.id, r]));
+            return prev.map((r) => {
+              const fresh = byId.get(r.id);
+              return fresh ? { ...r, title: fresh.title, brand: fresh.brand, agency: fresh.agency, year: fresh.year } : r;
+            });
+          });
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setAuditing(false);
     }
   }
 
@@ -331,6 +406,17 @@ const Logs = () => {
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {backfilling ? backfillProgress || "Generating…" : `Backfill missing (${rows.filter((r) => !r.has_ai_metadata).length})`}
           </Button>
+          <Button
+            type="button"
+            onClick={handleAuditRecent}
+            disabled={auditing}
+            variant="outline"
+            className="font-mono text-[11px] uppercase tracking-widest h-9"
+            title="Fact-check the last 3 days of entries and auto-fix wrong title / brand / agency / year"
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-2" />
+            {auditing ? auditProgress || "Auditing…" : "Audit recent (3d)"}
+          </Button>
           <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
             <Input
@@ -341,6 +427,20 @@ const Logs = () => {
             />
           </div>
         </div>
+        {(auditing || auditLog.length > 0) && (
+          <div className="container pb-3">
+            <div className="border hairline bg-secondary/40 max-h-48 overflow-auto p-3 font-mono text-[11px] leading-relaxed">
+              {auditing && <p className="text-primary mb-1">{auditProgress}</p>}
+              {auditLog.length === 0 && auditing ? (
+                <p className="text-muted-foreground">Checking entries…</p>
+              ) : (
+                auditLog.map((line, i) => (
+                  <p key={i} className={line.startsWith("⚠") ? "text-muted-foreground" : ""}>{line}</p>
+                ))
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       {reports.length > 0 && (
