@@ -665,7 +665,7 @@ const Logs = () => {
                     { label: "Unchecked", value: "unchecked" as const },
                   ]}
                   value={linkFilter}
-                  onChange={setLinkFilter}
+                  onChange={(v) => setLinkFilter(v as typeof linkFilter)}
                 />
                 <Chips
                   options={[
@@ -674,7 +674,7 @@ const Logs = () => {
                     { label: "Missing", value: "missing" as const },
                   ]}
                   value={aiFilter}
-                  onChange={setAiFilter}
+                  onChange={(v) => setAiFilter(v as typeof aiFilter)}
                 />
                 <Chips
                   options={[
@@ -683,7 +683,7 @@ const Logs = () => {
                     { label: "Missing", value: "missing" as const },
                   ]}
                   value={thumbFilter}
-                  onChange={setThumbFilter}
+                  onChange={(v) => setThumbFilter(v as typeof thumbFilter)}
                 />
               </div>
               <div className="flex items-center gap-4">
