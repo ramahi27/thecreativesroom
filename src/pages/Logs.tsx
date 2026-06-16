@@ -7,12 +7,13 @@ import { PageMeta } from "@/components/PageMeta";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff, Minus } from "lucide-react";
+import { Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff, Minus, Trash2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { rememberModalReturn, setModalNavOrder } from "@/lib/modalReturn";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 import { refPath } from "@/lib/slug";
+import { safeHref, detectPlatform } from "@/lib/references";
 
 function hasValue(value: string | null | undefined) {
   return typeof value === "string" ? value.trim().length > 0 : false;
