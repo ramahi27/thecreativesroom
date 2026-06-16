@@ -284,6 +284,7 @@ Deno.serve(async (req) => {
           .select("id,title,type,brand,agency,year,source_url,notes", { count: "exact" })
           .eq("published", true)
           .gte("created_at", since)
+          .is("audited_at", null)
           .order("created_at", { ascending: false })
           .range(offset, offset + limit - 1);
 
