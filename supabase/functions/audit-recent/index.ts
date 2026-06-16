@@ -230,6 +230,7 @@ Deno.serve(async (req) => {
         const { data: refs, error, count } = await admin
           .from("references")
           .select("id,title,type,brand,agency,year,source_url,notes", { count: "exact" })
+          .eq("published", true)
           .gte("created_at", since)
           .order("created_at", { ascending: false })
           .range(offset, offset + limit - 1);
