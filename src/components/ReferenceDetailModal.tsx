@@ -356,8 +356,9 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (error) { setR({ ...r, categories: current } as Reference); toast.error(error.message); }
   }
 
-  const platform = r ? detectPlatform(r.source_url) : null;
-  const embedUrl = r ? getEmbedUrl(r.source_url) : null;
+  const safeSourceUrl = r ? safeHref(r.source_url) : undefined;
+  const platform = r ? detectPlatform(safeSourceUrl ?? null) : null;
+  const embedUrl = r ? getEmbedUrl(safeSourceUrl ?? null) : null;
   const items: MediaItem[] = r && Array.isArray(r.media_items) ? r.media_items : [];
   const fallback: MediaItem[] =
     r && items.length === 0 && r.media_url
