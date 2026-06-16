@@ -1,1 +1,18 @@
 project_id = "vaogvackqxfhureqbprw"
+
+# These functions perform their own authentication (they verify the user's
+# session token and check the admin role inside the handler). They must run
+# with verify_jwt = false so the browser's CORS preflight — which carries no
+# Authorization header — isn't rejected by the platform before reaching the
+# function. Otherwise the browser reports "Failed to fetch".
+[functions.audit-recent]
+verify_jwt = false
+
+[functions.scrape-rss]
+verify_jwt = false
+
+[functions.scrape-dandad]
+verify_jwt = false
+
+[functions.scrape-oneclub]
+verify_jwt = false
