@@ -82,7 +82,38 @@ interface RefRow {
   notes: string | null;
 }
 
-async function auditOne(ref: RefRow, apiKey: string): Promise<Record<string, unknown> | null> {
+async function fetchPageContext(url: string | null, firecrawlKey: string | null): Promise<string | null> {
+  if (!url || !firecrawlKey) return null;
+  try {
+    const resp = await fetch("https://api.firecrawl.dev/v2/scrape", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${firecrawlKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url,
+        formats: ["summary"],
+        onlyMainContent: true,
+        timeout: 15000,
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!resp.ok) return null;
+    const json = await resp.json().catch(() => null);
+    const d = json?.data ?? json;
+    const meta = d?.metadata ?? {};
+    const parts = [
+      meta.title ? `page_title: ${String(meta.title).slice(0, 300)}` : null,
+      meta.description ? `meta_description: ${String(meta.description).slice(0, 500)}` : null,
+      meta.ogTitle && meta.ogTitle !== meta.title ? `og_title: ${String(meta.ogTitle).slice(0, 300)}` : null,
+      d?.summary ? `page_summary: ${String(d.summary).slice(0, 1800)}` : null,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join("\n") : null;
+  } catch {
+    return null;
+  }
+}
+
+async function auditOne(ref: RefRow, apiKey: string, firecrawlKey: string | null): Promise<Record<string, unknown> | null> {
+  const pageContext = await fetchPageContext(ref.source_url, firecrawlKey);
   const userContext = [
     `title: ${ref.title}`,
     `type: ${ref.type || "(unknown)"}`,
@@ -91,13 +122,14 @@ async function auditOne(ref: RefRow, apiKey: string): Promise<Record<string, unk
     `year: ${ref.year ?? "(none)"}`,
     `source_url: ${ref.source_url ?? "(none)"}`,
     `notes: ${ref.notes ?? "(none)"}`,
+    pageContext ? `\npage_context:\n${pageContext}` : `\npage_context: (unavailable)`,
   ].join("\n");
 
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-2.5-pro",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContext },
