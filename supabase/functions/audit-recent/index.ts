@@ -227,11 +227,14 @@ Deno.serve(async (req) => {
         const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
         const admin = createClient(supabaseUrl, serviceKey);
+        // Skip entries already audited within this same window so re-runs
+        // only touch new / never-audited references.
         const { data: refs, error, count } = await admin
           .from("references")
           .select("id,title,type,brand,agency,year,source_url,notes", { count: "exact" })
           .eq("published", true)
           .gte("created_at", since)
+          .or(`audited_at.is.null,audited_at.lt.${since}`)
           .order("created_at", { ascending: false })
           .range(offset, offset + limit - 1);
 
