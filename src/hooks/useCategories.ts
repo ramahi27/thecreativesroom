@@ -11,21 +11,21 @@ let _promise: Promise<CatCache> | null = null;
 function fetchCategories(): Promise<CatCache> {
   if (_cache) return Promise.resolve(_cache);
   if (_promise) return _promise;
-  _promise = supabase
-    .from("app_settings")
-    .select("key, value")
-    .in("key", ["video_categories", "photo_categories"])
-    .then(({ data }) => {
-      const map = new Map((data || []).map((r: any) => [r.key, r.value]));
-      const v = map.get("video_categories");
-      const p = map.get("photo_categories");
-      _cache = {
-        video: Array.isArray(v) ? (v as string[]) : DEFAULT_VIDEO,
-        photo: Array.isArray(p) ? (p as string[]) : DEFAULT_PHOTO,
-      };
-      _promise = null;
-      return _cache;
-    });
+  _promise = (async () => {
+    const { data } = await supabase
+      .from("app_settings")
+      .select("key, value")
+      .in("key", ["video_categories", "photo_categories"]);
+    const map = new Map((data || []).map((r: any) => [r.key, r.value]));
+    const v = map.get("video_categories");
+    const p = map.get("photo_categories");
+    _cache = {
+      video: Array.isArray(v) ? (v as string[]) : DEFAULT_VIDEO,
+      photo: Array.isArray(p) ? (p as string[]) : DEFAULT_PHOTO,
+    };
+    _promise = null;
+    return _cache;
+  })();
   return _promise;
 }
 
