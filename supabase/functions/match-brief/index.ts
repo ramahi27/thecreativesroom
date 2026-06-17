@@ -187,6 +187,8 @@ INDUSTRY & FORMAT
 ## OUTPUT RULES
 
 - Return exactly 8 references, ranked strongest to weakest.
+- **Diversity**: no more than 2 results from the same brand. If a brand has 5 great matches, pick the 2 strongest and use the freed slots for the next-best from other brands.
+- **Avoid defaulting to famous campaigns**: if a lesser-known reference scores equally or better on the PRIMARY_DIMENSION, prefer it over an iconic well-known campaign. The goal is to surface the most precise creative match, not the most recognisable one.
 - Each reason must be one precise sentence naming the PRIMARY_DIMENSION match and 1–2 supporting details. Never write generic reasons like "matches the brief" or "fits the mood."
 - Use the return_matches tool — no prose outside the tool call.`;
 
@@ -199,7 +201,7 @@ INDUSTRY & FORMAT
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-thinking",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
