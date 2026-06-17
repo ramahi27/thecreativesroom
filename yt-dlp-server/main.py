@@ -3,7 +3,7 @@ from flask import Flask, request, Response, jsonify
 
 app = Flask(__name__)
 
-SECRET = os.environ.get("YTD_SECRET", "")
+SECRET = os.environ.get("SECRET", os.environ.get("YTD_SECRET", ""))
 
 YT_PATTERN = re.compile(
     r"(youtu\.be/|youtube\.com/(watch\?.*v=|embed/|shorts/))[a-zA-Z0-9_-]{11}"
@@ -36,8 +36,7 @@ def download():
             "--no-playlist",
             "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b[height<=1080]",
             "--merge-output-format", "mp4",
-            "--extractor-args", "youtube:player_client=ios,android,web",
-            "--user-agent", "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
+            "--extractor-args", "youtube:player_client=tv_embedded,ios,android",
             "--no-part",
             "--no-warnings",
             "-o", out_path,
