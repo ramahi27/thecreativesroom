@@ -8,6 +8,82 @@ const corsHeaders = {
 const LIMITS = { anon: 1, free: 3, paid: 50, admin: 50 } as const;
 type Plan = keyof typeof LIMITS;
 const MAX_BRIEF_LEN = 2000;
+const PREFILTER_LIMIT = 200;
+
+const STOP_WORDS = new Set([
+  "a","an","the","and","or","but","for","with","that","this","are","was","not",
+  "all","can","its","our","you","your","me","im","get","give","some","need",
+  "want","looking","working","make","just","very","more","like","also","into",
+  "have","has","from","about","would","could","should","will","been","their",
+  "there","they","what","when","which","who","how","one","two","three","we",
+  "be","do","is","it","in","on","of","to","at","by","as","up","so","no",
+]);
+
+// Fast keyword-based pre-filter: scores all refs and returns the top N most
+// likely to match the brief, so the AI only sees a focused, relevant subset.
+function preFilter(brief: string, refs: any[]): any[] {
+  const briefLower = brief.toLowerCase();
+
+  // Tokenise brief into meaningful words
+  const briefWords = [...new Set(
+    briefLower.split(/\W+/).filter(w => w.length > 2 && !STOP_WORDS.has(w))
+  )];
+
+  // Detect if the brief is primarily about editing/pacing
+  const isEditingBrief = /\b(cut|cuts|edit|editing|pacing|pace|fast|quick|rapid|slow|burn|transition|rhythm|montage|sequence)\b/.test(briefLower);
+  // Detect if it's a video brief
+  const isVideoBrief = isEditingBrief || /\b(video|commercial|ad|spot|film|promo|reel|trailer)\b/.test(briefLower);
+
+  const scored = refs.map(r => {
+    let score = 0;
+
+    // Type bonus: editing/video briefs favour video refs
+    if (isVideoBrief && r.format === "video") score += 8;
+    // Penalise image refs for editing briefs
+    if (isEditingBrief && r.format !== "video") score -= 10;
+
+    // Tag overlap (most reliable signal)
+    const tags: string[] = (r.tags ?? []).map((t: string) => t.toLowerCase());
+    for (const word of briefWords) {
+      for (const tag of tags) {
+        if (tag.includes(word) || word.includes(tag)) { score += 3; break; }
+      }
+    }
+
+    // Category match
+    const cats: string[] = (r.categories ?? []).map((c: string) => c.toLowerCase());
+    for (const cat of cats) {
+      if (briefLower.includes(cat)) score += 4;
+    }
+
+    // Keywords in editing_style (highest value for editing briefs)
+    if (r.editing_style) {
+      const esl = r.editing_style.toLowerCase();
+      for (const word of briefWords) {
+        if (esl.includes(word)) score += (isEditingBrief ? 4 : 1);
+      }
+    }
+
+    // Keywords in visual_summary
+    if (r.visual_summary) {
+      const vsl = r.visual_summary.toLowerCase();
+      for (const word of briefWords) {
+        if (vsl.includes(word)) score += 2;
+      }
+    }
+
+    // Title match
+    const titleL = (r.title ?? "").toLowerCase();
+    for (const word of briefWords) {
+      if (titleL.includes(word)) score += 1;
+    }
+
+    return { ref: r, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, PREFILTER_LIMIT).map(s => s.ref);
+}
 
 // Hash an IP address with a secret key so raw PII is never persisted.
 async function hashIp(ip: string): Promise<string> {
@@ -104,7 +180,9 @@ Deno.serve(async (req) => {
       .limit(2000);
     if (error) throw error;
 
-    const compact = (refs || []).map((r: any) => ({
+    const filtered = preFilter(brief, refs || []);
+
+    const compact = filtered.map((r: any) => ({
       id: r.id,
       title: r.title,
       brand: r.brand ?? null,
