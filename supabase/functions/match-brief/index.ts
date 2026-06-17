@@ -8,6 +8,93 @@ const corsHeaders = {
 const LIMITS = { anon: 1, free: 3, paid: 50, admin: 50 } as const;
 type Plan = keyof typeof LIMITS;
 const MAX_BRIEF_LEN = 2000;
+const PREFILTER_LIMIT = 200;
+
+const STOP_WORDS = new Set([
+  "a","an","the","and","or","but","for","with","that","this","are","was","not",
+  "all","can","its","our","you","your","me","im","get","give","some","need",
+  "want","looking","working","make","just","very","more","like","also","into",
+  "have","has","from","about","would","could","should","will","been","their",
+  "there","they","what","when","which","who","how","one","two","three","we",
+  "be","do","is","it","in","on","of","to","at","by","as","up","so","no",
+]);
+
+// Fast keyword-based pre-filter: scores all refs and returns the top N most
+// likely to match the brief, so the AI only sees a focused, relevant subset.
+function preFilter(brief: string, refs: any[]): any[] {
+  const briefLower = brief.toLowerCase();
+
+  // Tokenise brief into meaningful words
+  const briefWords = [...new Set(
+    briefLower.split(/\W+/).filter(w => w.length > 2 && !STOP_WORDS.has(w))
+  )];
+
+  // Detect if the brief is primarily about editing/pacing
+  const isEditingBrief = /\b(cut|cuts|edit|editing|pacing|pace|fast|quick|rapid|slow|burn|transition|rhythm|montage|sequence)\b/.test(briefLower);
+  // Detect if it's a video brief
+  const isVideoBrief = isEditingBrief || /\b(video|commercial|ad|spot|film|promo|reel|trailer)\b/.test(briefLower);
+
+  const scored = refs.map(r => {
+    let score = 0;
+
+    // Type bonus: editing/video briefs favour video refs
+    if (isVideoBrief && r.format === "video") score += 8;
+    // Penalise image refs for editing briefs
+    if (isEditingBrief && r.format !== "video") score -= 10;
+
+    // Tag overlap — exclude admin-injected brief_reason/brief tags to avoid feedback loop
+    const tags: string[] = (r.tags ?? [])
+      .filter((t: string) => !t.startsWith("brief_reason:") && !t.startsWith("brief:"))
+      .map((t: string) => t.toLowerCase());
+    for (const word of briefWords) {
+      for (const tag of tags) {
+        if (tag.includes(word) || word.includes(tag)) { score += 3; break; }
+      }
+    }
+
+    // Category match
+    const cats: string[] = (r.categories ?? []).map((c: string) => c.toLowerCase());
+    for (const cat of cats) {
+      if (briefLower.includes(cat)) score += 4;
+    }
+
+    // Keywords in editing_style (highest value for editing briefs)
+    if (r.editing_style) {
+      const esl = r.editing_style.toLowerCase();
+      for (const word of briefWords) {
+        if (esl.includes(word)) score += (isEditingBrief ? 4 : 1);
+      }
+    }
+
+    // Keywords in visual_summary
+    if (r.visual_summary) {
+      const vsl = r.visual_summary.toLowerCase();
+      for (const word of briefWords) {
+        if (vsl.includes(word)) score += 2;
+      }
+    }
+
+    // Title match
+    const titleL = (r.title ?? "").toLowerCase();
+    for (const word of briefWords) {
+      if (titleL.includes(word)) score += 1;
+    }
+
+    return { ref: r, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const brandCount: Record<string, number> = {};
+  const capped: any[] = [];
+  for (const s of scored) {
+    const brand = (s.ref.brand ?? "").toLowerCase().trim() || "__none__";
+    if ((brandCount[brand] ?? 0) >= 3) continue;
+    brandCount[brand] = (brandCount[brand] ?? 0) + 1;
+    capped.push(s.ref);
+    if (capped.length >= PREFILTER_LIMIT) break;
+  }
+  return capped;
+}
 
 // Hash an IP address with a secret key so raw PII is never persisted.
 async function hashIp(ip: string): Promise<string> {
@@ -99,12 +186,20 @@ Deno.serve(async (req) => {
     // Fetch all published refs (compact)
     const { data: refs, error } = await supabase
       .from("references")
-      .select("id,title,brand,agency,tags,categories,type,notes,visual_summary")
+      .select("id,title,brand,agency,tags,categories,type,notes,visual_summary,editing_style")
       .eq("published", true)
       .limit(2000);
     if (error) throw error;
 
-    const compact = (refs || []).map((r: any) => ({
+    const filtered = preFilter(brief, refs || []);
+
+    // Shuffle to bust gateway cache and remove position bias
+    for (let i = filtered.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+    }
+
+    const compact = filtered.map((r: any) => ({
       id: r.id,
       title: r.title,
       brand: r.brand ?? null,
@@ -112,61 +207,87 @@ Deno.serve(async (req) => {
       tags: r.tags ?? [],
       categories: r.categories ?? [],
       format: r.type,
-      // visual_summary is the primary signal for brief matching — include in full
       visual_summary: r.visual_summary ?? null,
+      editing_style: r.editing_style ?? null,
       // include notes only as fallback when no visual_summary exists yet
       notes: r.visual_summary ? null : (r.notes ?? "").slice(0, 150),
     }));
 
-    const systemPrompt = `You are a senior creative director and visual research expert with 20 years of experience in advertising, film, and editorial photography. Your job is to analyse a creative brief and match it against a library of reference campaigns with extreme precision.
+    const systemPrompt = `You are a senior creative director and visual research expert with 20 years of experience across advertising, film, and commercial photography. You specialise in identifying precise visual, tonal, and stylistic references for creative briefs.
 
-IMPORTANT: Each reference in the library may include a "visual_summary" field — a curated description of its visual character (colour, lighting, mood, composition). When present, treat this as the PRIMARY and most reliable signal for matching. Weight it above tags or title alone. References without a visual_summary should be matched on tags + title, but with lower confidence.
+IMPORTANT: Each reference may include:
+- "visual_summary": curated description of visual character (colour, lighting, mood, casting). PRIMARY signal for visual/mood briefs.
+- "editing_style": curated description of editing pace, transitions, rhythm, and structural devices. PRIMARY signal for editing/pacing briefs (e.g. "quick cuts", "slow burn", "single take").
 
-When given a brief, you must identify and weight these dimensions:
+When either field is present, treat it as the most reliable signal for its respective dimension, weighted above tags or title alone.
 
-VISUAL DIMENSIONS (analyse each carefully):
-- Colour temperature: warm (golden, amber, orange tones) / cool (blue, teal, grey tones) / neutral / high contrast / desaturated / monochrome / neon / pastel
-- Lighting style: hard directional light / soft diffused / natural / low-key / high-key / silhouette / golden hour / fluorescent / practical lights / chiaroscuro
-- Composition: tight close-up / wide establishing / symmetrical / off-centre / overhead / low angle / Dutch angle / negative space heavy / layered depth
-- Colour palette: identify up to 3 dominant colours and their emotional register
-- Texture and grain: clean and digital / film grain / gritty / smooth / tactile / raw
+## STEP 1 — DECOMPOSE THE BRIEF
 
-MOOD & EMOTIONAL REGISTER:
-- Primary emotion the work should evoke: joy / melancholy / tension / warmth / alienation / nostalgia / aspiration / rebellion / intimacy / awe / humour / discomfort / calm / urgency
-- Energy level: static and contemplative / slow burn / dynamic and kinetic / frenetic
+Before evaluating any reference, read the brief and identify:
+
+PRIMARY_DIMENSION — the single creative axis the brief cares about most:
+  editing_pacing | colour_palette | lighting | mood_tone | casting | concept_narrative | industry_sector | format_style
+
+KEY_SIGNALS — 3–5 specific inferred attributes the ideal reference must have.
+Read between the lines: "quick cuts" → fast cut frequency, music-synced, high energy, hard cuts.
+"dark and cinematic" → low-key lighting, desaturated, slow burn, serious tone.
+"playful and colourful" → bright palette, fast/medium cuts, energetic, light tone.
+
+HARD_EXCLUSIONS — attributes that would be an obvious mismatch. A reference failing a hard exclusion scores ≤ 20 and should only appear if the library has nothing better.
+
+## STEP 2 — SCORE EACH REFERENCE
+
+Score each reference 0–100 using this weighting:
+
+- PRIMARY_DIMENSION: 60 points
+  Nailing the primary dimension: 50–60 pts. Missing it: 0–15 pts (unlikely to make the top 8).
+- SECONDARY DIMENSIONS: 40 points total across relevant dimensions below.
+- Hard exclusion penalty: cap score at 20.
+
+Penalise obvious mismatches hard even outside hard exclusions.
+
+## VISUAL ANALYSIS DIMENSIONS
+
+COLOUR & LIGHT
+- Colour temperature: warm / cool / neutral / desaturated / monochrome / neon / pastel
+- Lighting style: hard / soft / natural / low-key / high-key / silhouette / golden hour / fluorescent / chiaroscuro
+- Colour palette: 3 dominant tones + emotional register
+
+MOOD & TONE
+- Emotions: joy / melancholy / tension / warmth / alienation / nostalgia / aspiration / rebellion / intimacy / awe / humour / discomfort / calm / urgency
+- Energy level: static / slow burn / dynamic / frenetic
 - Tone: sincere / ironic / deadpan / playful / reverent / provocative / matter-of-fact
 
-EDITING & PACING (for video refs):
-- Cut frequency: slow / medium / fast / mixed
-- Transition style: hard cuts / dissolves / match cuts / jump cuts / no cuts (single take)
-- Camera movement: static / slow push / handheld / tracking / drone / whip pan
-- Rhythm: matches music / natural pacing / against the beat
+EDITING & PACING (video)
+- Cut frequency: slow / medium / fast / very fast
+- Transition style: hard cuts / dissolves / match cuts / jump cuts / single take
+- Camera movement: static / push / handheld / tracking / drone / whip pan
+- Rhythm: music-synced / natural pacing / against beat
 
-CASTING & HUMAN ELEMENT:
-- Presence of people: none / single subject / couple / group / crowd
-- Casting type: celebrity / everyday real people / models / children / elderly / diverse ensemble / animals
-- Performance style: naturalistic / stylised / documentary / theatrical / comedic
+CASTING & PERFORMANCE
+- People: none / single / couple / group / crowd
+- Type: celebrity / real people / models / children / elderly / diverse / animals
+- Performance: naturalistic / stylised / documentary / theatrical / comedic
 
-CONCEPT & NARRATIVE:
-- Storytelling approach: emotional narrative / product demonstration / slice of life / surreal / metaphorical / documentary / testimonial / comedy / shock / beauty
-- Brand presence: product hero / lifestyle / brand values / social cause / entertainment-first
-- Copy-led vs visual-led: heavy copy / minimal copy / no copy / title card only
+CONCEPT & NARRATIVE
+- Storytelling: emotional / product demo / slice of life / surreal / metaphorical / documentary / testimonial / comedy / shock / beauty
+- Brand presence: product hero / lifestyle / brand values / social cause / entertainment
+- Copy: heavy / minimal / none / title only
 
-INDUSTRY & CONTEXT:
-- Sector: fashion / beauty / food & drink / tech / auto / finance / retail / social cause / sport / entertainment / luxury / FMCG
-- Market feel: mass market / premium / luxury / challenger brand / institutional
+INDUSTRY & FORMAT
+- Sector: fashion / beauty / food / tech / auto / finance / retail / social / sport / entertainment / luxury / FMCG
+- Market feel: mass / premium / luxury / challenger / institutional
+- Format: TV spot / digital / OOH / print / social / branded content / spec
 
-MATCHING INSTRUCTIONS:
-1. Parse the brief carefully — extract explicit mentions (colours, moods, references to other work) AND implicit signals (a brief saying "intimate" implies close-up, soft light, natural casting even if not stated).
-2. Read between the lines — "dark and cinematic" means low-key lighting, desaturated palette, slow pacing, serious tone. "Fresh and energetic" means bright colours, fast cuts, young casting, upbeat rhythm. Apply this inference aggressively.
-3. Weight the match across all dimensions — do not just match on category or format. A fashion campaign and a car campaign can both be "dark and cinematic" and should both surface for that brief.
-4. Penalise obvious mismatches hard — if the brief says "warm and joyful" never return cool, desaturated, or melancholic refs regardless of category match.
-5. Return exactly 8 results, ranked from strongest to weakest match.
-6. For each match, provide a precise, specific reason (never generic) naming the visual, mood, or stylistic element that connects it to the brief, plus a 0-100 match_score and 2-3 strongest matching dimensions.
+## OUTPUT RULES
 
-Return ONLY via the tool call.`;
+- Return exactly 12 references, ranked strongest to weakest.
+- **Diversity**: no more than 2 results from the same brand. If a brand has 5 great matches, pick the 2 strongest and use the freed slots for the next-best from other brands.
+- **Avoid defaulting to famous campaigns**: if a lesser-known reference scores equally or better on the PRIMARY_DIMENSION, prefer it over an iconic well-known campaign. The goal is to surface the most precise creative match, not the most recognisable one.
+- Each reason must be one precise sentence naming the PRIMARY_DIMENSION match and 1–2 supporting details. Never write generic reasons like "matches the brief" or "fits the mood."
+- Use the return_matches tool — no prose outside the tool call.`;
 
-    const userPrompt = `BRIEF:\n${brief}\n\nREFERENCES (JSON):\n${JSON.stringify(compact)}`;
+    const userPrompt = `BRIEF:\n${brief}\n\nREFERENCES (JSON):\n${JSON.stringify(compact)}\n\n<!-- ${crypto.randomUUID()} -->`;
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -175,7 +296,7 @@ Return ONLY via the tool call.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-thinking",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -185,7 +306,7 @@ Return ONLY via the tool call.`;
             type: "function",
             function: {
               name: "return_matches",
-              description: "Return the 8 best-matching references ranked by creative fit.",
+              description: "Return the top 12 best-matching references ranked by creative fit.",
               parameters: {
                 type: "object",
                 properties: {
@@ -248,7 +369,19 @@ Return ONLY via the tool call.`;
     if (toolCall?.function?.arguments) {
       try {
         const parsed = JSON.parse(toolCall.function.arguments);
-        matches = (parsed.matches || []).slice(0, 8);
+        const raw: typeof matches = (parsed.matches || []).slice(0, 12);
+        // Enforce max 2 per brand — AI returns them ranked, so keep highest first
+        const brandSeen: Record<string, number> = {};
+        const diverse: typeof matches = [];
+        for (const m of raw) {
+          const ref = compact.find((r: any) => r.id === m.id);
+          const brand = (ref?.brand ?? "").toLowerCase().trim() || "__none__";
+          if ((brandSeen[brand] ?? 0) >= 2) continue;
+          brandSeen[brand] = (brandSeen[brand] ?? 0) + 1;
+          diverse.push(m);
+          if (diverse.length >= 8) break;
+        }
+        matches = diverse;
       } catch (e) {
         // Distinguish a parse failure from a genuine "no matches" result so the
         // client can tell the user to retry instead of showing an empty state.
