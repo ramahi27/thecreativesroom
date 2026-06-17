@@ -57,12 +57,22 @@ async function tryRapidApi(apiKey, url, ytId) {
     if (info.status && info.status !== "OK") return null;
 
     const formats = (info.formats || [])
-      .filter((f) => f.url && (f.mimeType || "").includes("mp4"))
+      // Only keep combined streams (video + audio in one file).
+      // RapidAPI can't merge adaptive streams, so video-only 1080p
+      // would download without sound — filter those out.
+      .filter((f) => {
+        if (!f.url) return false;
+        const mt = (f.mimeType || "").toLowerCase();
+        const isMp4 = mt.includes("mp4");
+        const hasAudio = f.audioQuality || mt.includes("audio") || f.itag == 22 || f.itag == 18;
+        const hasVideo = f.qualityLabel || f.height || f.itag == 22 || f.itag == 18;
+        return isMp4 && hasAudio && hasVideo;
+      })
       .sort((a, b) => {
-        const aIs720 = a.itag == 22 || a.qualityLabel === "720p" ? 1 : 0;
-        const bIs720 = b.itag == 22 || b.qualityLabel === "720p" ? 1 : 0;
-        if (bIs720 !== aIs720) return bIs720 - aIs720;
-        return (b.height || 0) - (a.height || 0);
+        // Prefer 720p (itag 22) then 360p (itag 18) — the only reliable
+        // combined MP4 itags YouTube serves.
+        const rank = (f) => (f.itag == 22 ? 2 : f.itag == 18 ? 1 : 0);
+        return rank(b) - rank(a);
       });
 
     for (const fmt of formats.slice(0, 3)) {
