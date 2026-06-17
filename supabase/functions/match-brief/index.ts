@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
     // Fetch all published refs (compact)
     const { data: refs, error } = await supabase
       .from("references")
-      .select("id,title,brand,agency,tags,categories,type,notes,visual_summary")
+      .select("id,title,brand,agency,tags,categories,type,notes,visual_summary,editing_style")
       .eq("published", true)
       .limit(2000);
     if (error) throw error;
@@ -112,15 +112,19 @@ Deno.serve(async (req) => {
       tags: r.tags ?? [],
       categories: r.categories ?? [],
       format: r.type,
-      // visual_summary is the primary signal for brief matching — include in full
       visual_summary: r.visual_summary ?? null,
+      editing_style: r.editing_style ?? null,
       // include notes only as fallback when no visual_summary exists yet
       notes: r.visual_summary ? null : (r.notes ?? "").slice(0, 150),
     }));
 
     const systemPrompt = `You are a senior creative director and visual research expert with 20 years of experience across advertising, film, and commercial photography. You specialise in identifying precise visual, tonal, and stylistic references for creative briefs.
 
-IMPORTANT: Each reference may include a "visual_summary" field — a curated description of its visual character. When present, treat it as the PRIMARY matching signal, weighted above tags or title alone.
+IMPORTANT: Each reference may include:
+- "visual_summary": curated description of visual character (colour, lighting, mood, casting). PRIMARY signal for visual/mood briefs.
+- "editing_style": curated description of editing pace, transitions, rhythm, and structural devices. PRIMARY signal for editing/pacing briefs (e.g. "quick cuts", "slow burn", "single take").
+
+When either field is present, treat it as the most reliable signal for its respective dimension, weighted above tags or title alone.
 
 ## STEP 1 — DECOMPOSE THE BRIEF
 
