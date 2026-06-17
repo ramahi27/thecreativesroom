@@ -42,8 +42,10 @@ function preFilter(brief: string, refs: any[]): any[] {
     // Penalise image refs for editing briefs
     if (isEditingBrief && r.format !== "video") score -= 10;
 
-    // Tag overlap (most reliable signal)
-    const tags: string[] = (r.tags ?? []).map((t: string) => t.toLowerCase());
+    // Tag overlap — exclude admin-injected brief_reason/brief tags to avoid feedback loop
+    const tags: string[] = (r.tags ?? [])
+      .filter((t: string) => !t.startsWith("brief_reason:") && !t.startsWith("brief:"))
+      .map((t: string) => t.toLowerCase());
     for (const word of briefWords) {
       for (const tag of tags) {
         if (tag.includes(word) || word.includes(tag)) { score += 3; break; }
@@ -182,6 +184,12 @@ Deno.serve(async (req) => {
 
     const filtered = preFilter(brief, refs || []);
 
+    // Shuffle to bust gateway cache and remove position bias
+    for (let i = filtered.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+    }
+
     const compact = filtered.map((r: any) => ({
       id: r.id,
       title: r.title,
@@ -270,7 +278,7 @@ INDUSTRY & FORMAT
 - Each reason must be one precise sentence naming the PRIMARY_DIMENSION match and 1–2 supporting details. Never write generic reasons like "matches the brief" or "fits the mood."
 - Use the return_matches tool — no prose outside the tool call.`;
 
-    const userPrompt = `BRIEF:\n${brief}\n\nREFERENCES (JSON):\n${JSON.stringify(compact)}`;
+    const userPrompt = `BRIEF:\n${brief}\n\nREFERENCES (JSON):\n${JSON.stringify(compact)}\n\n<!-- ${crypto.randomUUID()} -->`;
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
