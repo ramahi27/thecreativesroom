@@ -29,13 +29,13 @@ def download():
     with tempfile.TemporaryDirectory() as tmpdir:
         out_path = os.path.join(tmpdir, "video.mp4")
 
-        # Use combined audio+video formats only (no ffmpeg merge needed).
-        # itag 22 = 720p H.264+AAC, itag 18 = 360p H.264+AAC.
-        # Combined formats download as a single valid MP4 — fast and reliable.
+        # Prefer merged 1080p MP4 (H.264 video + AAC audio), then fall back.
+        # ffmpeg (bundled in the Docker image) merges adaptive video+audio.
         cmd = [
             "yt-dlp",
             "--no-playlist",
-            "-f", "22/18/best[height<=720]",
+            "-f", "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b[height<=1080]",
+            "--merge-output-format", "mp4",
             "--extractor-args", "youtube:player_client=ios,android,web",
             "--user-agent", "com.google.ios.youtube/19.29.1 (iPhone16,2; U; CPU iOS 17_5_1 like Mac OS X)",
             "--no-part",
@@ -45,7 +45,7 @@ def download():
         ]
 
         try:
-            result = subprocess.run(cmd, timeout=60, capture_output=True, text=True)
+            result = subprocess.run(cmd, timeout=120, capture_output=True, text=True)
         except subprocess.TimeoutExpired:
             print("yt-dlp timed out", flush=True)
             return jsonify(error="Download timed out"), 502
