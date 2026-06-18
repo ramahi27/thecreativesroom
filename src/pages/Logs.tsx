@@ -161,6 +161,10 @@ const Logs = () => {
   const [auditProgress, setAuditProgress] = useState<string>("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
 
+  // Enrich visual (web-grounded)
+  const [enriching, setEnriching] = useState(false);
+  const [enrichProgress, setEnrichProgress] = useState<string>("");
+
   // Link health
   const [linkChecking, setLinkChecking] = useState(false);
   const [linkResults, setLinkResults] = useState<{ checked: number; ok: number; dead: number; errored: number; message: string } | null>(null);
