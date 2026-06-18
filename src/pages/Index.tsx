@@ -588,80 +588,114 @@ const Index = () => {
               e.preventDefault();
               runBriefMatch();
             }}
-            className="flex flex-wrap items-center gap-3"
           >
-            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-1.5 shrink-0">
-              <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Brief
-            </span>
-            <div className="relative flex-1 min-w-[240px] flex flex-col gap-2">
-              {briefUsage && briefUsage.used >= briefUsage.limit ? (
-                <div className="rounded-xl border hairline bg-secondary/40 px-4 py-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-body text-sm font-semibold">
-                      {briefUsage.plan === "anon" ? "You've used your 1 free match" : briefUsage.plan === "free" ? "Daily limit reached" : "Fair use limit reached"}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {briefUsage.plan === "anon"
-                        ? "Sign up free to get 3 matches every day."
-                        : briefUsage.plan === "free"
-                        ? "Upgrade to Pro for 50 matches a day."
-                        : "You've reached today's fair use limit. Come back tomorrow."}
-                    </p>
-                  </div>
-                  {briefUsage.plan !== "paid" && briefUsage.plan !== "admin" && (
-                    <a
-                      href={briefUsage.plan === "anon" ? "/auth" : "/pricing"}
-                      className="shrink-0 rounded-full bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-4 py-2 hover:opacity-90 transition-opacity"
-                    >
-                      {briefUsage.plan === "anon" ? "Sign up" : "Go Pro"}
-                    </a>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <CyclingPlaceholder active={!briefFocused && !brief.trim()} className="items-start" />
-                  <Textarea
-                    value={brief}
-                    onChange={(e) => setBrief(e.target.value)}
-                    onFocus={() => setBriefFocused(true)}
-                    onBlur={() => setBriefFocused(false)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        runBriefMatch();
-                      }
-                    }}
-                    rows={2}
-                    placeholder=""
-                    className="pr-9 rounded-xl bg-secondary/60 border-border font-mono text-sm leading-snug placeholder:normal-case resize-none py-3 focus:bg-background transition-colors"
-                    disabled={matching}
-                  />
-                  {brief && !matching && (
-                    <button
-                      type="button"
-                      onClick={clearMatches}
-                      aria-label="Clear brief"
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                    >
-                      <X className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    </button>
-                  )}
-                </>
-              )}
+            <div className="flex items-center gap-2 mb-2.5">
+              <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-1.5 shrink-0">
+                <Sparkles className="h-3 w-3" strokeWidth={1.5} /> Brief Match
+              </span>
+              <span className="hidden sm:inline font-mono text-[9px] text-muted-foreground/50 normal-case tracking-normal">
+                — describe your project and we'll surface the closest references
+              </span>
             </div>
-            <div className="flex flex-col items-start gap-1">
-              <Button
-                type="submit"
-                disabled={matching || (briefUsage ? briefUsage.used >= briefUsage.limit : false)}
-                className="rounded-full font-mono text-xs uppercase tracking-widest"
-              >
-                {matching ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching…</> : "Match brief"}
-              </Button>
-              {briefUsage && briefUsage.plan !== "paid" && briefUsage.plan !== "admin" && (
-                <span className={`font-mono text-[9px] uppercase tracking-widest pl-1 ${briefUsage.used >= briefUsage.limit ? "text-destructive" : "text-muted-foreground"}`}>
-                  {briefUsage.used}/{briefUsage.limit} today
-                </span>
-              )}
+            <div className="flex flex-wrap items-start gap-3">
+              <div className="relative flex-1 min-w-[240px]">
+                {briefUsage && briefUsage.used >= briefUsage.limit ? (
+                  <div className="rounded-xl border hairline bg-secondary/40 px-4 py-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="font-body text-sm font-semibold">
+                        {briefUsage.plan === "anon" ? "You've used your 1 free match" : briefUsage.plan === "free" ? "Daily limit reached" : "Fair use limit reached"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {briefUsage.plan === "anon"
+                          ? "Sign up free to get 3 matches every day."
+                          : briefUsage.plan === "free"
+                          ? "Upgrade to Pro for 50 matches a day."
+                          : "You've reached today's fair use limit. Come back tomorrow."}
+                      </p>
+                    </div>
+                    {briefUsage.plan !== "paid" && briefUsage.plan !== "admin" && (
+                      <a
+                        href={briefUsage.plan === "anon" ? "/auth" : "/pricing"}
+                        className="shrink-0 rounded-full bg-primary text-primary-foreground font-mono text-[10px] uppercase tracking-widest px-4 py-2 hover:opacity-90 transition-opacity"
+                      >
+                        {briefUsage.plan === "anon" ? "Sign up" : "Go Pro"}
+                      </a>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <CyclingPlaceholder active={!briefFocused && !brief.trim()} className="items-start" />
+                    <Textarea
+                      value={brief}
+                      onChange={(e) => setBrief(e.target.value)}
+                      onFocus={() => setBriefFocused(true)}
+                      onBlur={() => setBriefFocused(false)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          runBriefMatch();
+                        }
+                      }}
+                      rows={3}
+                      placeholder=""
+                      className="pr-9 rounded-xl bg-secondary/60 border-border font-mono text-sm leading-snug placeholder:normal-case resize-none py-3 focus:bg-background transition-colors"
+                      disabled={matching}
+                    />
+                    {brief && !matching && (
+                      <button
+                        type="button"
+                        onClick={clearMatches}
+                        aria-label="Clear brief"
+                        className="absolute right-2 top-3 p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+                      </button>
+                    )}
+                    {!brief.trim() && !briefFocused && (
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {[
+                          { label: "Luxury fragrance · cinematic", full: "I'm looking for a luxury fragrance commercial with a dark, cinematic, intimate tone" },
+                          { label: "Playful soda · bright & fast cuts", full: "A playful soda brand ad with bright colors and fast cuts" },
+                          { label: "Emotional car · family story", full: "An emotional car commercial with a father-daughter story" },
+                        ].map(({ label, full }) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={() => setBrief(full)}
+                            className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full border hairline bg-secondary/40 text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-secondary transition-colors"
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="flex flex-col items-start gap-1.5 shrink-0">
+                <Button
+                  type="submit"
+                  disabled={matching || (briefUsage ? briefUsage.used >= briefUsage.limit : false)}
+                  className="rounded-full font-mono text-xs uppercase tracking-widest"
+                >
+                  {matching ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Matching…</> : "Match brief"}
+                </Button>
+                {briefUsage && briefUsage.plan !== "paid" && briefUsage.plan !== "admin" && (
+                  <div className="flex items-center gap-1.5 pl-1">
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: briefUsage.limit }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 w-1.5 rounded-full transition-colors ${i < briefUsage.used ? "bg-foreground/50" : "bg-foreground/12"}`}
+                        />
+                      ))}
+                    </div>
+                    <span className={`font-mono text-[9px] uppercase tracking-widest ${briefUsage.used >= briefUsage.limit ? "text-destructive" : "text-muted-foreground"}`}>
+                      {briefUsage.used}/{briefUsage.limit} today
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </form>
         </div>
