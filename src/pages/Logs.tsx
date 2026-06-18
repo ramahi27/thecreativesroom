@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Search, Sparkles, X as XIcon, Link2, Link2Off,
-  ArrowUpDown, ArrowUp, ArrowDown,
+  Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff,
+  ArrowUpDown, ArrowUp, ArrowDown, Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -46,7 +46,6 @@ type LogRow = {
   link_status?: string | null;
   link_checked_at?: string | null;
   audited_at?: string | null;
-  visual_enriched_at?: string | null;
 };
 
 type SortCol = "added" | "approved" | "title";
@@ -69,71 +68,32 @@ const formatDate = (s: string | null) => {
   });
 };
 
-// Compact labeled chip filter group
-function FilterGroup<T extends string>({
-  label,
+// Compact toggle-button chip group
+function Chips<T extends string>({
   options,
   value,
   onChange,
 }: {
-  label: string;
   options: { label: string; value: T }[];
   value: T;
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 shrink-0">
-        {label}
-      </span>
-      <div className="flex items-center gap-1">
-        {options.map((o) => (
-          <button
-            key={o.value}
-            onClick={() => onChange(o.value)}
-            className={`px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest rounded-sm transition-colors ${
-              value === o.value
-                ? "bg-primary text-primary-foreground"
-                : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
+    <div className="flex items-center gap-1">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          className={`px-3 py-1.5 font-mono text-xs uppercase tracking-widest border hairline transition-colors ${
+            value === o.value
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-transparent text-muted-foreground hover:text-foreground hover:border-foreground/40"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
-  );
-}
-
-// Small labeled status pill for the Checks column
-function StatusPill({
-  label,
-  state,
-  title,
-  onClick,
-}: {
-  label: string;
-  state: "ok" | "bad" | "warn" | "off";
-  title?: string;
-  onClick?: () => void;
-}) {
-  const styles =
-    state === "ok"
-      ? "bg-primary/15 text-primary border-primary/30"
-      : state === "bad"
-      ? "bg-destructive/15 text-destructive border-destructive/30"
-      : state === "warn"
-      ? "bg-yellow-500/15 text-yellow-600 border-yellow-500/30"
-      : "bg-transparent text-muted-foreground/40 border-border/60 border-dashed";
-  const Comp: any = onClick ? "button" : "span";
-  return (
-    <Comp
-      onClick={onClick}
-      title={title}
-      className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border font-mono text-[9px] uppercase tracking-widest transition-colors ${styles} ${onClick ? "hover:opacity-80 cursor-pointer" : ""}`}
-    >
-      {label}
-    </Comp>
   );
 }
 
@@ -161,10 +121,6 @@ const Logs = () => {
   const [auditProgress, setAuditProgress] = useState<string>("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
 
-  // Enrich visual (web-grounded)
-  const [enriching, setEnriching] = useState(false);
-  const [enrichProgress, setEnrichProgress] = useState<string>("");
-
   // Link health
   const [linkChecking, setLinkChecking] = useState(false);
   const [linkResults, setLinkResults] = useState<{ checked: number; ok: number; dead: number; errored: number; message: string } | null>(null);
@@ -190,7 +146,7 @@ const Logs = () => {
   const countMissingAI = useMemo(() => rows.filter((r) => !r.has_ai_metadata).length, [rows]);
   const countNoThumb = useMemo(() => rows.filter((r) => !r.thumbnail_url).length, [rows]);
 
-  // ── Sort handler ─────────────────────────────────────────────────────────────────────────
+  // ── Sort handler ──────────────────────────────────────────────────────────────────────────────────────
   function handleSort(col: SortCol) {
     if (col === sortCol) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortCol(col); setSortDir("desc"); }
@@ -203,7 +159,7 @@ const Logs = () => {
       : <ArrowDown className="h-3 w-3 ml-1 text-primary" />;
   }
 
-  // ── Filtered + sorted rows ────────────────────────────────────────────────────────────────────────────────────
+  // ── Filtered + sorted rows ────────────────────────────────────────────────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let result = rows;
     if (typeFilter !== "all") result = result.filter((r) => r.type === typeFilter);
@@ -230,7 +186,7 @@ const Logs = () => {
     });
   }, [rows, typeFilter, linkFilter, aiFilter, thumbFilter, search, sortCol, sortDir]);
 
-  // ── Data loading ──────────────────────────────────────────────────────────────────────────────
+  // ── Data loading ──────────────────────────────────────────────────────────────────────────────────────────
   async function loadDeadLinks() {
     const { data } = await supabase
       .from("references")
@@ -266,21 +222,21 @@ const Logs = () => {
         brand: string | null; agency: string | null; year: number | null;
         editing_style: string | null; visual_summary: string | null;
         link_status: string | null; link_checked_at: string | null;
-        audited_at: string | null; visual_enriched_at: string | null;
+        audited_at: string | null;
       }>();
       const CHUNK = 150;
       for (let i = 0; i < ids.length; i += CHUNK) {
         const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
-          .select("id,brand,agency,year,editing_style,visual_summary,link_status,link_checked_at,audited_at,visual_enriched_at")
+          .select("id,brand,agency,year,editing_style,visual_summary,link_status,link_checked_at,audited_at")
           .in("id", slice);
         (extra || []).forEach((t: any) =>
           infoMap.set(t.id, {
             brand: t.brand ?? null, agency: t.agency ?? null, year: t.year ?? null,
             editing_style: t.editing_style ?? null, visual_summary: t.visual_summary ?? null,
             link_status: t.link_status ?? null, link_checked_at: t.link_checked_at ?? null,
-            audited_at: t.audited_at ?? null, visual_enriched_at: t.visual_enriched_at ?? null,
+            audited_at: t.audited_at ?? null,
           }),
         );
       }
@@ -297,7 +253,6 @@ const Logs = () => {
             link_status: info?.link_status ?? null,
             link_checked_at: info?.link_checked_at ?? null,
             audited_at: info?.audited_at ?? null,
-            visual_enriched_at: info?.visual_enriched_at ?? null,
           };
           return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) } as LogRow;
         }),
@@ -306,7 +261,7 @@ const Logs = () => {
     })();
   }, [isAdmin]);
 
-  // ── Link health ──────────────────────────────────────────────────────────────────────────────
+  // ── Link health ──────────────────────────────────────────────────────────────────────────────────────────
   async function handleCheckLinks() {
     setLinkChecking(true);
     try {
@@ -360,7 +315,7 @@ const Logs = () => {
     toast.success("URL updated — run Check all links to verify");
   }
 
-  // ── Audit recent ──────────────────────────────────────────────────────────────────────────────
+  // ── Audit recent ──────────────────────────────────────────────────────────────────────────────────────────
   async function handleAuditRecent() {
     if (!confirm("Audit entries added in the last 3 days and auto-fix mistakes in title, brand, agency and year?")) return;
     setAuditing(true);
@@ -421,7 +376,7 @@ const Logs = () => {
     }
   }
 
-  // ── Audit single reference ─────────────────────────────────────────────────────────────────────────────
+  // ── Audit single reference ───────────────────────────────────────────────────────────────────────────────────────────────────────
   async function handleAuditOne(id: string, title: string) {
     if (auditingId) return;
     setAuditingId(id);
@@ -484,7 +439,7 @@ const Logs = () => {
     }
   }
 
-  // ── Backfill ──────────────────────────────────────────────────────────────────────────────
+  // ── Backfill ──────────────────────────────────────────────────────────────────────────────────────────
   async function handleBackfillAll() {
     const pending = rows.filter((r) => !r.has_ai_metadata);
     if (pending.length === 0) { toast.info("All references already have complete metadata."); return; }
@@ -529,80 +484,7 @@ const Logs = () => {
     toast.success(`Backfill done · ${ok} updated, ${failed} incomplete`);
   }
 
-  // ── Enrich visual (web-grounded) ─────────────────────────────────────────────
-  async function handleEnrichVisual(force: boolean) {
-    const label = force ? "Force re-enrich ALL published references" : "Enrich references missing web-grounded metadata";
-    if (!confirm(`${label}? This calls Firecrawl + AI for each entry and may take several minutes.`)) return;
-    setEnriching(true);
-    setEnrichProgress("Starting…");
-    setAuditLog([]);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-visual`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ force }),
-      });
-      if (!res.ok || !res.body) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(txt || `Enrich failed (HTTP ${res.status})`);
-      }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let updated = 0;
-      const touched: string[] = [];
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          let msg: any;
-          try { msg = JSON.parse(line); } catch { continue; }
-          if (msg.type === "progress") setEnrichProgress(msg.message);
-          else if (msg.type === "fix" || msg.type === "update") {
-            updated++;
-            setEnrichProgress(`Enriched "${msg.title}"`);
-            touched.push(msg.id);
-            setAuditLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
-          }
-          else if (msg.type === "warn") setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50));
-          else if (msg.type === "error") throw new Error(msg.message);
-          else if (msg.type === "done") {
-            setEnrichProgress(msg.message || `Done · ${updated} enriched`);
-            if (updated > 0) toast.success(msg.message || `${updated} enriched`); else toast.info(msg.message || "No entries to enrich");
-          }
-        }
-      }
-      if (touched.length > 0) {
-        const { data: fresh } = await supabase
-          .from("references")
-          .select("id,editing_style,visual_summary,visual_enriched_at")
-          .in("id", touched);
-        if (fresh) {
-          const byId = new Map((fresh as any[]).map((r) => [r.id, r]));
-          setRows((prev) =>
-            prev.map((r) => {
-              const f = byId.get(r.id);
-              if (!f) return r;
-              const merged = { ...r, editing_style: f.editing_style ?? r.editing_style, visual_summary: f.visual_summary ?? r.visual_summary, visual_enriched_at: f.visual_enriched_at ?? r.visual_enriched_at };
-              return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
-            }),
-          );
-        }
-      }
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setEnriching(false);
-    }
-  }
-
-
-  // ── Reports ──────────────────────────────────────────────────────────────────────────────
+  // ── Reports ──────────────────────────────────────────────────────────────────────────────────────────
   async function resolveReport(id: string) {
     const { error } = await supabase.from("reference_reports").update({ resolved: true }).eq("id", id);
     if (error) { toast.error(error.message); return; }
@@ -610,12 +492,12 @@ const Logs = () => {
     toast.success("Report resolved");
   }
 
-  // ── Guard ──────────────────────────────────────────────────────────────────────────────
+  // ── Guard ──────────────────────────────────────────────────────────────────────────────────────────
   if (authLoading) return null;
   if (!user) return <Navigate to="/auth" replace />;
   if (!isAdmin) return <Navigate to="/" replace />;
 
-  // ── Render ──────────────────────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen grain">
       <PageMeta title="Admin · Logs — The Creatives Room" description="Reference approval logs." noindex />
@@ -640,7 +522,7 @@ const Logs = () => {
             onClick={handleBackfillAll}
             disabled={backfilling || countMissingAI === 0}
             variant="outline"
-            className="font-mono text-[11px] uppercase tracking-widest h-9"
+            className="font-mono text-xs uppercase tracking-widest h-9"
           >
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {backfilling ? backfillProgress || "Generating…" : `Backfill missing (${countMissingAI})`}
@@ -650,44 +532,23 @@ const Logs = () => {
             onClick={handleAuditRecent}
             disabled={auditing}
             variant="outline"
-            className="font-mono text-[11px] uppercase tracking-widest h-9"
+            className="font-mono text-xs uppercase tracking-widest h-9"
             title="Fact-check the last 3 days of entries and auto-fix wrong title / brand / agency / year"
           >
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {auditing ? auditProgress || "Auditing…" : "Audit recent (3d)"}
           </Button>
-          <span className="w-px h-5 bg-border mx-1" />
-          <Button
-            type="button"
-            onClick={() => handleEnrichVisual(false)}
-            disabled={enriching}
-            variant="outline"
-            className="font-mono text-[11px] uppercase tracking-widest h-9"
-            title="Scrape each reference + web search, then regenerate visual_summary / editing_style from real evidence (skips already-enriched)."
-          >
-            <Sparkles className="h-3.5 w-3.5 mr-2" />
-            {enriching ? enrichProgress || "Enriching…" : "Enrich visual (web)"}
-          </Button>
-          <button
-            type="button"
-            onClick={() => handleEnrichVisual(true)}
-            disabled={enriching}
-            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
-            title="Re-run enrichment on EVERY published reference, overwriting existing visual metadata."
-          >
-            Force re-enrich
-          </button>
         </div>
-        {(auditing || auditingId !== null || enriching || auditLog.length > 0) && (
+        {(auditing || auditingId !== null || auditLog.length > 0) && (
           <div className="container pb-3">
-            <div className="border hairline bg-secondary/40 max-h-72 overflow-auto p-3 font-mono text-[11px] leading-relaxed space-y-1.5">
-              {(auditing || auditingId !== null || enriching) && (
+            <div className="border hairline bg-secondary/40 max-h-72 overflow-auto p-3 font-mono text-xs leading-relaxed space-y-1.5">
+              {(auditing || auditingId !== null) && (
                 <p className="text-primary sticky top-0 bg-secondary/90 backdrop-blur-sm -mx-3 px-3 py-1 mb-1 z-10">
-                  {enriching ? enrichProgress : auditProgress}
+                  {auditProgress}
                 </p>
               )}
-              {auditLog.length === 0 && (auditing || auditingId !== null || enriching) ? (
-                <p className="text-muted-foreground">Working…</p>
+              {auditLog.length === 0 && (auditing || auditingId !== null) ? (
+                <p className="text-muted-foreground">Checking entries…</p>
               ) : (
                 auditLog.map((e, i) =>
                   e.kind === "warn" ? (
@@ -698,7 +559,7 @@ const Logs = () => {
                       <div className="space-y-1">
                         {e.changes.map((c, j) => (
                           <div key={j} className="flex items-baseline gap-2">
-                            <span className="w-14 shrink-0 uppercase tracking-widest text-muted-foreground text-[9px]">
+                            <span className="w-14 shrink-0 uppercase tracking-widest text-muted-foreground text-xs">
                               {c.field}
                             </span>
                             <span className="line-through text-muted-foreground/60 truncate max-w-[38%]">
@@ -712,7 +573,7 @@ const Logs = () => {
                         ))}
                       </div>
                       {e.reason && (
-                        <p className="text-[10px] italic text-muted-foreground/70 mt-1.5">{e.reason}</p>
+                        <p className="text-xs italic text-muted-foreground/70 mt-1.5">{e.reason}</p>
                       )}
                     </div>
                   ),
@@ -726,7 +587,7 @@ const Logs = () => {
       {/* Tabbed content */}
       <div className="container py-8">
         <Tabs defaultValue="entries">
-          <TabsList className="mb-8 font-mono text-[11px] uppercase tracking-widest">
+          <TabsList className="mb-8 font-mono text-xs uppercase tracking-widest">
             <TabsTrigger value="entries">Entries ({rows.length})</TabsTrigger>
             <TabsTrigger value="health">
               Link health{deadLinks.length > 0 ? ` · ${deadLinks.length} dead` : ""}
@@ -736,7 +597,7 @@ const Logs = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* ── ENTRIES TAB ────────────────────────────────────────────────────────────────── */}
+          {/* ── ENTRIES TAB ────────────────────────────────────────────────────────────────────────────────── */}
           <TabsContent value="entries" className="space-y-6">
 
             {/* Stat cards */}
@@ -781,7 +642,7 @@ const Logs = () => {
                   <div className={`text-2xl font-light tabular-nums mb-1 ${card.warn && !card.active ? "text-destructive" : ""}`}>
                     {card.value}
                   </div>
-                  <div className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
                     {card.label}
                   </div>
                 </button>
@@ -789,62 +650,87 @@ const Logs = () => {
             </div>
 
             {/* Filter chips + search */}
-            <div className="space-y-3 border hairline p-4 bg-secondary/20">
-              <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
-                <FilterGroup
-                  label="Type"
-                  options={[
-                    { label: "All", value: "all" as const },
-                    { label: "Video", value: "video" as const },
-                    { label: "Image", value: "image" as const },
-                  ]}
-                  value={typeFilter}
-                  onChange={(v) => setTypeFilter(v as typeof typeFilter)}
-                />
-                <FilterGroup
-                  label="AI"
-                  options={[
-                    { label: "All", value: "all" as const },
-                    { label: "Enriched", value: "complete" as const },
-                    { label: "Not enriched", value: "missing" as const },
-                  ]}
-                  value={aiFilter}
-                  onChange={(v) => setAiFilter(v as typeof aiFilter)}
-                />
-                <FilterGroup
-                  label="Link"
-                  options={[
-                    { label: "All", value: "all" as const },
-                    { label: "OK", value: "ok" as const },
-                    { label: "Dead", value: "dead" as const },
-                    { label: "Unchecked", value: "unchecked" as const },
-                  ]}
-                  value={linkFilter}
-                  onChange={(v) => setLinkFilter(v as typeof linkFilter)}
-                />
-                <FilterGroup
-                  label="Thumb"
-                  options={[
-                    { label: "All", value: "all" as const },
-                    { label: "Has", value: "has" as const },
-                    { label: "Missing", value: "missing" as const },
-                  ]}
-                  value={thumbFilter}
-                  onChange={(v) => setThumbFilter(v as typeof thumbFilter)}
-                />
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2">
+                {[
+                  {
+                    label: "Type",
+                    node: (
+                      <Chips
+                        options={[
+                          { label: "All", value: "all" as const },
+                          { label: "Video", value: "video" as const },
+                          { label: "Image", value: "image" as const },
+                        ]}
+                        value={typeFilter}
+                        onChange={(v) => setTypeFilter(v as typeof typeFilter)}
+                      />
+                    ),
+                  },
+                  {
+                    label: "Link",
+                    node: (
+                      <Chips
+                        options={[
+                          { label: "All", value: "all" as const },
+                          { label: "OK", value: "ok" as const },
+                          { label: "Dead", value: "dead" as const },
+                          { label: "Unchecked", value: "unchecked" as const },
+                        ]}
+                        value={linkFilter}
+                        onChange={(v) => setLinkFilter(v as typeof linkFilter)}
+                      />
+                    ),
+                  },
+                  {
+                    label: "AI",
+                    node: (
+                      <Chips
+                        options={[
+                          { label: "All", value: "all" as const },
+                          { label: "Enriched", value: "complete" as const },
+                          { label: "Missing", value: "missing" as const },
+                        ]}
+                        value={aiFilter}
+                        onChange={(v) => setAiFilter(v as typeof aiFilter)}
+                      />
+                    ),
+                  },
+                  {
+                    label: "Thumb",
+                    node: (
+                      <Chips
+                        options={[
+                          { label: "All", value: "all" as const },
+                          { label: "Has", value: "has" as const },
+                          { label: "Missing", value: "missing" as const },
+                        ]}
+                        value={thumbFilter}
+                        onChange={(v) => setThumbFilter(v as typeof thumbFilter)}
+                      />
+                    ),
+                  },
+                ].map(({ label, node }) => (
+                  <div key={label} className="flex items-center gap-3">
+                    <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground w-12 shrink-0">
+                      {label}
+                    </span>
+                    {node}
+                  </div>
+                ))}
               </div>
-              <div className="flex items-center gap-4 pt-3 border-t hairline">
+              <div className="flex items-center gap-4">
                 <div className="relative max-w-sm flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search title, brand, email…"
-                    className="pl-9 bg-background border-0 font-mono text-xs"
+                    className="pl-9 bg-secondary border-0 font-mono text-xs"
                   />
                 </div>
                 {filtered.length !== rows.length && (
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                  <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
                     {filtered.length} of {rows.length}
                   </span>
                 )}
@@ -861,21 +747,21 @@ const Logs = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest w-10">#</TableHead>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">
+                      <TableHead className="font-mono text-xs uppercase tracking-widest w-10">#</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest">
                         <button onClick={() => handleSort("title")} className="flex items-center hover:text-foreground transition-colors">
                           Reference <SortIcon col="title" />
                         </button>
                       </TableHead>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">Checks</TableHead>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">Added by</TableHead>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">Approved by</TableHead>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">
+                      <TableHead className="font-mono text-xs uppercase tracking-widest">Checks</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest">Added by</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest">Approved by</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest">
                         <button onClick={() => handleSort("approved")} className="flex items-center hover:text-foreground transition-colors">
                           Approved <SortIcon col="approved" />
                         </button>
                       </TableHead>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">
+                      <TableHead className="font-mono text-xs uppercase tracking-widest">
                         <button onClick={() => handleSort("added")} className="flex items-center hover:text-foreground transition-colors">
                           Added <SortIcon col="added" />
                         </button>
@@ -899,59 +785,65 @@ const Logs = () => {
                             )}
                             <div className="min-w-0">
                               <div className="text-sm truncate max-w-[280px]">{r.title}</div>
-                              <div className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground truncate max-w-[280px]">
+                              <div className="font-mono text-xs uppercase tracking-widest text-muted-foreground truncate max-w-[280px]">
                                 {[r.brand, r.year, r.type].filter(Boolean).join(" · ")}
                               </div>
                             </div>
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap items-center gap-1">
-                            <StatusPill
-                              label={r.has_ai_metadata ? "AI ✓" : "AI —"}
-                              state={r.has_ai_metadata ? "ok" : "off"}
+                          <div className="flex items-center gap-1.5">
+                            <span
                               title={r.has_ai_metadata ? "AI metadata complete" : "Missing AI metadata"}
-                            />
-                            <StatusPill
-                              label={r.visual_enriched_at ? "Web ✓" : "Web —"}
-                              state={r.visual_enriched_at ? "ok" : "off"}
-                              title={r.visual_enriched_at ? `Web-enriched · ${formatDate(r.visual_enriched_at)}` : "Not yet web-enriched"}
-                            />
-                            <StatusPill
-                              label={
-                                r.link_status === "ok" ? "Link ✓" :
-                                r.link_status === "dead" ? "Link ✗" :
-                                r.link_status === "error" ? "Link !" :
-                                "Link —"
-                              }
-                              state={
-                                r.link_status === "ok" ? "ok" :
-                                r.link_status === "dead" ? "bad" :
-                                r.link_status === "error" ? "warn" :
-                                "off"
-                              }
+                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.has_ai_metadata ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
+                            >
+                              <Sparkles className="h-3 w-3" strokeWidth={r.has_ai_metadata ? 2 : 1.5} />
+                            </span>
+                            <span
                               title={
                                 r.link_status === "ok" ? `Link OK · ${formatDate(r.link_checked_at ?? null)}` :
                                 r.link_status === "dead" ? `Dead link · ${formatDate(r.link_checked_at ?? null)}` :
                                 r.link_status === "error" ? `Link error · ${formatDate(r.link_checked_at ?? null)}` :
                                 "Link not yet checked"
                               }
-                            />
-                            <StatusPill
-                              label={r.thumbnail_url ? "Thumb ✓" : "Thumb —"}
-                              state={r.thumbnail_url ? "ok" : "off"}
+                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${
+                                r.link_status === "ok" ? "bg-primary/10 text-primary" :
+                                r.link_status === "dead" ? "bg-destructive/15 text-destructive" :
+                                r.link_status === "error" ? "bg-yellow-500/10 text-yellow-500" :
+                                "text-muted-foreground/40"
+                              }`}
+                            >
+                              {r.link_status === "dead"
+                                ? <Link2Off className="h-3 w-3" strokeWidth={2} />
+                                : <Link2 className="h-3 w-3" strokeWidth={r.link_status === "ok" ? 2 : 1} />}
+                            </span>
+                            <span
                               title={r.thumbnail_url ? "Has thumbnail" : "No thumbnail"}
-                            />
-                            <StatusPill
-                              label={auditingId === r.id ? "Audit…" : r.audited_at ? "Audit ✓" : "Audit"}
-                              state={auditingId === r.id ? "warn" : r.audited_at ? "ok" : "off"}
-                              onClick={() => !auditingId && handleAuditOne(r.id, r.title)}
+                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.thumbnail_url ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
+                            >
+                              {r.thumbnail_url
+                                ? <Check className="h-3 w-3" strokeWidth={2.5} />
+                                : <ImageOff className="h-3 w-3" strokeWidth={1.5} />}
+                            </span>
+                            <span className="w-px h-3.5 bg-border mx-0.5 shrink-0" />
+                            <button
+                              onClick={() => handleAuditOne(r.id, r.title)}
+                              disabled={!!auditingId}
                               title={
                                 auditingId === r.id ? "Auditing…" :
                                 r.audited_at ? `Audited · ${formatDate(r.audited_at)} — click to re-audit` :
-                                "Click to audit with AI"
+                                "Not yet audited — click to audit with AI"
                               }
-                            />
+                              className={`inline-flex h-5 w-5 items-center justify-center border transition-colors ${
+                                auditingId === r.id
+                                  ? "border-primary text-primary animate-pulse"
+                                  : r.audited_at
+                                    ? "bg-primary/10 border-primary/40 text-primary hover:bg-primary/20"
+                                    : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
+                              }`}
+                            >
+                              <Wand2 className="h-3 w-3" strokeWidth={r.audited_at ? 2 : 1.5} />
+                            </button>
                           </div>
                         </TableCell>
                         <TableCell className="font-mono text-xs">
@@ -970,7 +862,7 @@ const Logs = () => {
             )}
           </TabsContent>
 
-          {/* ── LINK HEALTH TAB ────────────────────────────────────────────────────────────── */}
+          {/* ── LINK HEALTH TAB ────────────────────────────────────────────────────────────────────────────── */}
           <TabsContent value="health" className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               {deadLinks.length > 0 && (
@@ -979,7 +871,7 @@ const Logs = () => {
                   onClick={deleteAllDeadLinks}
                   disabled={deletingDead}
                   variant="outline"
-                  className="font-mono text-[11px] uppercase tracking-widest h-9 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                  className="font-mono text-xs uppercase tracking-widest h-9 text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
                 >
                   <XIcon className="h-3.5 w-3.5 mr-2" strokeWidth={1.8} />
                   {deletingDead ? "Deleting…" : `Delete all (${deadLinks.length})`}
@@ -990,7 +882,7 @@ const Logs = () => {
                 onClick={handleCheckLinks}
                 disabled={linkChecking}
                 variant="outline"
-                className="font-mono text-[11px] uppercase tracking-widest h-9"
+                className="font-mono text-xs uppercase tracking-widest h-9"
               >
                 <Link2 className="h-3.5 w-3.5 mr-2" strokeWidth={1.8} />
                 {linkChecking ? "Checking…" : "Check all links"}
@@ -1004,10 +896,10 @@ const Logs = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">Reference</TableHead>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">URL</TableHead>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">Checked at</TableHead>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest w-10"></TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest">Reference</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest">URL</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest">Checked at</TableHead>
+                      <TableHead className="font-mono text-xs uppercase tracking-widest w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1040,7 +932,7 @@ const Logs = () => {
                               title="Click to edit URL"
                             >
                               <span className="truncate">{ref.source_url}</span>
-                              <span className="opacity-0 group-hover:opacity-60 text-[10px] shrink-0">✎</span>
+                              <span className="opacity-0 group-hover:opacity-60 text-xs shrink-0">✎</span>
                             </span>
                           ) : (
                             <button
@@ -1075,7 +967,7 @@ const Logs = () => {
             )}
           </TabsContent>
 
-          {/* ── REPORTS TAB ────────────────────────────────────────────────────────────────── */}
+          {/* ── REPORTS TAB ────────────────────────────────────────────────────────────────────────────────── */}
           <TabsContent value="reports">
             {reports.length === 0 ? (
               <p className="font-mono text-xs text-muted-foreground">No pending reports.</p>
@@ -1084,15 +976,15 @@ const Logs = () => {
                 {reports.map((rep) => (
                   <div key={rep.id} className="flex items-start gap-4 p-4">
                     <div className="flex-1 min-w-0">
-                      <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground mb-0.5">
+                      <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground mb-0.5">
                         {rep.field} · <Link to={refPath(rep.reference_id, rep.ref_title ?? "")} className="hover:text-foreground transition-colors">{rep.ref_title}</Link>
                       </p>
                       <p className="font-body text-sm">{rep.message}</p>
-                      <p className="font-mono text-[9px] text-muted-foreground mt-1">{new Date(rep.created_at).toLocaleString()}</p>
+                      <p className="font-mono text-xs text-muted-foreground mt-1">{new Date(rep.created_at).toLocaleString()}</p>
                     </div>
                     <button
                       onClick={() => resolveReport(rep.id)}
-                      className="shrink-0 font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 border hairline hover:bg-secondary transition-colors"
+                      className="shrink-0 font-mono text-xs uppercase tracking-widest px-3 py-1.5 border hairline hover:bg-secondary transition-colors"
                     >
                       Resolve
                     </button>
