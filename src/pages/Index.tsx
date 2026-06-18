@@ -651,24 +651,7 @@ const Index = () => {
                         <X className="h-3.5 w-3.5" strokeWidth={1.5} />
                       </button>
                     )}
-                    {!brief.trim() && !briefFocused && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {[
-                          { label: "Luxury fragrance · cinematic", full: "I'm looking for a luxury fragrance commercial with a dark, cinematic, intimate tone" },
-                          { label: "Playful soda · bright & fast cuts", full: "A playful soda brand ad with bright colors and fast cuts" },
-                          { label: "Emotional car · family story", full: "An emotional car commercial with a father-daughter story" },
-                        ].map(({ label, full }) => (
-                          <button
-                            key={label}
-                            type="button"
-                            onClick={() => setBrief(full)}
-                            className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full border hairline bg-secondary/40 text-muted-foreground hover:text-foreground hover:border-foreground/30 hover:bg-secondary transition-colors"
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
+
                   </>
                 )}
               </div>
