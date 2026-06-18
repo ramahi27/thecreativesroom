@@ -107,7 +107,6 @@ const Logs = () => {
   const [typeFilter, setTypeFilter] = useState<"all" | "video" | "image">("all");
   const [linkFilter, setLinkFilter] = useState<"all" | "ok" | "dead" | "error" | "unchecked">("all");
   const [aiFilter, setAiFilter] = useState<"all" | "complete" | "missing">("all");
-  const [thumbFilter, setThumbFilter] = useState<"all" | "has" | "missing">("all");
 
   // Sort
   const [sortCol, setSortCol] = useState<SortCol>("added");
@@ -145,7 +144,7 @@ const Logs = () => {
   // ── Derived counts for stat cards ──────────────────────────────────────────────
   const countDeadLinks = useMemo(() => rows.filter((r) => r.link_status === "dead").length, [rows]);
   const countMissingAI = useMemo(() => rows.filter((r) => !r.has_ai_metadata).length, [rows]);
-  const countNoThumb = useMemo(() => rows.filter((r) => !r.thumbnail_url).length, [rows]);
+  const countNotEnriched = useMemo(() => rows.filter((r) => !r.visual_enriched_at).length, [rows]);
   const countPendingProcess = useMemo(() => {
     const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
     return rows.filter((r) => !r.has_ai_metadata || (!r.audited_at && r.created_at > cutoff)).length;
@@ -172,8 +171,6 @@ const Logs = () => {
     else if (linkFilter !== "all") result = result.filter((r) => r.link_status === linkFilter);
     if (aiFilter === "complete") result = result.filter((r) => r.has_ai_metadata);
     else if (aiFilter === "missing") result = result.filter((r) => !r.has_ai_metadata);
-    if (thumbFilter === "has") result = result.filter((r) => !!r.thumbnail_url);
-    else if (thumbFilter === "missing") result = result.filter((r) => !r.thumbnail_url);
     const q = search.trim().toLowerCase();
     if (q) {
       result = result.filter((r) =>
@@ -189,7 +186,7 @@ const Logs = () => {
       const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [rows, typeFilter, linkFilter, aiFilter, thumbFilter, search, sortCol, sortDir]);
+  }, [rows, typeFilter, linkFilter, aiFilter, search, sortCol, sortDir]);
 
   // ── Data loading ──────────────────────────────────────────────────────────────────────────────────────────
   async function loadDeadLinks() {
@@ -699,8 +696,8 @@ const Logs = () => {
                 {
                   label: "Total entries",
                   value: rows.length,
-                  active: typeFilter === "all" && linkFilter === "all" && aiFilter === "all" && thumbFilter === "all",
-                  onClick: () => { setTypeFilter("all"); setLinkFilter("all"); setAiFilter("all"); setThumbFilter("all"); setSearch(""); },
+                  active: typeFilter === "all" && linkFilter === "all" && aiFilter === "all",
+                  onClick: () => { setTypeFilter("all"); setLinkFilter("all"); setAiFilter("all"); setSearch(""); },
                   warn: false,
                 },
                 {
@@ -718,11 +715,11 @@ const Logs = () => {
                   warn: countMissingAI > 0,
                 },
                 {
-                  label: "No thumbnail",
-                  value: countNoThumb,
-                  active: thumbFilter === "missing",
-                  onClick: () => setThumbFilter(thumbFilter === "missing" ? "all" : "missing"),
-                  warn: countNoThumb > 0,
+                  label: "Not enriched",
+                  value: countNotEnriched,
+                  active: false,
+                  onClick: () => {},
+                  warn: countNotEnriched > 0,
                 },
               ].map((card) => (
                 <button
@@ -786,20 +783,6 @@ const Logs = () => {
                         ]}
                         value={aiFilter}
                         onChange={(v) => setAiFilter(v as typeof aiFilter)}
-                      />
-                    ),
-                  },
-                  {
-                    label: "Thumb",
-                    node: (
-                      <Chips
-                        options={[
-                          { label: "All", value: "all" as const },
-                          { label: "Has", value: "has" as const },
-                          { label: "Missing", value: "missing" as const },
-                        ]}
-                        value={thumbFilter}
-                        onChange={(v) => setThumbFilter(v as typeof thumbFilter)}
                       />
                     ),
                   },
