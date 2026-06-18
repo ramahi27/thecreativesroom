@@ -598,6 +598,26 @@ const Logs = () => {
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {auditing ? auditProgress || "Auditing…" : "Audit recent (3d)"}
           </Button>
+          <Button
+            type="button"
+            onClick={() => handleEnrichVisual(false)}
+            disabled={enriching}
+            variant="outline"
+            className="font-mono text-xs uppercase tracking-widest h-9"
+            title="Web-grounded enrichment of visual_summary / editing_style using Firecrawl + AI"
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-2" />
+            {enriching ? enrichProgress || "Enriching…" : "Enrich visual (web)"}
+          </Button>
+          <button
+            type="button"
+            onClick={() => handleEnrichVisual(true)}
+            disabled={enriching}
+            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-40"
+            title="Re-enrich ALL entries, overwriting existing values"
+          >
+            Force re-enrich
+          </button>
         </div>
         {(auditing || auditingId !== null || auditLog.length > 0) && (
           <div className="container pb-3">
