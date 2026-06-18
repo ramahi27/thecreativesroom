@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff,
-  ArrowUpDown, ArrowUp, ArrowDown, Wand2,
+  ArrowUpDown, ArrowUp, ArrowDown, Wand2, Eye, EyeOff, ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -42,6 +42,7 @@ type LogRow = {
   approved_by_email: string | null;
   editing_style?: string | null;
   visual_summary?: string | null;
+  visual_enriched_at?: string | null;
   has_ai_metadata?: boolean;
   link_status?: string | null;
   link_checked_at?: string | null;
@@ -122,6 +123,7 @@ const Logs = () => {
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [enriching, setEnriching] = useState(false);
   const [enrichProgress, setEnrichProgress] = useState<string>("");
+  const [expandedVisualId, setExpandedVisualId] = useState<string | null>(null);
 
   // Link health
   const [linkChecking, setLinkChecking] = useState(false);
@@ -223,6 +225,7 @@ const Logs = () => {
       const infoMap = new Map<string, {
         brand: string | null; agency: string | null; year: number | null;
         editing_style: string | null; visual_summary: string | null;
+        visual_enriched_at: string | null;
         link_status: string | null; link_checked_at: string | null;
         audited_at: string | null;
       }>();
@@ -231,12 +234,13 @@ const Logs = () => {
         const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
-          .select("id,brand,agency,year,editing_style,visual_summary,link_status,link_checked_at,audited_at")
+          .select("id,brand,agency,year,editing_style,visual_summary,visual_enriched_at,link_status,link_checked_at,audited_at")
           .in("id", slice);
         (extra || []).forEach((t: any) =>
           infoMap.set(t.id, {
             brand: t.brand ?? null, agency: t.agency ?? null, year: t.year ?? null,
             editing_style: t.editing_style ?? null, visual_summary: t.visual_summary ?? null,
+            visual_enriched_at: t.visual_enriched_at ?? null,
             link_status: t.link_status ?? null, link_checked_at: t.link_checked_at ?? null,
             audited_at: t.audited_at ?? null,
           }),
@@ -252,6 +256,7 @@ const Logs = () => {
             year: info?.year ?? r.year ?? null,
             editing_style: info?.editing_style ?? null,
             visual_summary: info?.visual_summary ?? null,
+            visual_enriched_at: info?.visual_enriched_at ?? null,
             link_status: info?.link_status ?? null,
             link_checked_at: info?.link_checked_at ?? null,
             audited_at: info?.audited_at ?? null,
@@ -844,7 +849,7 @@ const Logs = () => {
                   </TableHeader>
                   <TableBody>
                     {filtered.map((r, i) => (
-                      <TableRow key={r.id}>
+                      <TableRow key={r.id} className={expandedVisualId === r.id ? "border-b-0" : ""}>
                         <TableCell className="font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
                         <TableCell>
                           <Link
@@ -899,6 +904,25 @@ const Logs = () => {
                                 ? <Check className="h-3 w-3" strokeWidth={2.5} />
                                 : <ImageOff className="h-3 w-3" strokeWidth={1.5} />}
                             </span>
+                            <button
+                              onClick={() => setExpandedVisualId(expandedVisualId === r.id ? null : r.id)}
+                              title={
+                                r.visual_enriched_at
+                                  ? `Visual enriched · ${formatDate(r.visual_enriched_at)} — click to view`
+                                  : "Not yet visually enriched"
+                              }
+                              className={`inline-flex h-5 w-5 items-center justify-center border hairline transition-colors ${
+                                r.visual_summary
+                                  ? expandedVisualId === r.id
+                                    ? "bg-primary text-primary-foreground border-primary"
+                                    : "bg-primary/10 text-primary hover:bg-primary/20"
+                                  : "text-muted-foreground/40 hover:text-muted-foreground"
+                              }`}
+                            >
+                              {r.visual_summary
+                                ? <Eye className="h-3 w-3" strokeWidth={2} />
+                                : <EyeOff className="h-3 w-3" strokeWidth={1.5} />}
+                            </button>
                             <span className="w-px h-3.5 bg-border mx-0.5 shrink-0" />
                             <button
                               onClick={() => handleAuditOne(r.id, r.title)}
@@ -929,6 +953,33 @@ const Logs = () => {
                         <TableCell className="font-mono text-xs text-muted-foreground">{formatDate(r.approved_at)}</TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">{formatDate(r.created_at)}</TableCell>
                       </TableRow>
+                      {expandedVisualId === r.id && (
+                        <TableRow key={`${r.id}-visual`} className="bg-secondary/20 hover:bg-secondary/20">
+                          <TableCell />
+                          <TableCell colSpan={6} className="pb-4 pt-2">
+                            <div className="flex flex-col gap-3">
+                              <div>
+                                <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1 flex items-center gap-1.5">
+                                  <Eye className="h-2.5 w-2.5" strokeWidth={2} /> Visual Summary
+                                </div>
+                                {r.visual_summary
+                                  ? <p className="font-body text-sm leading-relaxed text-foreground/90">{r.visual_summary}</p>
+                                  : <p className="font-mono text-xs text-muted-foreground/50 italic">Not yet enriched</p>}
+                              </div>
+                              {r.type === "video" && (
+                                <div>
+                                  <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1 flex items-center gap-1.5">
+                                    <ChevronDown className="h-2.5 w-2.5" strokeWidth={2} /> Editing Style
+                                  </div>
+                                  {r.editing_style
+                                    ? <p className="font-body text-sm leading-relaxed text-foreground/90">{r.editing_style}</p>
+                                    : <p className="font-mono text-xs text-muted-foreground/50 italic">Not yet enriched</p>}
+                                </div>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
                     ))}
                   </TableBody>
                 </Table>
