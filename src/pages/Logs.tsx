@@ -849,7 +849,8 @@ const Logs = () => {
                   </TableHeader>
                   <TableBody>
                     {filtered.map((r, i) => (
-                      <TableRow key={r.id} className={expandedVisualId === r.id ? "border-b-0" : ""}>
+                      <React.Fragment key={r.id}>
+                      <TableRow className={expandedVisualId === r.id ? "border-b-0" : ""}>
                         <TableCell className="font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
                         <TableCell>
                           <Link
@@ -980,6 +981,7 @@ const Logs = () => {
                           </TableCell>
                         </TableRow>
                       )}
+                      </React.Fragment>
                     ))}
                   </TableBody>
                 </Table>
