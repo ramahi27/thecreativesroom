@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff,
-  ArrowUpDown, ArrowUp, ArrowDown, Wand2,
+  Search, Sparkles, X as XIcon, Link2, Link2Off,
+  ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -68,32 +68,71 @@ const formatDate = (s: string | null) => {
   });
 };
 
-// Compact toggle-button chip group
-function Chips<T extends string>({
+// Compact labeled chip filter group
+function FilterGroup<T extends string>({
+  label,
   options,
   value,
   onChange,
 }: {
+  label: string;
   options: { label: string; value: T }[];
   value: T;
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex items-center gap-1">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          className={`px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest border hairline transition-colors ${
-            value === o.value
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-transparent text-muted-foreground hover:text-foreground hover:border-foreground/40"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div className="flex items-center gap-2">
+      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 shrink-0">
+        {label}
+      </span>
+      <div className="flex items-center gap-1">
+        {options.map((o) => (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            className={`px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest rounded-sm transition-colors ${
+              value === o.value
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
     </div>
+  );
+}
+
+// Small labeled status pill for the Checks column
+function StatusPill({
+  label,
+  state,
+  title,
+  onClick,
+}: {
+  label: string;
+  state: "ok" | "bad" | "warn" | "off";
+  title?: string;
+  onClick?: () => void;
+}) {
+  const styles =
+    state === "ok"
+      ? "bg-primary/15 text-primary border-primary/30"
+      : state === "bad"
+      ? "bg-destructive/15 text-destructive border-destructive/30"
+      : state === "warn"
+      ? "bg-yellow-500/15 text-yellow-600 border-yellow-500/30"
+      : "bg-transparent text-muted-foreground/40 border-border/60 border-dashed";
+  const Comp: any = onClick ? "button" : "span";
+  return (
+    <Comp
+      onClick={onClick}
+      title={title}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border font-mono text-[9px] uppercase tracking-widest transition-colors ${styles} ${onClick ? "hover:opacity-80 cursor-pointer" : ""}`}
+    >
+      {label}
+    </Comp>
   );
 }
 
@@ -650,20 +689,32 @@ const Logs = () => {
             </div>
 
             {/* Filter chips + search */}
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <Chips
+            <div className="space-y-3 border hairline p-4 bg-secondary/20">
+              <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
+                <FilterGroup
+                  label="Type"
                   options={[
-                    { label: "All types", value: "all" as const },
+                    { label: "All", value: "all" as const },
                     { label: "Video", value: "video" as const },
                     { label: "Image", value: "image" as const },
                   ]}
                   value={typeFilter}
                   onChange={(v) => setTypeFilter(v as typeof typeFilter)}
                 />
-                <Chips
+                <FilterGroup
+                  label="AI"
                   options={[
-                    { label: "All links", value: "all" as const },
+                    { label: "All", value: "all" as const },
+                    { label: "Enriched", value: "complete" as const },
+                    { label: "Not enriched", value: "missing" as const },
+                  ]}
+                  value={aiFilter}
+                  onChange={(v) => setAiFilter(v as typeof aiFilter)}
+                />
+                <FilterGroup
+                  label="Link"
+                  options={[
+                    { label: "All", value: "all" as const },
                     { label: "OK", value: "ok" as const },
                     { label: "Dead", value: "dead" as const },
                     { label: "Unchecked", value: "unchecked" as const },
@@ -671,18 +722,10 @@ const Logs = () => {
                   value={linkFilter}
                   onChange={(v) => setLinkFilter(v as typeof linkFilter)}
                 />
-                <Chips
+                <FilterGroup
+                  label="Thumb"
                   options={[
-                    { label: "All AI", value: "all" as const },
-                    { label: "Complete", value: "complete" as const },
-                    { label: "Missing", value: "missing" as const },
-                  ]}
-                  value={aiFilter}
-                  onChange={(v) => setAiFilter(v as typeof aiFilter)}
-                />
-                <Chips
-                  options={[
-                    { label: "All thumbs", value: "all" as const },
+                    { label: "All", value: "all" as const },
                     { label: "Has", value: "has" as const },
                     { label: "Missing", value: "missing" as const },
                   ]}
@@ -690,14 +733,14 @@ const Logs = () => {
                   onChange={(v) => setThumbFilter(v as typeof thumbFilter)}
                 />
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 pt-3 border-t hairline">
                 <div className="relative max-w-sm flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search title, brand, email…"
-                    className="pl-9 bg-secondary border-0 font-mono text-xs"
+                    className="pl-9 bg-background border-0 font-mono text-xs"
                   />
                 </div>
                 {filtered.length !== rows.length && (
@@ -763,58 +806,47 @@ const Logs = () => {
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              title={r.has_ai_metadata ? "AI metadata complete" : "Missing AI metadata"}
-                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.has_ai_metadata ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
-                            >
-                              <Sparkles className="h-3 w-3" strokeWidth={r.has_ai_metadata ? 2 : 1.5} />
-                            </span>
-                            <span
+                          <div className="flex flex-wrap items-center gap-1">
+                            <StatusPill
+                              label={r.has_ai_metadata ? "AI ✓" : "AI —"}
+                              state={r.has_ai_metadata ? "ok" : "off"}
+                              title={r.has_ai_metadata ? "AI metadata enriched" : "Not yet enriched"}
+                            />
+                            <StatusPill
+                              label={
+                                r.link_status === "ok" ? "Link ✓" :
+                                r.link_status === "dead" ? "Link ✗" :
+                                r.link_status === "error" ? "Link !" :
+                                "Link —"
+                              }
+                              state={
+                                r.link_status === "ok" ? "ok" :
+                                r.link_status === "dead" ? "bad" :
+                                r.link_status === "error" ? "warn" :
+                                "off"
+                              }
                               title={
                                 r.link_status === "ok" ? `Link OK · ${formatDate(r.link_checked_at ?? null)}` :
                                 r.link_status === "dead" ? `Dead link · ${formatDate(r.link_checked_at ?? null)}` :
                                 r.link_status === "error" ? `Link error · ${formatDate(r.link_checked_at ?? null)}` :
                                 "Link not yet checked"
                               }
-                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${
-                                r.link_status === "ok" ? "bg-primary/10 text-primary" :
-                                r.link_status === "dead" ? "bg-destructive/15 text-destructive" :
-                                r.link_status === "error" ? "bg-yellow-500/10 text-yellow-500" :
-                                "text-muted-foreground/40"
-                              }`}
-                            >
-                              {r.link_status === "dead"
-                                ? <Link2Off className="h-3 w-3" strokeWidth={2} />
-                                : <Link2 className="h-3 w-3" strokeWidth={r.link_status === "ok" ? 2 : 1} />}
-                            </span>
-                            <span
+                            />
+                            <StatusPill
+                              label={r.thumbnail_url ? "Thumb ✓" : "Thumb —"}
+                              state={r.thumbnail_url ? "ok" : "off"}
                               title={r.thumbnail_url ? "Has thumbnail" : "No thumbnail"}
-                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.thumbnail_url ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
-                            >
-                              {r.thumbnail_url
-                                ? <Check className="h-3 w-3" strokeWidth={2.5} />
-                                : <ImageOff className="h-3 w-3" strokeWidth={1.5} />}
-                            </span>
-                            <span className="w-px h-3.5 bg-border mx-0.5 shrink-0" />
-                            <button
-                              onClick={() => handleAuditOne(r.id, r.title)}
-                              disabled={!!auditingId}
+                            />
+                            <StatusPill
+                              label={auditingId === r.id ? "Audit…" : r.audited_at ? "Audit ✓" : "Audit"}
+                              state={auditingId === r.id ? "warn" : r.audited_at ? "ok" : "off"}
+                              onClick={() => !auditingId && handleAuditOne(r.id, r.title)}
                               title={
                                 auditingId === r.id ? "Auditing…" :
                                 r.audited_at ? `Audited · ${formatDate(r.audited_at)} — click to re-audit` :
-                                "Not yet audited — click to audit with AI"
+                                "Click to audit with AI"
                               }
-                              className={`inline-flex h-5 w-5 items-center justify-center border transition-colors ${
-                                auditingId === r.id
-                                  ? "border-primary text-primary animate-pulse"
-                                  : r.audited_at
-                                    ? "bg-primary/10 border-primary/40 text-primary hover:bg-primary/20"
-                                    : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
-                              }`}
-                            >
-                              <Wand2 className="h-3 w-3" strokeWidth={r.audited_at ? 2 : 1.5} />
-                            </button>
+                            />
                           </div>
                         </TableCell>
                         <TableCell className="font-mono text-xs">
