@@ -120,6 +120,8 @@ const Logs = () => {
   const [auditingId, setAuditingId] = useState<string | null>(null);
   const [auditProgress, setAuditProgress] = useState<string>("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichProgress, setEnrichProgress] = useState<string>("");
 
   // Link health
   const [linkChecking, setLinkChecking] = useState(false);
@@ -439,6 +441,64 @@ const Logs = () => {
     }
   }
 
+  // ── Enrich visual (web-grounded) ─────────────────────────────────────────────────────────────────────────
+  async function handleEnrichVisual(force = false) {
+    if (enriching) return;
+    if (force && !confirm("Re-enrich ALL entries (overwrite existing visual_summary / editing_style)?")) return;
+    setEnriching(true);
+    setEnrichProgress("Starting…");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      let offset = 0;
+      // Loop through batches until done
+      while (true) {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-visual`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ offset, limit: 50, force }),
+        });
+        if (!res.ok || !res.body) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(txt || `Enrich failed (HTTP ${res.status})`);
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        let batchDone: any = null;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            let msg: any;
+            try { msg = JSON.parse(line); } catch { continue; }
+            if (msg.type === "progress" || msg.type === "fix" || msg.type === "skip" || msg.type === "warn") {
+              setEnrichProgress(msg.message);
+            } else if (msg.type === "error") {
+              throw new Error(msg.message);
+            } else if (msg.type === "done") {
+              batchDone = msg;
+              setEnrichProgress(msg.message);
+            }
+          }
+        }
+        if (!batchDone || !batchDone.hasMore) break;
+        offset = batchDone.nextOffset ?? offset;
+      }
+      toast.success("Visual enrichment complete");
+      const { data } = await supabase.rpc("get_reference_logs");
+      if (data) setRows(data as LogRow[]);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setEnriching(false);
+    }
+  }
+
+
   // ── Backfill ──────────────────────────────────────────────────────────────────────────────────────────
   async function handleBackfillAll() {
     const pending = rows.filter((r) => !r.has_ai_metadata);
@@ -538,6 +598,26 @@ const Logs = () => {
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {auditing ? auditProgress || "Auditing…" : "Audit recent (3d)"}
           </Button>
+          <Button
+            type="button"
+            onClick={() => handleEnrichVisual(false)}
+            disabled={enriching}
+            variant="outline"
+            className="font-mono text-xs uppercase tracking-widest h-9"
+            title="Web-grounded enrichment of visual_summary / editing_style using Firecrawl + AI"
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-2" />
+            {enriching ? enrichProgress || "Enriching…" : "Enrich visual (web)"}
+          </Button>
+          <button
+            type="button"
+            onClick={() => handleEnrichVisual(true)}
+            disabled={enriching}
+            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-40"
+            title="Re-enrich ALL entries, overwriting existing values"
+          >
+            Force re-enrich
+          </button>
         </div>
         {(auditing || auditingId !== null || auditLog.length > 0) && (
           <div className="container pb-3">
