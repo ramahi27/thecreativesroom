@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Navigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -849,7 +849,7 @@ const Logs = () => {
                   </TableHeader>
                   <TableBody>
                     {filtered.map((r, i) => (
-                      <React.Fragment key={r.id}>
+                      <Fragment key={r.id}>
                       <TableRow className={expandedVisualId === r.id ? "border-b-0" : ""}>
                         <TableCell className="font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
                         <TableCell>
@@ -981,7 +981,7 @@ const Logs = () => {
                           </TableCell>
                         </TableRow>
                       )}
-                      </React.Fragment>
+                      </Fragment>
                     ))}
                   </TableBody>
                 </Table>
