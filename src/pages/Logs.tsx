@@ -441,7 +441,64 @@ const Logs = () => {
     }
   }
 
-  // ── Backfill ──────────────────────────────────────────────────────────────────────────────────────────
+  // ── Enrich visual (web-grounded) ─────────────────────────────────────────────────────────────────────────
+  async function handleEnrichVisual(force = false) {
+    if (enriching) return;
+    if (force && !confirm("Re-enrich ALL entries (overwrite existing visual_summary / editing_style)?")) return;
+    setEnriching(true);
+    setEnrichProgress("Starting…");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      let offset = 0;
+      // Loop through batches until done
+      while (true) {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-visual`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ offset, limit: 50, force }),
+        });
+        if (!res.ok || !res.body) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(txt || `Enrich failed (HTTP ${res.status})`);
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        let batchDone: any = null;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            let msg: any;
+            try { msg = JSON.parse(line); } catch { continue; }
+            if (msg.type === "progress" || msg.type === "fix" || msg.type === "skip" || msg.type === "warn") {
+              setEnrichProgress(msg.message);
+            } else if (msg.type === "error") {
+              throw new Error(msg.message);
+            } else if (msg.type === "done") {
+              batchDone = msg;
+              setEnrichProgress(msg.message);
+            }
+          }
+        }
+        if (!batchDone || !batchDone.hasMore) break;
+        offset = batchDone.nextOffset ?? offset;
+      }
+      toast.success("Visual enrichment complete");
+      const { data } = await supabase.rpc("get_reference_logs");
+      if (data) setRows(data as LogRow[]);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setEnriching(false);
+    }
+  }
+
+
   async function handleBackfillAll() {
     const pending = rows.filter((r) => !r.has_ai_metadata);
     if (pending.length === 0) { toast.info("All references already have complete metadata."); return; }
