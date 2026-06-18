@@ -15,7 +15,6 @@ import {
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { rememberModalReturn, setModalNavOrder } from "@/lib/modalReturn";
-import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 import { refPath } from "@/lib/slug";
 
 function hasValue(value: string | null | undefined) {
@@ -114,13 +113,11 @@ const Logs = () => {
   const [sortCol, setSortCol] = useState<SortCol>("added");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  // Backfill / audit
-  const [backfilling, setBackfilling] = useState(false);
-  const [backfillProgress, setBackfillProgress] = useState<string>("");
-  const [auditing, setAuditing] = useState(false);
-  const [auditingId, setAuditingId] = useState<string | null>(null);
-  const [auditProgress, setAuditProgress] = useState<string>("");
-  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  // Process-new (merged backfill + audit)
+  const [processing, setProcessing] = useState(false);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [processProgress, setProcessProgress] = useState<string>("");
+  const [processLog, setProcessLog] = useState<AuditEntry[]>([]);
   const [enriching, setEnriching] = useState(false);
   const [enrichProgress, setEnrichProgress] = useState<string>("");
   const [expandedVisualId, setExpandedVisualId] = useState<string | null>(null);
@@ -149,6 +146,10 @@ const Logs = () => {
   const countDeadLinks = useMemo(() => rows.filter((r) => r.link_status === "dead").length, [rows]);
   const countMissingAI = useMemo(() => rows.filter((r) => !r.has_ai_metadata).length, [rows]);
   const countNoThumb = useMemo(() => rows.filter((r) => !r.thumbnail_url).length, [rows]);
+  const countPendingProcess = useMemo(() => {
+    const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+    return rows.filter((r) => !r.has_ai_metadata || (!r.audited_at && r.created_at > cutoff)).length;
+  }, [rows]);
 
   // ── Sort handler ──────────────────────────────────────────────────────────────────────────────────────
   function handleSort(col: SortCol) {
@@ -322,88 +323,126 @@ const Logs = () => {
     toast.success("URL updated — run Check all links to verify");
   }
 
-  // ── Audit recent ──────────────────────────────────────────────────────────────────────────────────────────
-  async function handleAuditRecent() {
-    if (!confirm("Audit entries added in the last 3 days and auto-fix mistakes in title, brand, agency and year?")) return;
-    setAuditing(true);
-    setAuditProgress("Starting…");
-    setAuditLog([]);
+  // ── Shared NDJSON stream reader for process-new ──────────────────────────────
+  async function streamProcessNew(res: Response, onFixed?: () => void) {
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+    let fixed = 0;
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let msg: any;
+        try { msg = JSON.parse(line); } catch { continue; }
+        if (msg.type === "progress") { setProcessProgress(msg.message); }
+        else if (msg.type === "fix") {
+          fixed++;
+          setProcessProgress(`Updated "${msg.title}"`);
+          setProcessLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
+        }
+        else if (msg.type === "warn") { setProcessLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50)); }
+        else if (msg.type === "error") { throw new Error(msg.message); }
+        else if (msg.type === "done") {
+          setProcessProgress(msg.message);
+          if (msg.fixed > 0) toast.success(msg.message); else toast.info(msg.message);
+          if (msg.fixed > 0) onFixed?.();
+        }
+      }
+    }
+    return fixed;
+  }
+
+  // ── Process new (bulk) ────────────────────────────────────────────────────────
+  async function handleProcessNew() {
+    if (processing) return;
+    setProcessing(true);
+    setProcessProgress("Starting…");
+    setProcessLog([]);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-recent`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ days: 3 }),
-      });
-      if (!res.ok || !res.body) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(txt || `Audit failed (HTTP ${res.status})`);
-      }
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let fixed = 0;
+      let offset = 0;
       while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          let msg: any;
-          try { msg = JSON.parse(line); } catch { continue; }
-          if (msg.type === "progress") { setAuditProgress(msg.message); }
-          else if (msg.type === "fix") {
-            fixed++;
-            setAuditProgress(`Fixed "${msg.title}"`);
-            setAuditLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
-          }
-          else if (msg.type === "warn") { setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50)); }
-          else if (msg.type === "error") { throw new Error(msg.message); }
-          else if (msg.type === "done") {
-            setAuditProgress(msg.message);
-            if (msg.fixed > 0) toast.success(msg.message); else toast.info(msg.message);
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-new`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ offset }),
+        });
+        if (!res.ok || !res.body) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(txt || `Process failed (HTTP ${res.status})`);
+        }
+        let batchDone: any = null;
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        let fixed = 0;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            let msg: any;
+            try { msg = JSON.parse(line); } catch { continue; }
+            if (msg.type === "progress") { setProcessProgress(msg.message); }
+            else if (msg.type === "fix") {
+              fixed++;
+              setProcessProgress(`Updated "${msg.title}"`);
+              setProcessLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
+            }
+            else if (msg.type === "warn") { setProcessLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50)); }
+            else if (msg.type === "error") { throw new Error(msg.message); }
+            else if (msg.type === "done") { batchDone = msg; setProcessProgress(msg.message); }
           }
         }
+        if (!batchDone || !batchDone.hasMore) break;
+        offset = batchDone.nextOffset ?? offset;
       }
-      if (fixed > 0) {
-        const { data } = await supabase.rpc("get_reference_logs");
-        if (data) {
-          setRows((prev) => {
-            const byId = new Map((data as LogRow[]).map((r) => [r.id, r]));
-            return prev.map((r) => { const fresh = byId.get(r.id); return fresh ? { ...r, title: fresh.title, brand: fresh.brand, agency: fresh.agency, year: fresh.year } : r; });
-          });
-        }
+      const { data } = await supabase.rpc("get_reference_logs");
+      if (data) {
+        const byId = new Map((data as LogRow[]).map((r) => [r.id, r]));
+        setRows((prev) => prev.map((r) => {
+          const fresh = byId.get(r.id);
+          if (!fresh) return r;
+          const merged = { ...r, title: fresh.title, brand: fresh.brand, agency: fresh.agency, year: fresh.year, audited_at: (fresh as any).audited_at ?? r.audited_at };
+          return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
+        }));
       }
     } catch (err: any) {
       toast.error(err.message);
     } finally {
-      setAuditing(false);
+      setProcessing(false);
     }
   }
 
-  // ── Audit single reference ───────────────────────────────────────────────────────────────────────────────────────────────────────
-  async function handleAuditOne(id: string, title: string) {
-    if (auditingId) return;
-    setAuditingId(id);
-    setAuditLog([]);
-    setAuditProgress(`Auditing "${title}"…`);
+  // ── Process single reference (per-row wand) ───────────────────────────────────
+  async function handleProcessOne(id: string, title: string) {
+    if (processingId) return;
+    setProcessingId(id);
+    setProcessLog([]);
+    setProcessProgress(`Processing "${title}"…`);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/audit-recent`, {
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-new`, {
         method: "POST",
         headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
       if (!res.ok || !res.body) {
         const txt = await res.text().catch(() => "");
-        throw new Error(txt || `Audit failed (HTTP ${res.status})`);
+        throw new Error(txt || `Process failed (HTTP ${res.status})`);
       }
+      let fixed = 0;
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
-      let fixed = 0;
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -414,35 +453,36 @@ const Logs = () => {
           if (!line.trim()) continue;
           let msg: any;
           try { msg = JSON.parse(line); } catch { continue; }
-          if (msg.type === "progress") { setAuditProgress(msg.message); }
+          if (msg.type === "progress") { setProcessProgress(msg.message); }
           else if (msg.type === "fix") {
             fixed++;
-            setAuditLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
-          } else if (msg.type === "warn") {
-            setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50));
-          } else if (msg.type === "error") {
-            throw new Error(msg.message);
-          } else if (msg.type === "done") {
-            setAuditProgress(msg.message);
-            if (msg.fixed > 0) toast.success(`"${title}": ${msg.fixed} field(s) corrected`);
-            else toast.info(`"${title}": no changes needed`);
+            setProcessLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
+          }
+          else if (msg.type === "warn") { setProcessLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50)); }
+          else if (msg.type === "error") { throw new Error(msg.message); }
+          else if (msg.type === "done") {
+            setProcessProgress(msg.message);
+            if (fixed > 0) toast.success(`"${title}": updated`); else toast.info(`"${title}": no changes needed`);
           }
         }
       }
       if (fixed > 0) {
         const { data: fresh } = await supabase
           .from("references")
-          .select("id,title,brand,agency,year")
-          .eq("id", id)
-          .maybeSingle();
+          .select("id,title,brand,agency,year,visual_summary,editing_style,audited_at")
+          .eq("id", id).maybeSingle();
         if (fresh) {
-          setRows((prev) => prev.map((r) => r.id === id ? { ...r, ...(fresh as any) } : r));
+          setRows((prev) => prev.map((r) => {
+            if (r.id !== id) return r;
+            const merged = { ...r, ...(fresh as any) };
+            return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
+          }));
         }
       }
     } catch (err: any) {
       toast.error(err.message);
     } finally {
-      setAuditingId(null);
+      setProcessingId(null);
     }
   }
 
@@ -504,51 +544,6 @@ const Logs = () => {
   }
 
 
-  // ── Backfill ──────────────────────────────────────────────────────────────────────────────────────────
-  async function handleBackfillAll() {
-    const pending = rows.filter((r) => !r.has_ai_metadata);
-    if (pending.length === 0) { toast.info("All references already have complete metadata."); return; }
-    if (!confirm(`Generate AI metadata for ${pending.length} reference(s) with missing fields?`)) return;
-    setBackfilling(true);
-    let ok = 0, failed = 0;
-    for (let i = 0; i < pending.length; i++) {
-      const r = pending[i];
-      setBackfillProgress(`${i + 1}/${pending.length} · ${r.title}`);
-      try {
-        await enrichReferenceMetadata(r.id);
-        let fresh = null;
-        for (let attempt = 0; attempt < 2; attempt++) {
-          if (attempt > 0) await new Promise((res) => setTimeout(res, 3000));
-          const { data, error: freshError } = await supabase
-            .from("references").select("brand,agency,year,editing_style,visual_summary").eq("id", r.id).maybeSingle();
-          if (freshError) throw freshError;
-          fresh = data;
-          if (hasCompleteMetadata({ visual_summary: (fresh as any)?.visual_summary ?? null })) break;
-          if (attempt === 0) await enrichReferenceMetadata(r.id);
-        }
-        const complete = hasCompleteMetadata({ visual_summary: (fresh as any)?.visual_summary ?? null });
-        setRows((prev) =>
-          prev.map((x) =>
-            x.id === r.id
-              ? { ...x, brand: fresh?.brand ?? x.brand, agency: fresh?.agency ?? x.agency, year: fresh?.year ?? x.year,
-                  editing_style: (fresh as any)?.editing_style ?? x.editing_style,
-                  visual_summary: (fresh as any)?.visual_summary ?? x.visual_summary,
-                  has_ai_metadata: complete }
-              : x,
-          ),
-        );
-        if (complete) ok++; else failed++;
-      } catch (error: any) {
-        console.error("Backfill failed", r.id, error);
-        failed++;
-      }
-      await new Promise((res) => setTimeout(res, 1200));
-    }
-    setBackfilling(false);
-    setBackfillProgress("");
-    toast.success(`Backfill done · ${ok} updated, ${failed} incomplete`);
-  }
-
   // ── Reports ──────────────────────────────────────────────────────────────────────────────────────────
   async function resolveReport(id: string) {
     const { error } = await supabase.from("reference_reports").update({ resolved: true }).eq("id", id);
@@ -584,24 +579,14 @@ const Logs = () => {
         <div className="container py-3 flex flex-wrap items-center gap-3">
           <Button
             type="button"
-            onClick={handleBackfillAll}
-            disabled={backfilling || countMissingAI === 0}
+            onClick={handleProcessNew}
+            disabled={processing || countPendingProcess === 0}
             variant="outline"
             className="font-mono text-xs uppercase tracking-widest h-9"
+            title="Fill missing metadata and fact-check recent entries in one pass"
           >
             <Sparkles className="h-3.5 w-3.5 mr-2" />
-            {backfilling ? backfillProgress || "Generating…" : `Backfill missing (${countMissingAI})`}
-          </Button>
-          <Button
-            type="button"
-            onClick={handleAuditRecent}
-            disabled={auditing}
-            variant="outline"
-            className="font-mono text-xs uppercase tracking-widest h-9"
-            title="Fact-check the last 3 days of entries and auto-fix wrong title / brand / agency / year"
-          >
-            <Sparkles className="h-3.5 w-3.5 mr-2" />
-            {auditing ? auditProgress || "Auditing…" : "Audit recent (3d)"}
+            {processing ? processProgress || "Processing…" : `Process new (${countPendingProcess})`}
           </Button>
           <Button
             type="button"
@@ -624,18 +609,18 @@ const Logs = () => {
             Force re-enrich
           </button>
         </div>
-        {(auditing || auditingId !== null || auditLog.length > 0) && (
+        {(processing || processingId !== null || processLog.length > 0) && (
           <div className="container pb-3">
             <div className="border hairline bg-secondary/40 max-h-72 overflow-auto p-3 font-mono text-xs leading-relaxed space-y-1.5">
-              {(auditing || auditingId !== null) && (
+              {(processing || processingId !== null) && (
                 <p className="text-primary sticky top-0 bg-secondary/90 backdrop-blur-sm -mx-3 px-3 py-1 mb-1 z-10">
-                  {auditProgress}
+                  {processProgress}
                 </p>
               )}
-              {auditLog.length === 0 && (auditing || auditingId !== null) ? (
-                <p className="text-muted-foreground">Checking entries…</p>
+              {processLog.length === 0 && (processing || processingId !== null) ? (
+                <p className="text-muted-foreground">Processing entries…</p>
               ) : (
-                auditLog.map((e, i) =>
+                processLog.map((e, i) =>
                   e.kind === "warn" ? (
                     <p key={i} className="text-yellow-600/80 py-0.5">⚠ {e.message}</p>
                   ) : (
@@ -925,15 +910,15 @@ const Logs = () => {
                             </button>
                             <span className="w-px h-3.5 bg-border mx-0.5 shrink-0" />
                             <button
-                              onClick={() => handleAuditOne(r.id, r.title)}
-                              disabled={!!auditingId}
+                              onClick={() => handleProcessOne(r.id, r.title)}
+                              disabled={!!processingId}
                               title={
-                                auditingId === r.id ? "Auditing…" :
-                                r.audited_at ? `Audited · ${formatDate(r.audited_at)} — click to re-audit` :
-                                "Not yet audited — click to audit with AI"
+                                processingId === r.id ? "Processing…" :
+                                r.audited_at ? `Processed · ${formatDate(r.audited_at)} — click to re-run` :
+                                "Not yet processed — click to fill & verify with AI"
                               }
                               className={`inline-flex h-5 w-5 items-center justify-center border transition-colors ${
-                                auditingId === r.id
+                                processingId === r.id
                                   ? "border-primary text-primary animate-pulse"
                                   : r.audited_at
                                     ? "bg-primary/10 border-primary/40 text-primary hover:bg-primary/20"
