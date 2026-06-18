@@ -9,8 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff,
-  ArrowUpDown, ArrowUp, ArrowDown, Wand2,
+  Search, Sparkles, X as XIcon, Link2, Link2Off, ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -68,6 +67,55 @@ const formatDate = (s: string | null) => {
   });
 };
 
+// Per-row status badges — replaces the old icon cluster
+function StatusBadges({ r, auditingId, onAudit }: {
+  r: LogRow;
+  auditingId: string | null;
+  onAudit: () => void;
+}) {
+  const issues: React.ReactNode[] = [];
+  if (!r.has_ai_metadata)
+    issues.push(
+      <span key="ai" className="px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest bg-yellow-500/15 text-yellow-500 border border-yellow-500/30">
+        No AI
+      </span>
+    );
+  if (r.link_status === "dead")
+    issues.push(
+      <span key="link" className="px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest bg-destructive/15 text-destructive border border-destructive/30">
+        Dead link
+      </span>
+    );
+  if (!r.thumbnail_url)
+    issues.push(
+      <span key="thumb" className="px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest bg-muted text-muted-foreground border border-border">
+        No thumb
+      </span>
+    );
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {issues.length === 0
+        ? <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">OK</span>
+        : issues}
+      <button
+        onClick={onAudit}
+        disabled={!!auditingId}
+        title={r.audited_at ? `Audited ${formatDate(r.audited_at)} — click to re-audit` : "Audit with AI"}
+        className={`ml-1 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest border transition-colors ${
+          auditingId === r.id
+            ? "border-primary text-primary animate-pulse"
+            : r.audited_at
+              ? "border-primary/30 text-primary/50 hover:border-primary hover:text-primary"
+              : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
+        }`}
+      >
+        {auditingId === r.id ? "…" : r.audited_at ? "✓ Audited" : "Audit"}
+      </button>
+    </div>
+  );
+}
+
 // Compact toggle-button chip group
 function Chips<T extends string>({
   options,
@@ -105,9 +153,7 @@ const Logs = () => {
 
   // Filters
   const [typeFilter, setTypeFilter] = useState<"all" | "video" | "image">("all");
-  const [linkFilter, setLinkFilter] = useState<"all" | "ok" | "dead" | "error" | "unchecked">("all");
-  const [aiFilter, setAiFilter] = useState<"all" | "complete" | "missing">("all");
-  const [thumbFilter, setThumbFilter] = useState<"all" | "has" | "missing">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "issues" | "no_ai" | "dead" | "no_thumb">("all");
 
   // Sort
   const [sortCol, setSortCol] = useState<SortCol>("added");
@@ -120,8 +166,6 @@ const Logs = () => {
   const [auditingId, setAuditingId] = useState<string | null>(null);
   const [auditProgress, setAuditProgress] = useState<string>("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
-  const [enriching, setEnriching] = useState(false);
-  const [enrichProgress, setEnrichProgress] = useState<string>("");
 
   // Link health
   const [linkChecking, setLinkChecking] = useState(false);
@@ -148,7 +192,7 @@ const Logs = () => {
   const countMissingAI = useMemo(() => rows.filter((r) => !r.has_ai_metadata).length, [rows]);
   const countNoThumb = useMemo(() => rows.filter((r) => !r.thumbnail_url).length, [rows]);
 
-  // ── Sort handler ─────────────────────────────────────────────────────────────
+  // ── Sort handler ─────────────────────────────────────────────────────────────────────────
   function handleSort(col: SortCol) {
     if (col === sortCol) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortCol(col); setSortDir("desc"); }
@@ -161,16 +205,14 @@ const Logs = () => {
       : <ArrowDown className="h-3 w-3 ml-1 text-primary" />;
   }
 
-  // ── Filtered + sorted rows ───────────────────────────────────────────────────────
+  // ── Filtered + sorted rows ────────────────────────────────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let result = rows;
     if (typeFilter !== "all") result = result.filter((r) => r.type === typeFilter);
-    if (linkFilter === "unchecked") result = result.filter((r) => !r.link_status);
-    else if (linkFilter !== "all") result = result.filter((r) => r.link_status === linkFilter);
-    if (aiFilter === "complete") result = result.filter((r) => r.has_ai_metadata);
-    else if (aiFilter === "missing") result = result.filter((r) => !r.has_ai_metadata);
-    if (thumbFilter === "has") result = result.filter((r) => !!r.thumbnail_url);
-    else if (thumbFilter === "missing") result = result.filter((r) => !r.thumbnail_url);
+    if (statusFilter === "issues") result = result.filter((r) => !r.has_ai_metadata || r.link_status === "dead" || !r.thumbnail_url);
+    else if (statusFilter === "no_ai") result = result.filter((r) => !r.has_ai_metadata);
+    else if (statusFilter === "dead") result = result.filter((r) => r.link_status === "dead");
+    else if (statusFilter === "no_thumb") result = result.filter((r) => !r.thumbnail_url);
     const q = search.trim().toLowerCase();
     if (q) {
       result = result.filter((r) =>
@@ -186,9 +228,9 @@ const Logs = () => {
       const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [rows, typeFilter, linkFilter, aiFilter, thumbFilter, search, sortCol, sortDir]);
+  }, [rows, typeFilter, statusFilter, search, sortCol, sortDir]);
 
-  // ── Data loading ──────────────────────────────────────────────────────────────
+  // ── Data loading ──────────────────────────────────────────────────────────────────────────────
   async function loadDeadLinks() {
     const { data } = await supabase
       .from("references")
@@ -263,7 +305,7 @@ const Logs = () => {
     })();
   }, [isAdmin]);
 
-  // ── Link health ──────────────────────────────────────────────────────────────
+  // ── Link health ──────────────────────────────────────────────────────────────────────────────
   async function handleCheckLinks() {
     setLinkChecking(true);
     try {
@@ -317,7 +359,7 @@ const Logs = () => {
     toast.success("URL updated — run Check all links to verify");
   }
 
-  // ── Audit recent ────────────────────────────────────────────────────────────
+  // ── Audit recent ──────────────────────────────────────────────────────────────────────────────
   async function handleAuditRecent() {
     if (!confirm("Audit entries added in the last 3 days and auto-fix mistakes in title, brand, agency and year?")) return;
     setAuditing(true);
@@ -378,7 +420,7 @@ const Logs = () => {
     }
   }
 
-  // ── Audit single reference ───────────────────────────────────────────────
+  // ── Audit single reference ─────────────────────────────────────────────────────────────────────────────
   async function handleAuditOne(id: string, title: string) {
     if (auditingId) return;
     setAuditingId(id);
@@ -441,7 +483,7 @@ const Logs = () => {
     }
   }
 
-  // ── Backfill ──────────────────────────────────────────────────────────────
+  // ── Backfill ──────────────────────────────────────────────────────────────────────────────
   async function handleBackfillAll() {
     const pending = rows.filter((r) => !r.has_ai_metadata);
     if (pending.length === 0) { toast.info("All references already have complete metadata."); return; }
@@ -486,80 +528,7 @@ const Logs = () => {
     toast.success(`Backfill done · ${ok} updated, ${failed} incomplete`);
   }
 
-  // ── Enrich visual metadata (web-grounded) ────────────────────────────────
-  async function handleEnrichVisual(opts: { force?: boolean } = {}) {
-    const force = opts.force === true;
-    const label = force
-      ? "Re-enrich ALL published entries (overwrites existing visual_summary / editing_style with web-grounded versions). Continue?"
-      : "Run web-grounded enrichment on entries that haven't been processed yet?";
-    if (!confirm(label)) return;
-    setEnriching(true);
-    setEnrichProgress("Starting…");
-    setAuditLog([]);
-    try {
-      let offset = 0;
-      let totalFixed = 0;
-      let totalChecked = 0;
-      // Page through batches until the function reports no more.
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-visual`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ offset, limit: 50, force }),
-        });
-        if (!res.ok || !res.body) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(txt || `Enrich failed (HTTP ${res.status})`);
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        let hasMore = false;
-        let nextOffset = offset;
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split("\n");
-          buf = lines.pop() ?? "";
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            let msg: any;
-            try { msg = JSON.parse(line); } catch { continue; }
-            if (msg.type === "progress") {
-              setEnrichProgress(msg.message);
-            } else if (msg.type === "fix") {
-              totalFixed++;
-              setEnrichProgress(`Enriched "${msg.title}"`);
-              setAuditLog((prev) => [{ kind: "fix", title: `${msg.title} · ${msg.strength}`, changes: (msg.changes ?? []).map((c: any) => ({ field: c.field, from: null, to: c.to })), reason: null } as AuditEntry, ...prev].slice(0, 80));
-            } else if (msg.type === "skip") {
-              setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 80));
-            } else if (msg.type === "warn") {
-              setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 80));
-            } else if (msg.type === "error") {
-              throw new Error(msg.message);
-            } else if (msg.type === "done") {
-              totalChecked += (msg.checked ?? 0);
-              hasMore = msg.hasMore === true;
-              nextOffset = msg.nextOffset ?? offset;
-              setEnrichProgress(msg.message);
-            }
-          }
-        }
-        if (!hasMore) break;
-        offset = nextOffset;
-      }
-      toast.success(`Enrichment done · ${totalFixed} updated of ${totalChecked} checked`);
-    } catch (err: any) {
-      toast.error(err.message);
-    } finally {
-      setEnriching(false);
-    }
-  }
-
-  // ── Reports ──────────────────────────────────────────────────────────────
+  // ── Reports ──────────────────────────────────────────────────────────────────────────────
   async function resolveReport(id: string) {
     const { error } = await supabase.from("reference_reports").update({ resolved: true }).eq("id", id);
     if (error) { toast.error(error.message); return; }
@@ -567,12 +536,12 @@ const Logs = () => {
     toast.success("Report resolved");
   }
 
-  // ── Guard ──────────────────────────────────────────────────────────────
+  // ── Guard ──────────────────────────────────────────────────────────────────────────────
   if (authLoading) return null;
   if (!user) return <Navigate to="/auth" replace />;
   if (!isAdmin) return <Navigate to="/" replace />;
 
-  // ── Render ──────────────────────────────────────────────────────────────
+  // ── Render ──────────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen grain">
       <PageMeta title="Admin · Logs — The Creatives Room" description="Reference approval logs." noindex />
@@ -613,38 +582,17 @@ const Logs = () => {
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {auditing ? auditProgress || "Auditing…" : "Audit recent (3d)"}
           </Button>
-          <Button
-            type="button"
-            onClick={() => handleEnrichVisual({ force: false })}
-            disabled={enriching}
-            variant="outline"
-            className="font-mono text-[11px] uppercase tracking-widest h-9"
-            title="Scrape the source URL and run a web search for each entry, then write evidence-grounded visual_summary / editing_style. Skips already-enriched entries."
-          >
-            <Sparkles className="h-3.5 w-3.5 mr-2" />
-            {enriching ? enrichProgress || "Enriching…" : "Enrich visual (web)"}
-          </Button>
-          <Button
-            type="button"
-            onClick={() => handleEnrichVisual({ force: true })}
-            disabled={enriching}
-            variant="ghost"
-            className="font-mono text-[11px] uppercase tracking-widest h-9"
-            title="Re-run web-grounded enrichment for ALL entries, including ones already enriched. Overwrites existing summaries."
-          >
-            Force re-enrich
-          </Button>
         </div>
-        {(auditing || auditingId !== null || enriching || auditLog.length > 0) && (
+        {(auditing || auditingId !== null || auditLog.length > 0) && (
           <div className="container pb-3">
             <div className="border hairline bg-secondary/40 max-h-72 overflow-auto p-3 font-mono text-[11px] leading-relaxed space-y-1.5">
-              {(auditing || auditingId !== null || enriching) && (
+              {(auditing || auditingId !== null) && (
                 <p className="text-primary sticky top-0 bg-secondary/90 backdrop-blur-sm -mx-3 px-3 py-1 mb-1 z-10">
-                  {enriching ? enrichProgress : auditProgress}
+                  {auditProgress}
                 </p>
               )}
-              {auditLog.length === 0 && (auditing || auditingId !== null || enriching) ? (
-                <p className="text-muted-foreground">Working…</p>
+              {auditLog.length === 0 && (auditing || auditingId !== null) ? (
+                <p className="text-muted-foreground">Checking entries…</p>
               ) : (
                 auditLog.map((e, i) =>
                   e.kind === "warn" ? (
@@ -693,7 +641,7 @@ const Logs = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* ── ENTRIES TAB ──────────────────────────────────────────────── */}
+          {/* ── ENTRIES TAB ────────────────────────────────────────────────────────────────── */}
           <TabsContent value="entries" className="space-y-6">
 
             {/* Stat cards */}
@@ -702,29 +650,29 @@ const Logs = () => {
                 {
                   label: "Total entries",
                   value: rows.length,
-                  active: typeFilter === "all" && linkFilter === "all" && aiFilter === "all" && thumbFilter === "all",
-                  onClick: () => { setTypeFilter("all"); setLinkFilter("all"); setAiFilter("all"); setThumbFilter("all"); setSearch(""); },
+                  active: typeFilter === "all" && statusFilter === "all",
+                  onClick: () => { setTypeFilter("all"); setStatusFilter("all"); setSearch(""); },
                   warn: false,
                 },
                 {
                   label: "Dead links",
                   value: countDeadLinks,
-                  active: linkFilter === "dead",
-                  onClick: () => setLinkFilter(linkFilter === "dead" ? "all" : "dead"),
+                  active: statusFilter === "dead",
+                  onClick: () => setStatusFilter(statusFilter === "dead" ? "all" : "dead"),
                   warn: countDeadLinks > 0,
                 },
                 {
                   label: "Missing AI",
                   value: countMissingAI,
-                  active: aiFilter === "missing",
-                  onClick: () => setAiFilter(aiFilter === "missing" ? "all" : "missing"),
+                  active: statusFilter === "no_ai",
+                  onClick: () => setStatusFilter(statusFilter === "no_ai" ? "all" : "no_ai"),
                   warn: countMissingAI > 0,
                 },
                 {
                   label: "No thumbnail",
                   value: countNoThumb,
-                  active: thumbFilter === "missing",
-                  onClick: () => setThumbFilter(thumbFilter === "missing" ? "all" : "missing"),
+                  active: statusFilter === "no_thumb",
+                  onClick: () => setStatusFilter(statusFilter === "no_thumb" ? "all" : "no_thumb"),
                   warn: countNoThumb > 0,
                 },
               ].map((card) => (
@@ -750,40 +698,23 @@ const Logs = () => {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <Chips
                   options={[
+                    { label: "All", value: "all" as const },
+                    { label: "Needs attention", value: "issues" as const },
+                    { label: "Missing AI", value: "no_ai" as const },
+                    { label: "Dead link", value: "dead" as const },
+                    { label: "No thumbnail", value: "no_thumb" as const },
+                  ]}
+                  value={statusFilter}
+                  onChange={(v) => setStatusFilter(v as typeof statusFilter)}
+                />
+                <Chips
+                  options={[
                     { label: "All types", value: "all" as const },
                     { label: "Video", value: "video" as const },
                     { label: "Image", value: "image" as const },
                   ]}
                   value={typeFilter}
                   onChange={(v) => setTypeFilter(v as typeof typeFilter)}
-                />
-                <Chips
-                  options={[
-                    { label: "All links", value: "all" as const },
-                    { label: "OK", value: "ok" as const },
-                    { label: "Dead", value: "dead" as const },
-                    { label: "Unchecked", value: "unchecked" as const },
-                  ]}
-                  value={linkFilter}
-                  onChange={(v) => setLinkFilter(v as typeof linkFilter)}
-                />
-                <Chips
-                  options={[
-                    { label: "All AI", value: "all" as const },
-                    { label: "Complete", value: "complete" as const },
-                    { label: "Missing", value: "missing" as const },
-                  ]}
-                  value={aiFilter}
-                  onChange={(v) => setAiFilter(v as typeof aiFilter)}
-                />
-                <Chips
-                  options={[
-                    { label: "All thumbs", value: "all" as const },
-                    { label: "Has", value: "has" as const },
-                    { label: "Missing", value: "missing" as const },
-                  ]}
-                  value={thumbFilter}
-                  onChange={(v) => setThumbFilter(v as typeof thumbFilter)}
                 />
               </div>
               <div className="flex items-center gap-4">
@@ -820,7 +751,7 @@ const Logs = () => {
                           Reference <SortIcon col="title" />
                         </button>
                       </TableHead>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">Checks</TableHead>
+                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">Status</TableHead>
                       <TableHead className="font-mono text-[11px] uppercase tracking-widest">Added by</TableHead>
                       <TableHead className="font-mono text-[11px] uppercase tracking-widest">Approved by</TableHead>
                       <TableHead className="font-mono text-[11px] uppercase tracking-widest">
@@ -859,59 +790,11 @@ const Logs = () => {
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              title={r.has_ai_metadata ? "AI metadata complete" : "Missing AI metadata"}
-                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.has_ai_metadata ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
-                            >
-                              <Sparkles className="h-3 w-3" strokeWidth={r.has_ai_metadata ? 2 : 1.5} />
-                            </span>
-                            <span
-                              title={
-                                r.link_status === "ok" ? `Link OK · ${formatDate(r.link_checked_at ?? null)}` :
-                                r.link_status === "dead" ? `Dead link · ${formatDate(r.link_checked_at ?? null)}` :
-                                r.link_status === "error" ? `Link error · ${formatDate(r.link_checked_at ?? null)}` :
-                                "Link not yet checked"
-                              }
-                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${
-                                r.link_status === "ok" ? "bg-primary/10 text-primary" :
-                                r.link_status === "dead" ? "bg-destructive/15 text-destructive" :
-                                r.link_status === "error" ? "bg-yellow-500/10 text-yellow-500" :
-                                "text-muted-foreground/40"
-                              }`}
-                            >
-                              {r.link_status === "dead"
-                                ? <Link2Off className="h-3 w-3" strokeWidth={2} />
-                                : <Link2 className="h-3 w-3" strokeWidth={r.link_status === "ok" ? 2 : 1} />}
-                            </span>
-                            <span
-                              title={r.thumbnail_url ? "Has thumbnail" : "No thumbnail"}
-                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.thumbnail_url ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
-                            >
-                              {r.thumbnail_url
-                                ? <Check className="h-3 w-3" strokeWidth={2.5} />
-                                : <ImageOff className="h-3 w-3" strokeWidth={1.5} />}
-                            </span>
-                            <span className="w-px h-3.5 bg-border mx-0.5 shrink-0" />
-                            <button
-                              onClick={() => handleAuditOne(r.id, r.title)}
-                              disabled={!!auditingId}
-                              title={
-                                auditingId === r.id ? "Auditing…" :
-                                r.audited_at ? `Audited · ${formatDate(r.audited_at)} — click to re-audit` :
-                                "Not yet audited — click to audit with AI"
-                              }
-                              className={`inline-flex h-5 w-5 items-center justify-center border transition-colors ${
-                                auditingId === r.id
-                                  ? "border-primary text-primary animate-pulse"
-                                  : r.audited_at
-                                    ? "bg-primary/10 border-primary/40 text-primary hover:bg-primary/20"
-                                    : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
-                              }`}
-                            >
-                              <Wand2 className="h-3 w-3" strokeWidth={r.audited_at ? 2 : 1.5} />
-                            </button>
-                          </div>
+                          <StatusBadges
+                            r={r}
+                            auditingId={auditingId}
+                            onAudit={() => handleAuditOne(r.id, r.title)}
+                          />
                         </TableCell>
                         <TableCell className="font-mono text-xs">
                           {r.created_by_email || (r.created_by ? "—" : "system")}
@@ -929,7 +812,7 @@ const Logs = () => {
             )}
           </TabsContent>
 
-          {/* ── LINK HEALTH TAB ──────────────────────────────────────────── */}
+          {/* ── LINK HEALTH TAB ────────────────────────────────────────────────────────────── */}
           <TabsContent value="health" className="space-y-4">
             <div className="flex flex-wrap items-center gap-3">
               {deadLinks.length > 0 && (
@@ -1034,7 +917,7 @@ const Logs = () => {
             )}
           </TabsContent>
 
-          {/* ── REPORTS TAB ──────────────────────────────────────────── */}
+          {/* ── REPORTS TAB ────────────────────────────────────────────────────────────────── */}
           <TabsContent value="reports">
             {reports.length === 0 ? (
               <p className="font-mono text-xs text-muted-foreground">No pending reports.</p>
