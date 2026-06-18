@@ -613,8 +613,29 @@ const Logs = () => {
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {auditing ? auditProgress || "Auditing…" : "Audit recent (3d)"}
           </Button>
+          <Button
+            type="button"
+            onClick={() => handleEnrichVisual({ force: false })}
+            disabled={enriching}
+            variant="outline"
+            className="font-mono text-[11px] uppercase tracking-widest h-9"
+            title="Scrape the source URL and run a web search for each entry, then write evidence-grounded visual_summary / editing_style. Skips already-enriched entries."
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-2" />
+            {enriching ? enrichProgress || "Enriching…" : "Enrich visual (web)"}
+          </Button>
+          <Button
+            type="button"
+            onClick={() => handleEnrichVisual({ force: true })}
+            disabled={enriching}
+            variant="ghost"
+            className="font-mono text-[11px] uppercase tracking-widest h-9"
+            title="Re-run web-grounded enrichment for ALL entries, including ones already enriched. Overwrites existing summaries."
+          >
+            Force re-enrich
+          </Button>
         </div>
-        {(auditing || auditingId !== null || auditLog.length > 0) && (
+        {(auditing || auditingId !== null || enriching || auditLog.length > 0) && (
           <div className="container pb-3">
             <div className="border hairline bg-secondary/40 max-h-72 overflow-auto p-3 font-mono text-[11px] leading-relaxed space-y-1.5">
               {(auditing || auditingId !== null) && (
