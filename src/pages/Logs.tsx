@@ -910,7 +910,12 @@ const Logs = () => {
                             <StatusPill
                               label={r.has_ai_metadata ? "AI ✓" : "AI —"}
                               state={r.has_ai_metadata ? "ok" : "off"}
-                              title={r.has_ai_metadata ? "AI metadata enriched" : "Not yet enriched"}
+                              title={r.has_ai_metadata ? "AI metadata complete" : "Missing AI metadata"}
+                            />
+                            <StatusPill
+                              label={r.visual_enriched_at ? "Web ✓" : "Web —"}
+                              state={r.visual_enriched_at ? "ok" : "off"}
+                              title={r.visual_enriched_at ? `Web-enriched · ${formatDate(r.visual_enriched_at)}` : "Not yet web-enriched"}
                             />
                             <StatusPill
                               label={
