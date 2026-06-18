@@ -46,6 +46,7 @@ type LogRow = {
   link_status?: string | null;
   link_checked_at?: string | null;
   audited_at?: string | null;
+  visual_enriched_at?: string | null;
 };
 
 type SortCol = "added" | "approved" | "title";
