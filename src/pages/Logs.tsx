@@ -589,12 +589,6 @@ const Logs = () => {
         <Tabs defaultValue="entries">
           <TabsList className="mb-8 font-mono text-xs uppercase tracking-widest">
             <TabsTrigger value="entries">Entries ({rows.length})</TabsTrigger>
-            <TabsTrigger value="health">
-              Link health{deadLinks.length > 0 ? ` · ${deadLinks.length} dead` : ""}
-            </TabsTrigger>
-            <TabsTrigger value="reports">
-              Reports{reports.length > 0 ? ` · ${reports.length}` : ""}
-            </TabsTrigger>
           </TabsList>
 
           {/* ── ENTRIES TAB ────────────────────────────────────────────────────────────────────────────────── */}
