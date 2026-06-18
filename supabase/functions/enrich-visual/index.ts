@@ -221,18 +221,55 @@ async function fetchPageContext(url: string | null, firecrawlKey: string | null)
   } catch { return null; }
 }
 
-// ── Web search — biased toward press / award / case-study sources ───────────
+// ── Web search — Google Custom Search API ──────────────────────────────────
+// Uses Google's index for far better coverage of ad industry press (LBB,
+// Shots, Creative Review, Ads of the World, Cannes, D&AD, etc.).
+// Falls back to Firecrawl search if Google keys are not configured.
 
-async function fetchSearchSnippets(ref: RefRow, firecrawlKey: string | null): Promise<string | null> {
-  if (!firecrawlKey) return null;
+async function fetchSearchSnippets(
+  ref: RefRow,
+  firecrawlKey: string | null,
+  googleKey: string | null,
+  googleCx: string | null,
+): Promise<string | null> {
   const base = [ref.title, ref.brand, ref.year ? String(ref.year) : null].filter(Boolean).join(" ");
   if (!base.trim()) return null;
 
-  // Separate queries for video vs image — target different press vocabulary
   const query = ref.type === "video"
-    ? `${base} ad commercial director agency making-of case study award`
-    : `${base} campaign photographer art director lookbook case study`;
+    ? `${base} ad commercial director agency "making of" OR "case study" OR award`
+    : `${base} campaign photographer "art director" OR lookbook OR "case study"`;
 
+  // ── Google Custom Search (primary) ──────────────────────────────────────
+  if (googleKey && googleCx) {
+    try {
+      const url = new URL("https://www.googleapis.com/customsearch/v1");
+      url.searchParams.set("key", googleKey);
+      url.searchParams.set("cx", googleCx);
+      url.searchParams.set("q", query);
+      url.searchParams.set("num", "8");
+
+      const resp = await fetch(url.toString(), { signal: AbortSignal.timeout(15000) });
+      if (resp.ok) {
+        const json = await resp.json().catch(() => null);
+        const items: Record<string, unknown>[] = Array.isArray(json?.items) ? json.items : [];
+        const lines = items.slice(0, 8).map((r, i) => {
+          const t = typeof r.title === "string" ? r.title.slice(0, 200) : "";
+          const u = typeof r.link === "string" ? r.link : "";
+          // Use snippet + any metatags description for richer context
+          const snippet = typeof r.snippet === "string" ? r.snippet.slice(0, 400) : "";
+          const meta = (r.pagemap as any)?.metatags?.[0];
+          const ogDesc = typeof meta?.["og:description"] === "string"
+            ? meta["og:description"].slice(0, 400) : "";
+          const body = ogDesc && ogDesc !== snippet ? `${snippet}\n    ${ogDesc}` : snippet;
+          return `[${i + 1}] ${t}\n    ${u}\n    ${body}`;
+        });
+        if (lines.length > 0) return lines.join("\n");
+      }
+    } catch { /* fall through to Firecrawl */ }
+  }
+
+  // ── Firecrawl search fallback ────────────────────────────────────────────
+  if (!firecrawlKey) return null;
   try {
     const resp = await fetch("https://api.firecrawl.dev/v2/search", {
       method: "POST",
@@ -260,6 +297,8 @@ async function enrichOne(
   apiKey: string,
   firecrawlKey: string | null,
   ytKey: string | null,
+  googleKey: string | null,
+  googleCx: string | null,
 ): Promise<{ visual_summary: string | null; editing_style: string | null; evidence_strength: string } | null> {
   const url = ref.source_url;
 
@@ -272,7 +311,7 @@ async function enrichOne(
         ? Promise.all([fetchVimeoMetadata(url!), fetchPageContext(url, firecrawlKey)])
             .then(([v, f]) => [v, f].filter(Boolean).join("\n\n") || null)
         : fetchPageContext(url, firecrawlKey),
-    fetchSearchSnippets(ref, firecrawlKey),
+    fetchSearchSnippets(ref, firecrawlKey, googleKey, googleCx),
   ]);
 
   if (!pageContext && !searchSnippets) {
@@ -345,6 +384,8 @@ Deno.serve(async (req) => {
         const apiKey = Deno.env.get("LOVABLE_API_KEY");
         const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY") ?? null;
         const ytKey = Deno.env.get("YOUTUBE_API_KEY") ?? null;
+        const googleKey = Deno.env.get("GOOGLE_CSE_KEY") ?? null;
+        const googleCx = Deno.env.get("GOOGLE_CSE_CX") ?? null;
         const authHeader = req.headers.get("Authorization") || "";
 
         const userClient = createClient(supabaseUrl, serviceKey, {
@@ -357,7 +398,8 @@ Deno.serve(async (req) => {
         const { data: isAdmin } = await userClient.rpc("has_role", { _user_id: user.id, _role: "admin" });
         if (!isAdmin) { send({ type: "error", message: "Admin only" }); controller.close(); return; }
         if (!apiKey) { send({ type: "error", message: "LOVABLE_API_KEY not configured" }); controller.close(); return; }
-        if (!firecrawlKey) send({ type: "warn", message: "FIRECRAWL_API_KEY not configured — web search disabled." });
+        if (!googleKey || !googleCx) send({ type: "warn", message: "GOOGLE_CSE_KEY / GOOGLE_CSE_CX not configured — falling back to Firecrawl search." });
+        if (!firecrawlKey && (!googleKey || !googleCx)) send({ type: "warn", message: "No search API configured — web search disabled." });
         if (!ytKey) send({ type: "warn", message: "YOUTUBE_API_KEY not configured — YouTube videos will use oEmbed only (no description or hashtags)." });
 
         const body = await req.json().catch(() => ({}));
@@ -380,7 +422,7 @@ Deno.serve(async (req) => {
           }
           send({ type: "progress", message: `Enriching "${singleRef.title}"…` });
           try {
-            const result = await enrichOne(singleRef as RefRow, apiKey, firecrawlKey, ytKey);
+            const result = await enrichOne(singleRef as RefRow, apiKey, firecrawlKey, ytKey, googleKey, googleCx);
             const nowIso = new Date().toISOString();
             const update: Record<string, unknown> = { visual_enriched_at: nowIso };
             const changes: { field: string; to: string | null }[] = [];
@@ -447,7 +489,7 @@ Deno.serve(async (req) => {
             chunk.map(async (ref) => {
               const nowIso = new Date().toISOString();
               try {
-                const result = await enrichOne(ref, apiKey, firecrawlKey, ytKey);
+                const result = await enrichOne(ref, apiKey, firecrawlKey, ytKey, googleKey, googleCx);
                 checked++;
                 const update: Record<string, unknown> = { visual_enriched_at: nowIso };
                 const changes: { field: string; to: string | null }[] = [];
