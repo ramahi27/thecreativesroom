@@ -107,6 +107,7 @@ const Logs = () => {
   const [typeFilter, setTypeFilter] = useState<"all" | "video" | "image">("all");
   const [linkFilter, setLinkFilter] = useState<"all" | "ok" | "dead" | "error" | "unchecked">("all");
   const [aiFilter, setAiFilter] = useState<"all" | "complete" | "missing">("all");
+  const [visualFilter, setVisualFilter] = useState<"all" | "enriched" | "missing">("all");
 
   // Sort
   const [sortCol, setSortCol] = useState<SortCol>("added");
@@ -171,6 +172,8 @@ const Logs = () => {
     else if (linkFilter !== "all") result = result.filter((r) => r.link_status === linkFilter);
     if (aiFilter === "complete") result = result.filter((r) => r.has_ai_metadata);
     else if (aiFilter === "missing") result = result.filter((r) => !r.has_ai_metadata);
+    if (visualFilter === "enriched") result = result.filter((r) => !!r.visual_enriched_at);
+    else if (visualFilter === "missing") result = result.filter((r) => !r.visual_enriched_at);
     const q = search.trim().toLowerCase();
     if (q) {
       result = result.filter((r) =>
@@ -186,7 +189,7 @@ const Logs = () => {
       const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [rows, typeFilter, linkFilter, aiFilter, search, sortCol, sortDir]);
+  }, [rows, typeFilter, linkFilter, aiFilter, visualFilter, search, sortCol, sortDir]);
 
   // ── Data loading ──────────────────────────────────────────────────────────────────────────────────────────
   async function loadDeadLinks() {
@@ -696,8 +699,8 @@ const Logs = () => {
                 {
                   label: "Total entries",
                   value: rows.length,
-                  active: typeFilter === "all" && linkFilter === "all" && aiFilter === "all",
-                  onClick: () => { setTypeFilter("all"); setLinkFilter("all"); setAiFilter("all"); setSearch(""); },
+                  active: typeFilter === "all" && linkFilter === "all" && aiFilter === "all" && visualFilter === "all",
+                  onClick: () => { setTypeFilter("all"); setLinkFilter("all"); setAiFilter("all"); setVisualFilter("all"); setSearch(""); },
                   warn: false,
                 },
                 {
@@ -717,8 +720,8 @@ const Logs = () => {
                 {
                   label: "Not enriched",
                   value: countNotEnriched,
-                  active: false,
-                  onClick: () => {},
+                  active: visualFilter === "missing",
+                  onClick: () => setVisualFilter(visualFilter === "missing" ? "all" : "missing"),
                   warn: countNotEnriched > 0,
                 },
               ].map((card) => (
@@ -783,6 +786,20 @@ const Logs = () => {
                         ]}
                         value={aiFilter}
                         onChange={(v) => setAiFilter(v as typeof aiFilter)}
+                      />
+                    ),
+                  },
+                  {
+                    label: "Visual",
+                    node: (
+                      <Chips
+                        options={[
+                          { label: "All", value: "all" as const },
+                          { label: "Enriched", value: "enriched" as const },
+                          { label: "Missing", value: "missing" as const },
+                        ]}
+                        value={visualFilter}
+                        onChange={(v) => setVisualFilter(v as typeof visualFilter)}
                       />
                     ),
                   },
