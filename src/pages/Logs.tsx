@@ -499,6 +499,7 @@ const Logs = () => {
   }
 
 
+  // ── Backfill ──────────────────────────────────────────────────────────────────────────────────────────
   async function handleBackfillAll() {
     const pending = rows.filter((r) => !r.has_ai_metadata);
     if (pending.length === 0) { toast.info("All references already have complete metadata."); return; }
