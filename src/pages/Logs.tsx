@@ -529,6 +529,79 @@ const Logs = () => {
     toast.success(`Backfill done · ${ok} updated, ${failed} incomplete`);
   }
 
+  // ── Enrich visual (web-grounded) ─────────────────────────────────────────────
+  async function handleEnrichVisual(force: boolean) {
+    const label = force ? "Force re-enrich ALL published references" : "Enrich references missing web-grounded metadata";
+    if (!confirm(`${label}? This calls Firecrawl + AI for each entry and may take several minutes.`)) return;
+    setEnriching(true);
+    setEnrichProgress("Starting…");
+    setAuditLog([]);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-visual`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ force }),
+      });
+      if (!res.ok || !res.body) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(txt || `Enrich failed (HTTP ${res.status})`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let updated = 0;
+      const touched: string[] = [];
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let msg: any;
+          try { msg = JSON.parse(line); } catch { continue; }
+          if (msg.type === "progress") setEnrichProgress(msg.message);
+          else if (msg.type === "fix" || msg.type === "update") {
+            updated++;
+            setEnrichProgress(`Enriched "${msg.title}"`);
+            touched.push(msg.id);
+            setAuditLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
+          }
+          else if (msg.type === "warn") setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50));
+          else if (msg.type === "error") throw new Error(msg.message);
+          else if (msg.type === "done") {
+            setEnrichProgress(msg.message || `Done · ${updated} enriched`);
+            if (updated > 0) toast.success(msg.message || `${updated} enriched`); else toast.info(msg.message || "No entries to enrich");
+          }
+        }
+      }
+      if (touched.length > 0) {
+        const { data: fresh } = await supabase
+          .from("references")
+          .select("id,editing_style,visual_summary,visual_enriched_at")
+          .in("id", touched);
+        if (fresh) {
+          const byId = new Map((fresh as any[]).map((r) => [r.id, r]));
+          setRows((prev) =>
+            prev.map((r) => {
+              const f = byId.get(r.id);
+              if (!f) return r;
+              const merged = { ...r, editing_style: f.editing_style ?? r.editing_style, visual_summary: f.visual_summary ?? r.visual_summary, visual_enriched_at: f.visual_enriched_at ?? r.visual_enriched_at };
+              return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
+            }),
+          );
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setEnriching(false);
+    }
+  }
+
+
   // ── Reports ──────────────────────────────────────────────────────────────────────────────
   async function resolveReport(id: string) {
     const { error } = await supabase.from("reference_reports").update({ resolved: true }).eq("id", id);
