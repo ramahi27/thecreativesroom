@@ -190,18 +190,32 @@ Deno.serve(async (req) => {
       [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
     }
 
+    // Strip prior brief-feedback artefacts so the AI doesn't recycle past matches.
+    const cleanNotes = (notes: string | null | undefined): string => {
+      if (!notes) return "";
+      return notes
+        .split("\n")
+        .filter((l) => !l.trim().startsWith("[brief match]"))
+        .join("\n")
+        .trim();
+    };
+    const cleanTags = (tags: string[] | null | undefined): string[] =>
+      (tags ?? []).filter(
+        (t) => !t.startsWith("brief_reason:") && !t.startsWith("brief:")
+      );
+
     const compact = filtered.map((r: any) => ({
       id: r.id,
       title: r.title,
       brand: r.brand ?? null,
       agency: r.agency ?? null,
-      tags: r.tags ?? [],
+      tags: cleanTags(r.tags),
       categories: r.categories ?? [],
       format: r.type,
       visual_summary: r.visual_summary ?? null,
       editing_style: r.editing_style ?? null,
       // include notes only as fallback when no visual_summary exists yet
-      notes: r.visual_summary ? null : (r.notes ?? "").slice(0, 150),
+      notes: r.visual_summary ? null : cleanNotes(r.notes).slice(0, 150),
     }));
 
     const systemPrompt = `You are a senior creative director and visual research expert with 20 years of experience across advertising, film, and commercial photography. You specialise in identifying precise visual, tonal, and stylistic references for creative briefs.
