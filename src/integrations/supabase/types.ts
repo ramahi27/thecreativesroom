@@ -465,6 +465,7 @@ export type Database = {
           title: string
           type: string
           updated_at: string
+          visual_enriched_at: string | null
           visual_summary: string | null
           year: number | null
         }
@@ -493,6 +494,7 @@ export type Database = {
           title: string
           type: string
           updated_at?: string
+          visual_enriched_at?: string | null
           visual_summary?: string | null
           year?: number | null
         }
@@ -521,6 +523,7 @@ export type Database = {
           title?: string
           type?: string
           updated_at?: string
+          visual_enriched_at?: string | null
           visual_summary?: string | null
           year?: number | null
         }

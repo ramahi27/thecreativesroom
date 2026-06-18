@@ -1,36 +1,62 @@
 ## Goal
-Make the YouTube download button return a real **1080p MP4 with audio**, instead of the current 720p combined stream (or 360p fallback).
 
-## Why it doesn't work today
-- `yt-dlp-server/main.py` uses `-f "22/18/best[height<=720]"`. Itag 22 = 720p combined, itag 18 = 360p combined. YouTube never serves 1080p as a combined stream, so 1080p is impossible with this format string.
-- The Cloudflare Worker's RapidAPI fallback (`cloudflare-worker/worker.js`) also explicitly prefers itag 22 (720p) and picks the first single MP4 URL — RapidAPI's `yt-api` returns adaptive video-only streams for 1080p, so the resulting file would have no audio.
+Stop generating visual metadata from the model's training knowledge alone. For every reference we backfill or refresh, **scrape real evidence from the web first** — the project's source URL, plus a targeted web search for the campaign — then have the AI write `visual_summary` and `editing_style` grounded in that evidence. This is what's missing today: `generate-metadata` never opens a browser, so the model invents plausible-but-generic descriptions ("lively pace, quick cuts, vibrant palette") that all blur together and make brief matching weak.
 
-## Changes
+## How it will work
 
-### 1. `yt-dlp-server/main.py` — switch to merged 1080p
-Replace the format selector and let yt-dlp merge with ffmpeg (already in the Docker image):
+New edge function `enrich-visual` (admin-only, NDJSON streamed progress, same shape as `audit-recent`):
 
-- Format: `bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b[height<=1080]`
-  - Picks best mp4 video up to 1080p + best m4a audio, falls back to any best ≤1080p.
-- Add `--merge-output-format mp4` so the merged file is a clean MP4.
-- Keep timeout headroom: bump `subprocess.run` timeout from 60s to 120s (merging takes longer than a single combined download).
-- Keep the iOS/Android/web extractor args — they're needed to bypass YouTube's anti-bot.
+For each reference it processes:
 
-### 2. `cloudflare-worker/worker.js` — fix the RapidAPI fallback (or drop it)
-RapidAPI cannot return a merged 1080p file. Two options, recommend **A**:
+1. **Scrape the source URL** with Firecrawl (`formats: ['summary', 'markdown']`, `onlyMainContent: true`). Captures the page title, meta description, scraped body, and Firecrawl's AI summary.
+2. **Run a targeted web search** via Firecrawl `/search` with a query built from `title + brand + year + "campaign editing style"` (limit 5, no scrape). Captures press / award / case-study snippets that often describe pacing, transitions, palette and director.
+3. **Send all of that** as `evidence:` context to gemini-2.5-pro through the existing AI gateway. The prompt requires:
+   - Cite **concrete observed details** (named directors / DPs / editors when found, specific colour names, specific shot/edit devices like "whip pans", "L-cuts", "single take", "split screen") rather than generic adjectives.
+   - **Forbid filler words** ("lively", "vibrant", "dynamic", "engaging", "bright and clean") — the model must rewrite or omit.
+   - If evidence is thin, return `null` for that field instead of guessing — better to leave blank than pollute.
+   - `editing_style` only for `type='video'`; `visual_summary` for both.
+4. **Update the row** with whatever non-null fields came back, plus a new `visual_enriched_at` timestamp so we can re-run only what hasn't been processed.
 
-**A. Keep RapidAPI as a 720p-with-audio fallback only.** Change the sort to only consider formats whose `mimeType` indicates both video AND audio (e.g. `mimeType.includes("video/mp4") && mimeType.includes("audio")` — yt-api marks combined streams this way), and prefer itag 22 then itag 18. This guarantees audio when yt-dlp is unreachable, accepting 720p as the fallback ceiling.
+### Schema change
 
-**B.** Remove the RapidAPI branch entirely and rely solely on the yt-dlp server.
+Add one column to `references`:
+- `visual_enriched_at timestamptz null` — lets the function paginate ("WHERE visual_enriched_at IS NULL OR < cutoff") and lets us track coverage.
 
-I'll go with **A** unless you say otherwise.
+### Logs page UI
 
-### 3. Redeploy
-- yt-dlp server: needs a redeploy on whatever host runs the Docker image (Fly / Render / etc.) — I'll flag this; you'll need to push the new image since the sandbox can't deploy your external server.
-- Cloudflare Worker: paste the updated `worker.js` into the Cloudflare dashboard (same manual step described in `cloudflare-worker/README.md`).
+In `src/pages/Logs.tsx`, add a new button next to the existing audit controls:
 
-No changes needed in `src/lib/youtubeDownload.ts` or the Supabase edge function — they just proxy the resulting MP4 through.
+- **"Enrich visual metadata"** — runs `enrich-visual` in batch mode, streams progress (same UX as `audit-recent`).
+- Optional **"force re-enrich"** toggle to reprocess already-enriched rows when we tune the prompt.
+- Single-row mode triggered from the existing row actions to test on one reference.
+
+### Where the brief matcher benefits
+
+No change needed in `match-brief` — it already reads `visual_summary` / `editing_style` as the primary signals. Once the enriched values are specific instead of generic, briefs like "quick cuts" will rank refs that **actually** use quick cuts above refs whose description just happened to contain that phrase.
 
 ## Out of scope
-- Vimeo downloads (current `download-video` edge function only returns the Vimeo page URL — separate issue, let me know if you want that fixed too).
-- Quality picker UI (always returns best ≤1080p; ask if you want 720/1080 toggle).
+
+- No structured/categorical tag fields (we discussed earlier; deferred — let's see how much pure-prose accuracy improves first).
+- No automatic re-enrichment cron — manual button only.
+- No change to the front-end brief page itself.
+
+## Technical details
+
+- **Firecrawl**: already connected (`FIRECRAWL_API_KEY` used by `audit-recent`).
+- **AI model**: `google/gemini-2.5-pro` (same as `audit-recent`), tool-calling to enforce the output shape.
+- **Concurrency**: 5 per batch (matches `audit-recent`).
+- **Cost guardrail**: per-invocation `limit` capped at 100 refs (default 50), client paginates via `offset` until `hasMore=false`.
+- **Failure handling**: if Firecrawl returns nothing AND search returns nothing, skip the row (leave fields untouched, still stamp `visual_enriched_at` so we don't retry forever — admin can clear it manually to retry).
+- **Estimated cost**: ~922 refs × (1 scrape + 1 search + 1 pro call) ≈ a few dollars of Firecrawl credits + AI credits for a full backfill. Incremental on new uploads is negligible.
+
+```text
+[Logs page]
+   │ click "Enrich visual metadata"
+   ▼
+[enrich-visual edge fn]  ── Firecrawl scrape(source_url) ─┐
+   │                     ── Firecrawl search(title+brand)┤
+   │                                                     ▼
+   │                     ── gemini-2.5-pro (evidence as context)
+   ▼
+[references row: visual_summary, editing_style, visual_enriched_at]
+```
