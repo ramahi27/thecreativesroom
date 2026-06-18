@@ -9,8 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff,
-  ArrowUpDown, ArrowUp, ArrowDown, Wand2,
+  Search, Sparkles, X as XIcon, Link2, Link2Off,
+  ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
