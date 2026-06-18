@@ -669,7 +669,7 @@ const Index = () => {
                       {Array.from({ length: briefUsage.limit }).map((_, i) => (
                         <div
                           key={i}
-                          className={`h-1.5 w-1.5 rounded-full transition-colors ${i < briefUsage.used ? "bg-foreground/50" : "bg-foreground/12"}`}
+                          className={`h-1.5 w-1.5 rounded-full transition-colors ${i < briefUsage.used ? "bg-foreground/50" : "bg-foreground/10"}`}
                         />
                       ))}
                     </div>
