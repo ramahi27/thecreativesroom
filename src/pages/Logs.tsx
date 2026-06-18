@@ -689,20 +689,32 @@ const Logs = () => {
             </div>
 
             {/* Filter chips + search */}
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <Chips
+            <div className="space-y-3 border hairline p-4 bg-secondary/20">
+              <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
+                <FilterGroup
+                  label="Type"
                   options={[
-                    { label: "All types", value: "all" as const },
+                    { label: "All", value: "all" as const },
                     { label: "Video", value: "video" as const },
                     { label: "Image", value: "image" as const },
                   ]}
                   value={typeFilter}
                   onChange={(v) => setTypeFilter(v as typeof typeFilter)}
                 />
-                <Chips
+                <FilterGroup
+                  label="AI"
                   options={[
-                    { label: "All links", value: "all" as const },
+                    { label: "All", value: "all" as const },
+                    { label: "Enriched", value: "complete" as const },
+                    { label: "Not enriched", value: "missing" as const },
+                  ]}
+                  value={aiFilter}
+                  onChange={(v) => setAiFilter(v as typeof aiFilter)}
+                />
+                <FilterGroup
+                  label="Link"
+                  options={[
+                    { label: "All", value: "all" as const },
                     { label: "OK", value: "ok" as const },
                     { label: "Dead", value: "dead" as const },
                     { label: "Unchecked", value: "unchecked" as const },
@@ -710,18 +722,10 @@ const Logs = () => {
                   value={linkFilter}
                   onChange={(v) => setLinkFilter(v as typeof linkFilter)}
                 />
-                <Chips
+                <FilterGroup
+                  label="Thumb"
                   options={[
-                    { label: "All AI", value: "all" as const },
-                    { label: "Complete", value: "complete" as const },
-                    { label: "Missing", value: "missing" as const },
-                  ]}
-                  value={aiFilter}
-                  onChange={(v) => setAiFilter(v as typeof aiFilter)}
-                />
-                <Chips
-                  options={[
-                    { label: "All thumbs", value: "all" as const },
+                    { label: "All", value: "all" as const },
                     { label: "Has", value: "has" as const },
                     { label: "Missing", value: "missing" as const },
                   ]}
@@ -729,14 +733,14 @@ const Logs = () => {
                   onChange={(v) => setThumbFilter(v as typeof thumbFilter)}
                 />
               </div>
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 pt-3 border-t hairline">
                 <div className="relative max-w-sm flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
                   <Input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search title, brand, email…"
-                    className="pl-9 bg-secondary border-0 font-mono text-xs"
+                    className="pl-9 bg-background border-0 font-mono text-xs"
                   />
                 </div>
                 {filtered.length !== rows.length && (
