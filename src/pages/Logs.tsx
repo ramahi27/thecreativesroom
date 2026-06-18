@@ -656,17 +656,38 @@ const Logs = () => {
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {auditing ? auditProgress || "Auditing…" : "Audit recent (3d)"}
           </Button>
+          <span className="w-px h-5 bg-border mx-1" />
+          <Button
+            type="button"
+            onClick={() => handleEnrichVisual(false)}
+            disabled={enriching}
+            variant="outline"
+            className="font-mono text-[11px] uppercase tracking-widest h-9"
+            title="Scrape each reference + web search, then regenerate visual_summary / editing_style from real evidence (skips already-enriched)."
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-2" />
+            {enriching ? enrichProgress || "Enriching…" : "Enrich visual (web)"}
+          </Button>
+          <button
+            type="button"
+            onClick={() => handleEnrichVisual(true)}
+            disabled={enriching}
+            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+            title="Re-run enrichment on EVERY published reference, overwriting existing visual metadata."
+          >
+            Force re-enrich
+          </button>
         </div>
-        {(auditing || auditingId !== null || auditLog.length > 0) && (
+        {(auditing || auditingId !== null || enriching || auditLog.length > 0) && (
           <div className="container pb-3">
             <div className="border hairline bg-secondary/40 max-h-72 overflow-auto p-3 font-mono text-[11px] leading-relaxed space-y-1.5">
-              {(auditing || auditingId !== null) && (
+              {(auditing || auditingId !== null || enriching) && (
                 <p className="text-primary sticky top-0 bg-secondary/90 backdrop-blur-sm -mx-3 px-3 py-1 mb-1 z-10">
-                  {auditProgress}
+                  {enriching ? enrichProgress : auditProgress}
                 </p>
               )}
-              {auditLog.length === 0 && (auditing || auditingId !== null) ? (
-                <p className="text-muted-foreground">Checking entries…</p>
+              {auditLog.length === 0 && (auditing || auditingId !== null || enriching) ? (
+                <p className="text-muted-foreground">Working…</p>
               ) : (
                 auditLog.map((e, i) =>
                   e.kind === "warn" ? (
