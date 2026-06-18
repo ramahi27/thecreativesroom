@@ -120,6 +120,8 @@ const Logs = () => {
   const [auditingId, setAuditingId] = useState<string | null>(null);
   const [auditProgress, setAuditProgress] = useState<string>("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichProgress, setEnrichProgress] = useState<string>("");
 
   // Link health
   const [linkChecking, setLinkChecking] = useState(false);
