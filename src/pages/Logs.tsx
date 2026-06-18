@@ -120,6 +120,8 @@ const Logs = () => {
   const [auditingId, setAuditingId] = useState<string | null>(null);
   const [auditProgress, setAuditProgress] = useState<string>("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  const [enriching, setEnriching] = useState(false);
+  const [enrichProgress, setEnrichProgress] = useState<string>("");
 
   // Link health
   const [linkChecking, setLinkChecking] = useState(false);
@@ -484,6 +486,79 @@ const Logs = () => {
     toast.success(`Backfill done · ${ok} updated, ${failed} incomplete`);
   }
 
+  // ── Enrich visual metadata (web-grounded) ────────────────────────────────
+  async function handleEnrichVisual(opts: { force?: boolean } = {}) {
+    const force = opts.force === true;
+    const label = force
+      ? "Re-enrich ALL published entries (overwrites existing visual_summary / editing_style with web-grounded versions). Continue?"
+      : "Run web-grounded enrichment on entries that haven't been processed yet?";
+    if (!confirm(label)) return;
+    setEnriching(true);
+    setEnrichProgress("Starting…");
+    setAuditLog([]);
+    try {
+      let offset = 0;
+      let totalFixed = 0;
+      let totalChecked = 0;
+      // Page through batches until the function reports no more.
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-visual`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ offset, limit: 50, force }),
+        });
+        if (!res.ok || !res.body) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(txt || `Enrich failed (HTTP ${res.status})`);
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        let hasMore = false;
+        let nextOffset = offset;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            let msg: any;
+            try { msg = JSON.parse(line); } catch { continue; }
+            if (msg.type === "progress") {
+              setEnrichProgress(msg.message);
+            } else if (msg.type === "fix") {
+              totalFixed++;
+              setEnrichProgress(`Enriched "${msg.title}"`);
+              setAuditLog((prev) => [{ kind: "fix", title: `${msg.title} · ${msg.strength}`, changes: (msg.changes ?? []).map((c: any) => ({ field: c.field, from: null, to: c.to })), reason: null } as AuditEntry, ...prev].slice(0, 80));
+            } else if (msg.type === "skip") {
+              setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 80));
+            } else if (msg.type === "warn") {
+              setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 80));
+            } else if (msg.type === "error") {
+              throw new Error(msg.message);
+            } else if (msg.type === "done") {
+              totalChecked += (msg.checked ?? 0);
+              hasMore = msg.hasMore === true;
+              nextOffset = msg.nextOffset ?? offset;
+              setEnrichProgress(msg.message);
+            }
+          }
+        }
+        if (!hasMore) break;
+        offset = nextOffset;
+      }
+      toast.success(`Enrichment done · ${totalFixed} updated of ${totalChecked} checked`);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setEnriching(false);
+    }
+  }
+
   // ── Reports ──────────────────────────────────────────────────────────────
   async function resolveReport(id: string) {
     const { error } = await supabase.from("reference_reports").update({ resolved: true }).eq("id", id);
@@ -538,17 +613,38 @@ const Logs = () => {
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {auditing ? auditProgress || "Auditing…" : "Audit recent (3d)"}
           </Button>
+          <Button
+            type="button"
+            onClick={() => handleEnrichVisual({ force: false })}
+            disabled={enriching}
+            variant="outline"
+            className="font-mono text-[11px] uppercase tracking-widest h-9"
+            title="Scrape the source URL and run a web search for each entry, then write evidence-grounded visual_summary / editing_style. Skips already-enriched entries."
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-2" />
+            {enriching ? enrichProgress || "Enriching…" : "Enrich visual (web)"}
+          </Button>
+          <Button
+            type="button"
+            onClick={() => handleEnrichVisual({ force: true })}
+            disabled={enriching}
+            variant="ghost"
+            className="font-mono text-[11px] uppercase tracking-widest h-9"
+            title="Re-run web-grounded enrichment for ALL entries, including ones already enriched. Overwrites existing summaries."
+          >
+            Force re-enrich
+          </Button>
         </div>
-        {(auditing || auditingId !== null || auditLog.length > 0) && (
+        {(auditing || auditingId !== null || enriching || auditLog.length > 0) && (
           <div className="container pb-3">
             <div className="border hairline bg-secondary/40 max-h-72 overflow-auto p-3 font-mono text-[11px] leading-relaxed space-y-1.5">
-              {(auditing || auditingId !== null) && (
+              {(auditing || auditingId !== null || enriching) && (
                 <p className="text-primary sticky top-0 bg-secondary/90 backdrop-blur-sm -mx-3 px-3 py-1 mb-1 z-10">
-                  {auditProgress}
+                  {enriching ? enrichProgress : auditProgress}
                 </p>
               )}
-              {auditLog.length === 0 && (auditing || auditingId !== null) ? (
-                <p className="text-muted-foreground">Checking entries…</p>
+              {auditLog.length === 0 && (auditing || auditingId !== null || enriching) ? (
+                <p className="text-muted-foreground">Working…</p>
               ) : (
                 auditLog.map((e, i) =>
                   e.kind === "warn" ? (
