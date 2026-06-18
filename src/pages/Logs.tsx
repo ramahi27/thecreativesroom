@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
-  Search, Sparkles, X as XIcon, Link2, Link2Off, ArrowUpDown, ArrowUp, ArrowDown,
+  Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff,
+  ArrowUpDown, ArrowUp, ArrowDown, Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -67,55 +68,6 @@ const formatDate = (s: string | null) => {
   });
 };
 
-// Per-row status badges — replaces the old icon cluster
-function StatusBadges({ r, auditingId, onAudit }: {
-  r: LogRow;
-  auditingId: string | null;
-  onAudit: () => void;
-}) {
-  const issues: React.ReactNode[] = [];
-  if (!r.has_ai_metadata)
-    issues.push(
-      <span key="ai" className="px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest bg-yellow-500/15 text-yellow-500 border border-yellow-500/30">
-        No AI
-      </span>
-    );
-  if (r.link_status === "dead")
-    issues.push(
-      <span key="link" className="px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest bg-destructive/15 text-destructive border border-destructive/30">
-        Dead link
-      </span>
-    );
-  if (!r.thumbnail_url)
-    issues.push(
-      <span key="thumb" className="px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest bg-muted text-muted-foreground border border-border">
-        No thumb
-      </span>
-    );
-
-  return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {issues.length === 0
-        ? <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/40">OK</span>
-        : issues}
-      <button
-        onClick={onAudit}
-        disabled={!!auditingId}
-        title={r.audited_at ? `Audited ${formatDate(r.audited_at)} — click to re-audit` : "Audit with AI"}
-        className={`ml-1 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-widest border transition-colors ${
-          auditingId === r.id
-            ? "border-primary text-primary animate-pulse"
-            : r.audited_at
-              ? "border-primary/30 text-primary/50 hover:border-primary hover:text-primary"
-              : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
-        }`}
-      >
-        {auditingId === r.id ? "…" : r.audited_at ? "✓ Audited" : "Audit"}
-      </button>
-    </div>
-  );
-}
-
 // Compact toggle-button chip group
 function Chips<T extends string>({
   options,
@@ -153,7 +105,9 @@ const Logs = () => {
 
   // Filters
   const [typeFilter, setTypeFilter] = useState<"all" | "video" | "image">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "issues" | "no_ai" | "dead" | "no_thumb">("all");
+  const [linkFilter, setLinkFilter] = useState<"all" | "ok" | "dead" | "error" | "unchecked">("all");
+  const [aiFilter, setAiFilter] = useState<"all" | "complete" | "missing">("all");
+  const [thumbFilter, setThumbFilter] = useState<"all" | "has" | "missing">("all");
 
   // Sort
   const [sortCol, setSortCol] = useState<SortCol>("added");
@@ -209,10 +163,12 @@ const Logs = () => {
   const filtered = useMemo(() => {
     let result = rows;
     if (typeFilter !== "all") result = result.filter((r) => r.type === typeFilter);
-    if (statusFilter === "issues") result = result.filter((r) => !r.has_ai_metadata || r.link_status === "dead" || !r.thumbnail_url);
-    else if (statusFilter === "no_ai") result = result.filter((r) => !r.has_ai_metadata);
-    else if (statusFilter === "dead") result = result.filter((r) => r.link_status === "dead");
-    else if (statusFilter === "no_thumb") result = result.filter((r) => !r.thumbnail_url);
+    if (linkFilter === "unchecked") result = result.filter((r) => !r.link_status);
+    else if (linkFilter !== "all") result = result.filter((r) => r.link_status === linkFilter);
+    if (aiFilter === "complete") result = result.filter((r) => r.has_ai_metadata);
+    else if (aiFilter === "missing") result = result.filter((r) => !r.has_ai_metadata);
+    if (thumbFilter === "has") result = result.filter((r) => !!r.thumbnail_url);
+    else if (thumbFilter === "missing") result = result.filter((r) => !r.thumbnail_url);
     const q = search.trim().toLowerCase();
     if (q) {
       result = result.filter((r) =>
@@ -228,7 +184,7 @@ const Logs = () => {
       const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [rows, typeFilter, statusFilter, search, sortCol, sortDir]);
+  }, [rows, typeFilter, linkFilter, aiFilter, thumbFilter, search, sortCol, sortDir]);
 
   // ── Data loading ──────────────────────────────────────────────────────────────────────────────
   async function loadDeadLinks() {
@@ -650,29 +606,29 @@ const Logs = () => {
                 {
                   label: "Total entries",
                   value: rows.length,
-                  active: typeFilter === "all" && statusFilter === "all",
-                  onClick: () => { setTypeFilter("all"); setStatusFilter("all"); setSearch(""); },
+                  active: typeFilter === "all" && linkFilter === "all" && aiFilter === "all" && thumbFilter === "all",
+                  onClick: () => { setTypeFilter("all"); setLinkFilter("all"); setAiFilter("all"); setThumbFilter("all"); setSearch(""); },
                   warn: false,
                 },
                 {
                   label: "Dead links",
                   value: countDeadLinks,
-                  active: statusFilter === "dead",
-                  onClick: () => setStatusFilter(statusFilter === "dead" ? "all" : "dead"),
+                  active: linkFilter === "dead",
+                  onClick: () => setLinkFilter(linkFilter === "dead" ? "all" : "dead"),
                   warn: countDeadLinks > 0,
                 },
                 {
                   label: "Missing AI",
                   value: countMissingAI,
-                  active: statusFilter === "no_ai",
-                  onClick: () => setStatusFilter(statusFilter === "no_ai" ? "all" : "no_ai"),
+                  active: aiFilter === "missing",
+                  onClick: () => setAiFilter(aiFilter === "missing" ? "all" : "missing"),
                   warn: countMissingAI > 0,
                 },
                 {
                   label: "No thumbnail",
                   value: countNoThumb,
-                  active: statusFilter === "no_thumb",
-                  onClick: () => setStatusFilter(statusFilter === "no_thumb" ? "all" : "no_thumb"),
+                  active: thumbFilter === "missing",
+                  onClick: () => setThumbFilter(thumbFilter === "missing" ? "all" : "missing"),
                   warn: countNoThumb > 0,
                 },
               ].map((card) => (
@@ -698,23 +654,40 @@ const Logs = () => {
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <Chips
                   options={[
-                    { label: "All", value: "all" as const },
-                    { label: "Needs attention", value: "issues" as const },
-                    { label: "Missing AI", value: "no_ai" as const },
-                    { label: "Dead link", value: "dead" as const },
-                    { label: "No thumbnail", value: "no_thumb" as const },
-                  ]}
-                  value={statusFilter}
-                  onChange={(v) => setStatusFilter(v as typeof statusFilter)}
-                />
-                <Chips
-                  options={[
                     { label: "All types", value: "all" as const },
                     { label: "Video", value: "video" as const },
                     { label: "Image", value: "image" as const },
                   ]}
                   value={typeFilter}
                   onChange={(v) => setTypeFilter(v as typeof typeFilter)}
+                />
+                <Chips
+                  options={[
+                    { label: "All links", value: "all" as const },
+                    { label: "OK", value: "ok" as const },
+                    { label: "Dead", value: "dead" as const },
+                    { label: "Unchecked", value: "unchecked" as const },
+                  ]}
+                  value={linkFilter}
+                  onChange={(v) => setLinkFilter(v as typeof linkFilter)}
+                />
+                <Chips
+                  options={[
+                    { label: "All AI", value: "all" as const },
+                    { label: "Complete", value: "complete" as const },
+                    { label: "Missing", value: "missing" as const },
+                  ]}
+                  value={aiFilter}
+                  onChange={(v) => setAiFilter(v as typeof aiFilter)}
+                />
+                <Chips
+                  options={[
+                    { label: "All thumbs", value: "all" as const },
+                    { label: "Has", value: "has" as const },
+                    { label: "Missing", value: "missing" as const },
+                  ]}
+                  value={thumbFilter}
+                  onChange={(v) => setThumbFilter(v as typeof thumbFilter)}
                 />
               </div>
               <div className="flex items-center gap-4">
@@ -751,7 +724,7 @@ const Logs = () => {
                           Reference <SortIcon col="title" />
                         </button>
                       </TableHead>
-                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">Status</TableHead>
+                      <TableHead className="font-mono text-[11px] uppercase tracking-widest">Checks</TableHead>
                       <TableHead className="font-mono text-[11px] uppercase tracking-widest">Added by</TableHead>
                       <TableHead className="font-mono text-[11px] uppercase tracking-widest">Approved by</TableHead>
                       <TableHead className="font-mono text-[11px] uppercase tracking-widest">
@@ -790,11 +763,59 @@ const Logs = () => {
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <StatusBadges
-                            r={r}
-                            auditingId={auditingId}
-                            onAudit={() => handleAuditOne(r.id, r.title)}
-                          />
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              title={r.has_ai_metadata ? "AI metadata complete" : "Missing AI metadata"}
+                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.has_ai_metadata ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
+                            >
+                              <Sparkles className="h-3 w-3" strokeWidth={r.has_ai_metadata ? 2 : 1.5} />
+                            </span>
+                            <span
+                              title={
+                                r.link_status === "ok" ? `Link OK · ${formatDate(r.link_checked_at ?? null)}` :
+                                r.link_status === "dead" ? `Dead link · ${formatDate(r.link_checked_at ?? null)}` :
+                                r.link_status === "error" ? `Link error · ${formatDate(r.link_checked_at ?? null)}` :
+                                "Link not yet checked"
+                              }
+                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${
+                                r.link_status === "ok" ? "bg-primary/10 text-primary" :
+                                r.link_status === "dead" ? "bg-destructive/15 text-destructive" :
+                                r.link_status === "error" ? "bg-yellow-500/10 text-yellow-500" :
+                                "text-muted-foreground/40"
+                              }`}
+                            >
+                              {r.link_status === "dead"
+                                ? <Link2Off className="h-3 w-3" strokeWidth={2} />
+                                : <Link2 className="h-3 w-3" strokeWidth={r.link_status === "ok" ? 2 : 1} />}
+                            </span>
+                            <span
+                              title={r.thumbnail_url ? "Has thumbnail" : "No thumbnail"}
+                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.thumbnail_url ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
+                            >
+                              {r.thumbnail_url
+                                ? <Check className="h-3 w-3" strokeWidth={2.5} />
+                                : <ImageOff className="h-3 w-3" strokeWidth={1.5} />}
+                            </span>
+                            <span className="w-px h-3.5 bg-border mx-0.5 shrink-0" />
+                            <button
+                              onClick={() => handleAuditOne(r.id, r.title)}
+                              disabled={!!auditingId}
+                              title={
+                                auditingId === r.id ? "Auditing…" :
+                                r.audited_at ? `Audited · ${formatDate(r.audited_at)} — click to re-audit` :
+                                "Not yet audited — click to audit with AI"
+                              }
+                              className={`inline-flex h-5 w-5 items-center justify-center border transition-colors ${
+                                auditingId === r.id
+                                  ? "border-primary text-primary animate-pulse"
+                                  : r.audited_at
+                                    ? "bg-primary/10 border-primary/40 text-primary hover:bg-primary/20"
+                                    : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
+                              }`}
+                            >
+                              <Wand2 className="h-3 w-3" strokeWidth={r.audited_at ? 2 : 1.5} />
+                            </button>
+                          </div>
                         </TableCell>
                         <TableCell className="font-mono text-xs">
                           {r.created_by_email || (r.created_by ? "—" : "system")}
