@@ -486,6 +486,79 @@ const Logs = () => {
     toast.success(`Backfill done · ${ok} updated, ${failed} incomplete`);
   }
 
+  // ── Enrich visual metadata (web-grounded) ────────────────────────────────
+  async function handleEnrichVisual(opts: { force?: boolean } = {}) {
+    const force = opts.force === true;
+    const label = force
+      ? "Re-enrich ALL published entries (overwrites existing visual_summary / editing_style with web-grounded versions). Continue?"
+      : "Run web-grounded enrichment on entries that haven't been processed yet?";
+    if (!confirm(label)) return;
+    setEnriching(true);
+    setEnrichProgress("Starting…");
+    setAuditLog([]);
+    try {
+      let offset = 0;
+      let totalFixed = 0;
+      let totalChecked = 0;
+      // Page through batches until the function reports no more.
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-visual`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ offset, limit: 50, force }),
+        });
+        if (!res.ok || !res.body) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(txt || `Enrich failed (HTTP ${res.status})`);
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        let hasMore = false;
+        let nextOffset = offset;
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            let msg: any;
+            try { msg = JSON.parse(line); } catch { continue; }
+            if (msg.type === "progress") {
+              setEnrichProgress(msg.message);
+            } else if (msg.type === "fix") {
+              totalFixed++;
+              setEnrichProgress(`Enriched "${msg.title}"`);
+              setAuditLog((prev) => [{ kind: "fix", title: `${msg.title} · ${msg.strength}`, changes: (msg.changes ?? []).map((c: any) => ({ field: c.field, from: null, to: c.to })), reason: null } as AuditEntry, ...prev].slice(0, 80));
+            } else if (msg.type === "skip") {
+              setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 80));
+            } else if (msg.type === "warn") {
+              setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 80));
+            } else if (msg.type === "error") {
+              throw new Error(msg.message);
+            } else if (msg.type === "done") {
+              totalChecked += (msg.checked ?? 0);
+              hasMore = msg.hasMore === true;
+              nextOffset = msg.nextOffset ?? offset;
+              setEnrichProgress(msg.message);
+            }
+          }
+        }
+        if (!hasMore) break;
+        offset = nextOffset;
+      }
+      toast.success(`Enrichment done · ${totalFixed} updated of ${totalChecked} checked`);
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setEnriching(false);
+    }
+  }
+
   // ── Reports ──────────────────────────────────────────────────────────────
   async function resolveReport(id: string) {
     const { error } = await supabase.from("reference_reports").update({ resolved: true }).eq("id", id);
