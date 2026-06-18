@@ -60,7 +60,13 @@ Deno.serve(async (req) => {
       .upsert({ user_id: user.id, stripe_customer_id: customerId } as any, { onConflict: "user_id" });
   }
 
-  const origin = req.headers.get("origin") || "https://thecreativesroom.com";
+  const ALLOWED_ORIGINS = [
+    "https://thecreativesroom.com",
+    "https://www.thecreativesroom.com",
+    "https://thecreativesroom.lovable.app",
+  ];
+  const rawOrigin = req.headers.get("origin") ?? "";
+  const origin = ALLOWED_ORIGINS.includes(rawOrigin) ? rawOrigin : "https://thecreativesroom.com";
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
     mode: "subscription",
