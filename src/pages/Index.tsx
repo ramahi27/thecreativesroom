@@ -490,7 +490,7 @@ const Index = () => {
           <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black leading-[0.85] tracking-tighter max-w-5xl uppercase whitespace-pre-line">
             THE REFERENCE{"\n"}
             <span className="italic font-light">ARCHIVE</span>&nbsp;&nbsp;FOR{"\n"}
-            CREATIVES...
+            CREATIVES.
           </h1>
           {/* Description removed as requested */}
 
