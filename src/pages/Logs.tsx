@@ -46,6 +46,7 @@ type LogRow = {
   link_status?: string | null;
   link_checked_at?: string | null;
   audited_at?: string | null;
+  visual_enriched_at?: string | null;
 };
 
 type SortCol = "added" | "approved" | "title";
@@ -160,6 +161,10 @@ const Logs = () => {
   const [auditProgress, setAuditProgress] = useState<string>("");
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
 
+  // Enrich visual (web-grounded)
+  const [enriching, setEnriching] = useState(false);
+  const [enrichProgress, setEnrichProgress] = useState<string>("");
+
   // Link health
   const [linkChecking, setLinkChecking] = useState(false);
   const [linkResults, setLinkResults] = useState<{ checked: number; ok: number; dead: number; errored: number; message: string } | null>(null);
@@ -261,21 +266,21 @@ const Logs = () => {
         brand: string | null; agency: string | null; year: number | null;
         editing_style: string | null; visual_summary: string | null;
         link_status: string | null; link_checked_at: string | null;
-        audited_at: string | null;
+        audited_at: string | null; visual_enriched_at: string | null;
       }>();
       const CHUNK = 150;
       for (let i = 0; i < ids.length; i += CHUNK) {
         const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
-          .select("id,brand,agency,year,editing_style,visual_summary,link_status,link_checked_at,audited_at")
+          .select("id,brand,agency,year,editing_style,visual_summary,link_status,link_checked_at,audited_at,visual_enriched_at")
           .in("id", slice);
         (extra || []).forEach((t: any) =>
           infoMap.set(t.id, {
             brand: t.brand ?? null, agency: t.agency ?? null, year: t.year ?? null,
             editing_style: t.editing_style ?? null, visual_summary: t.visual_summary ?? null,
             link_status: t.link_status ?? null, link_checked_at: t.link_checked_at ?? null,
-            audited_at: t.audited_at ?? null,
+            audited_at: t.audited_at ?? null, visual_enriched_at: t.visual_enriched_at ?? null,
           }),
         );
       }
@@ -292,6 +297,7 @@ const Logs = () => {
             link_status: info?.link_status ?? null,
             link_checked_at: info?.link_checked_at ?? null,
             audited_at: info?.audited_at ?? null,
+            visual_enriched_at: info?.visual_enriched_at ?? null,
           };
           return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) } as LogRow;
         }),
@@ -523,6 +529,79 @@ const Logs = () => {
     toast.success(`Backfill done · ${ok} updated, ${failed} incomplete`);
   }
 
+  // ── Enrich visual (web-grounded) ─────────────────────────────────────────────
+  async function handleEnrichVisual(force: boolean) {
+    const label = force ? "Force re-enrich ALL published references" : "Enrich references missing web-grounded metadata";
+    if (!confirm(`${label}? This calls Firecrawl + AI for each entry and may take several minutes.`)) return;
+    setEnriching(true);
+    setEnrichProgress("Starting…");
+    setAuditLog([]);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-visual`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ force }),
+      });
+      if (!res.ok || !res.body) {
+        const txt = await res.text().catch(() => "");
+        throw new Error(txt || `Enrich failed (HTTP ${res.status})`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let updated = 0;
+      const touched: string[] = [];
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          let msg: any;
+          try { msg = JSON.parse(line); } catch { continue; }
+          if (msg.type === "progress") setEnrichProgress(msg.message);
+          else if (msg.type === "fix" || msg.type === "update") {
+            updated++;
+            setEnrichProgress(`Enriched "${msg.title}"`);
+            touched.push(msg.id);
+            setAuditLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
+          }
+          else if (msg.type === "warn") setAuditLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50));
+          else if (msg.type === "error") throw new Error(msg.message);
+          else if (msg.type === "done") {
+            setEnrichProgress(msg.message || `Done · ${updated} enriched`);
+            if (updated > 0) toast.success(msg.message || `${updated} enriched`); else toast.info(msg.message || "No entries to enrich");
+          }
+        }
+      }
+      if (touched.length > 0) {
+        const { data: fresh } = await supabase
+          .from("references")
+          .select("id,editing_style,visual_summary,visual_enriched_at")
+          .in("id", touched);
+        if (fresh) {
+          const byId = new Map((fresh as any[]).map((r) => [r.id, r]));
+          setRows((prev) =>
+            prev.map((r) => {
+              const f = byId.get(r.id);
+              if (!f) return r;
+              const merged = { ...r, editing_style: f.editing_style ?? r.editing_style, visual_summary: f.visual_summary ?? r.visual_summary, visual_enriched_at: f.visual_enriched_at ?? r.visual_enriched_at };
+              return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
+            }),
+          );
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setEnriching(false);
+    }
+  }
+
+
   // ── Reports ──────────────────────────────────────────────────────────────────────────────
   async function resolveReport(id: string) {
     const { error } = await supabase.from("reference_reports").update({ resolved: true }).eq("id", id);
@@ -577,17 +656,38 @@ const Logs = () => {
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {auditing ? auditProgress || "Auditing…" : "Audit recent (3d)"}
           </Button>
+          <span className="w-px h-5 bg-border mx-1" />
+          <Button
+            type="button"
+            onClick={() => handleEnrichVisual(false)}
+            disabled={enriching}
+            variant="outline"
+            className="font-mono text-[11px] uppercase tracking-widest h-9"
+            title="Scrape each reference + web search, then regenerate visual_summary / editing_style from real evidence (skips already-enriched)."
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-2" />
+            {enriching ? enrichProgress || "Enriching…" : "Enrich visual (web)"}
+          </Button>
+          <button
+            type="button"
+            onClick={() => handleEnrichVisual(true)}
+            disabled={enriching}
+            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+            title="Re-run enrichment on EVERY published reference, overwriting existing visual metadata."
+          >
+            Force re-enrich
+          </button>
         </div>
-        {(auditing || auditingId !== null || auditLog.length > 0) && (
+        {(auditing || auditingId !== null || enriching || auditLog.length > 0) && (
           <div className="container pb-3">
             <div className="border hairline bg-secondary/40 max-h-72 overflow-auto p-3 font-mono text-[11px] leading-relaxed space-y-1.5">
-              {(auditing || auditingId !== null) && (
+              {(auditing || auditingId !== null || enriching) && (
                 <p className="text-primary sticky top-0 bg-secondary/90 backdrop-blur-sm -mx-3 px-3 py-1 mb-1 z-10">
-                  {auditProgress}
+                  {enriching ? enrichProgress : auditProgress}
                 </p>
               )}
-              {auditLog.length === 0 && (auditing || auditingId !== null) ? (
-                <p className="text-muted-foreground">Checking entries…</p>
+              {auditLog.length === 0 && (auditing || auditingId !== null || enriching) ? (
+                <p className="text-muted-foreground">Working…</p>
               ) : (
                 auditLog.map((e, i) =>
                   e.kind === "warn" ? (
@@ -810,7 +910,12 @@ const Logs = () => {
                             <StatusPill
                               label={r.has_ai_metadata ? "AI ✓" : "AI —"}
                               state={r.has_ai_metadata ? "ok" : "off"}
-                              title={r.has_ai_metadata ? "AI metadata enriched" : "Not yet enriched"}
+                              title={r.has_ai_metadata ? "AI metadata complete" : "Missing AI metadata"}
+                            />
+                            <StatusPill
+                              label={r.visual_enriched_at ? "Web ✓" : "Web —"}
+                              state={r.visual_enriched_at ? "ok" : "off"}
+                              title={r.visual_enriched_at ? `Web-enriched · ${formatDate(r.visual_enriched_at)}` : "Not yet web-enriched"}
                             />
                             <StatusPill
                               label={
