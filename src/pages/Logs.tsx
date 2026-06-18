@@ -614,6 +614,35 @@ const Logs = () => {
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {enriching ? enrichProgress || "Enriching…" : "Enrich visual (web)"}
           </Button>
+          <Button
+            type="button"
+            onClick={handleCheckLinks}
+            disabled={linkChecking}
+            variant="outline"
+            className="font-mono text-xs uppercase tracking-widest h-9"
+            title="Probe every source URL and flag dead links"
+          >
+            <Link2 className="h-3.5 w-3.5 mr-2" />
+            {linkChecking ? "Checking…" : `Check all links${countDeadLinks > 0 ? ` (${countDeadLinks} dead)` : ""}`}
+          </Button>
+          {countDeadLinks > 0 && (
+            <Button
+              type="button"
+              onClick={deleteAllDeadLinks}
+              disabled={deletingDead}
+              variant="outline"
+              className="font-mono text-xs uppercase tracking-widest h-9 text-destructive hover:text-destructive"
+              title="Permanently delete all references whose link is dead"
+            >
+              <Link2Off className="h-3.5 w-3.5 mr-2" />
+              {deletingDead ? "Deleting…" : `Delete dead (${countDeadLinks})`}
+            </Button>
+          )}
+          {linkResults && (
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+              {linkResults.message}
+            </span>
+          )}
           <button
             type="button"
             onClick={() => handleEnrichVisual(true)}
