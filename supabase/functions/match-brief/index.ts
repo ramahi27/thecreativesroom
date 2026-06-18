@@ -390,34 +390,11 @@ INDUSTRY & FORMAT
     const validIds = new Set(compact.map((r) => r.id));
     matches = matches.filter((m) => validIds.has(m.id));
 
-    // Persist brief reasoning into each matched reference's metadata for future learning.
-    // Restricted to admins to prevent arbitrary content injection from any signed-in user.
-    const briefSnippet = brief.trim().slice(0, 120).replace(/\s+/g, " ");
-    if (isAdmin) await Promise.all(
-      matches.map(async (m) => {
-        try {
-          const { data: cur } = await supabase
-            .from("references")
-            .select("tags,notes")
-            .eq("id", m.id)
-            .maybeSingle();
-          const existingTags: string[] = Array.isArray(cur?.tags) ? cur!.tags : [];
-          const reasonTag = `brief_reason:${m.reason.slice(0, 140)}`;
-          const briefTag = `brief:${briefSnippet}`;
-          const mergedTags = Array.from(new Set([...existingTags, reasonTag, briefTag]));
-          const noteLine = `\n\n[brief match] ${briefSnippet} → ${m.reason}`;
-          const newNotes = (cur?.notes || "").includes(m.reason)
-            ? cur?.notes
-            : ((cur?.notes || "") + noteLine).slice(0, 8000);
-          await supabase
-            .from("references")
-            .update({ tags: mergedTags, notes: newNotes })
-            .eq("id", m.id);
-        } catch (e) {
-          console.error("persist reason failed", m.id, e);
-        }
-      })
-    );
+    // NOTE: Previously we persisted brief reasoning back into reference tags/notes
+    // for "learning". In practice this created a feedback loop — once a ref was
+    // matched, those brief tags/notes biased the model to pick the same refs again
+    // for similar briefs, ignoring newly uploaded references. Disabled.
+
 
     // Increment usage counter
     const newCount = usedToday + 1;
