@@ -68,32 +68,71 @@ const formatDate = (s: string | null) => {
   });
 };
 
-// Compact toggle-button chip group
-function Chips<T extends string>({
+// Compact labeled chip filter group
+function FilterGroup<T extends string>({
+  label,
   options,
   value,
   onChange,
 }: {
+  label: string;
   options: { label: string; value: T }[];
   value: T;
   onChange: (v: T) => void;
 }) {
   return (
-    <div className="flex items-center gap-1">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          className={`px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest border hairline transition-colors ${
-            value === o.value
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-transparent text-muted-foreground hover:text-foreground hover:border-foreground/40"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div className="flex items-center gap-2">
+      <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/60 shrink-0">
+        {label}
+      </span>
+      <div className="flex items-center gap-1">
+        {options.map((o) => (
+          <button
+            key={o.value}
+            onClick={() => onChange(o.value)}
+            className={`px-2.5 py-1 font-mono text-[10px] uppercase tracking-widest rounded-sm transition-colors ${
+              value === o.value
+                ? "bg-primary text-primary-foreground"
+                : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
     </div>
+  );
+}
+
+// Small labeled status pill for the Checks column
+function StatusPill({
+  label,
+  state,
+  title,
+  onClick,
+}: {
+  label: string;
+  state: "ok" | "bad" | "warn" | "off";
+  title?: string;
+  onClick?: () => void;
+}) {
+  const styles =
+    state === "ok"
+      ? "bg-primary/15 text-primary border-primary/30"
+      : state === "bad"
+      ? "bg-destructive/15 text-destructive border-destructive/30"
+      : state === "warn"
+      ? "bg-yellow-500/15 text-yellow-600 border-yellow-500/30"
+      : "bg-transparent text-muted-foreground/40 border-border/60 border-dashed";
+  const Comp: any = onClick ? "button" : "span";
+  return (
+    <Comp
+      onClick={onClick}
+      title={title}
+      className={`inline-flex items-center px-1.5 py-0.5 rounded-sm border font-mono text-[9px] uppercase tracking-widest transition-colors ${styles} ${onClick ? "hover:opacity-80 cursor-pointer" : ""}`}
+    >
+      {label}
+    </Comp>
   );
 }
 
