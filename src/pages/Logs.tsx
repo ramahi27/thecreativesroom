@@ -806,58 +806,47 @@ const Logs = () => {
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              title={r.has_ai_metadata ? "AI metadata complete" : "Missing AI metadata"}
-                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.has_ai_metadata ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
-                            >
-                              <Sparkles className="h-3 w-3" strokeWidth={r.has_ai_metadata ? 2 : 1.5} />
-                            </span>
-                            <span
+                          <div className="flex flex-wrap items-center gap-1">
+                            <StatusPill
+                              label={r.has_ai_metadata ? "AI ✓" : "AI —"}
+                              state={r.has_ai_metadata ? "ok" : "off"}
+                              title={r.has_ai_metadata ? "AI metadata enriched" : "Not yet enriched"}
+                            />
+                            <StatusPill
+                              label={
+                                r.link_status === "ok" ? "Link ✓" :
+                                r.link_status === "dead" ? "Link ✗" :
+                                r.link_status === "error" ? "Link !" :
+                                "Link —"
+                              }
+                              state={
+                                r.link_status === "ok" ? "ok" :
+                                r.link_status === "dead" ? "bad" :
+                                r.link_status === "error" ? "warn" :
+                                "off"
+                              }
                               title={
                                 r.link_status === "ok" ? `Link OK · ${formatDate(r.link_checked_at ?? null)}` :
                                 r.link_status === "dead" ? `Dead link · ${formatDate(r.link_checked_at ?? null)}` :
                                 r.link_status === "error" ? `Link error · ${formatDate(r.link_checked_at ?? null)}` :
                                 "Link not yet checked"
                               }
-                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${
-                                r.link_status === "ok" ? "bg-primary/10 text-primary" :
-                                r.link_status === "dead" ? "bg-destructive/15 text-destructive" :
-                                r.link_status === "error" ? "bg-yellow-500/10 text-yellow-500" :
-                                "text-muted-foreground/40"
-                              }`}
-                            >
-                              {r.link_status === "dead"
-                                ? <Link2Off className="h-3 w-3" strokeWidth={2} />
-                                : <Link2 className="h-3 w-3" strokeWidth={r.link_status === "ok" ? 2 : 1} />}
-                            </span>
-                            <span
+                            />
+                            <StatusPill
+                              label={r.thumbnail_url ? "Thumb ✓" : "Thumb —"}
+                              state={r.thumbnail_url ? "ok" : "off"}
                               title={r.thumbnail_url ? "Has thumbnail" : "No thumbnail"}
-                              className={`inline-flex h-5 w-5 items-center justify-center border hairline ${r.thumbnail_url ? "bg-primary/10 text-primary" : "text-muted-foreground/40"}`}
-                            >
-                              {r.thumbnail_url
-                                ? <Check className="h-3 w-3" strokeWidth={2.5} />
-                                : <ImageOff className="h-3 w-3" strokeWidth={1.5} />}
-                            </span>
-                            <span className="w-px h-3.5 bg-border mx-0.5 shrink-0" />
-                            <button
-                              onClick={() => handleAuditOne(r.id, r.title)}
-                              disabled={!!auditingId}
+                            />
+                            <StatusPill
+                              label={auditingId === r.id ? "Audit…" : r.audited_at ? "Audit ✓" : "Audit"}
+                              state={auditingId === r.id ? "warn" : r.audited_at ? "ok" : "off"}
+                              onClick={() => !auditingId && handleAuditOne(r.id, r.title)}
                               title={
                                 auditingId === r.id ? "Auditing…" :
                                 r.audited_at ? `Audited · ${formatDate(r.audited_at)} — click to re-audit` :
-                                "Not yet audited — click to audit with AI"
+                                "Click to audit with AI"
                               }
-                              className={`inline-flex h-5 w-5 items-center justify-center border transition-colors ${
-                                auditingId === r.id
-                                  ? "border-primary text-primary animate-pulse"
-                                  : r.audited_at
-                                    ? "bg-primary/10 border-primary/40 text-primary hover:bg-primary/20"
-                                    : "border-dashed border-muted-foreground/30 text-muted-foreground/50 hover:border-primary/60 hover:text-primary"
-                              }`}
-                            >
-                              <Wand2 className="h-3 w-3" strokeWidth={r.audited_at ? 2 : 1.5} />
-                            </button>
+                            />
                           </div>
                         </TableCell>
                         <TableCell className="font-mono text-xs">
