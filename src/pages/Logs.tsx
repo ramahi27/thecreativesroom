@@ -56,6 +56,11 @@ type AuditEntry =
   | { kind: "fix"; title: string; changes: AuditChange[]; reason: string | null }
   | { kind: "warn"; message: string };
 
+type EnrichEntry =
+  | { kind: "fix"; title: string; strength: string; visualSummary: string | null }
+  | { kind: "skip"; title: string }
+  | { kind: "warn"; message: string };
+
 const formatDate = (s: string | null) => {
   if (!s) return "—";
   const d = new Date(s);
@@ -120,6 +125,8 @@ const Logs = () => {
   const [processLog, setProcessLog] = useState<AuditEntry[]>([]);
   const [enriching, setEnriching] = useState(false);
   const [enrichProgress, setEnrichProgress] = useState<string>("");
+  const [enrichLog, setEnrichLog] = useState<EnrichEntry[]>([]);
+  const [enrichStats, setEnrichStats] = useState<{ checked: number; fixed: number; total: number } | null>(null);
   const [expandedVisualId, setExpandedVisualId] = useState<string | null>(null);
 
   // Link health
@@ -492,6 +499,8 @@ const Logs = () => {
     if (force && !confirm("Re-enrich ALL entries (overwrite existing visual_summary / editing_style)?")) return;
     setEnriching(true);
     setEnrichProgress("Starting…");
+    setEnrichLog([]);
+    setEnrichStats(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       let offset = 0;
@@ -520,13 +529,24 @@ const Logs = () => {
             if (!line.trim()) continue;
             let msg: any;
             try { msg = JSON.parse(line); } catch { continue; }
-            if (msg.type === "progress" || msg.type === "fix" || msg.type === "skip" || msg.type === "warn") {
+            if (msg.type === "progress") {
               setEnrichProgress(msg.message);
+            } else if (msg.type === "fix") {
+              setEnrichProgress(msg.message);
+              const vs = msg.changes?.find((c: any) => c.field === "visual_summary")?.to ?? null;
+              setEnrichLog(prev => [...prev, { kind: "fix", title: msg.title ?? "?", strength: msg.strength ?? "none", visualSummary: vs }].slice(-100));
+            } else if (msg.type === "skip") {
+              setEnrichProgress(msg.message);
+              setEnrichLog(prev => [...prev, { kind: "skip", title: msg.title ?? msg.message ?? "?" }].slice(-100));
+            } else if (msg.type === "warn") {
+              setEnrichProgress(msg.message);
+              setEnrichLog(prev => [...prev, { kind: "warn", message: msg.message }].slice(-100));
             } else if (msg.type === "error") {
               throw new Error(msg.message);
             } else if (msg.type === "done") {
               batchDone = msg;
               setEnrichProgress(msg.message);
+              setEnrichStats({ checked: msg.checked ?? 0, fixed: msg.fixed ?? 0, total: msg.total ?? 0 });
             }
           }
         }
@@ -678,6 +698,57 @@ const Logs = () => {
                   ),
                 )
               )}
+            </div>
+          </div>
+        )}
+        {(enriching || enrichLog.length > 0) && (
+          <div className="container pb-3">
+            <div className="border hairline bg-secondary/40 max-h-80 overflow-auto">
+              <div className="sticky top-0 bg-secondary/90 backdrop-blur-sm px-3 py-2 flex items-center justify-between border-b hairline z-10">
+                <span className="font-mono text-xs text-primary">
+                  {enriching ? enrichProgress || "Enriching…" : "Visual enrichment complete"}
+                </span>
+                {enrichStats && (
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {enrichStats.fixed}/{enrichStats.checked} enriched
+                  </span>
+                )}
+              </div>
+              <div className="divide-y divide-border/40">
+                {enrichLog.length === 0 && enriching && (
+                  <p className="px-3 py-2 font-mono text-xs text-muted-foreground">Starting…</p>
+                )}
+                {enrichLog.map((e, i) =>
+                  e.kind === "warn" ? (
+                    <p key={i} className="px-3 py-2 font-mono text-xs text-yellow-600/80">⚠ {e.message}</p>
+                  ) : e.kind === "skip" ? (
+                    <div key={i} className="px-3 py-2 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
+                      <span className="font-mono text-xs text-muted-foreground truncate">{e.title}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground/50 shrink-0 ml-auto">skipped</span>
+                    </div>
+                  ) : (
+                    <div key={i} className="px-3 py-2.5 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          e.strength === "strong" ? "bg-green-500" :
+                          e.strength === "weak" ? "bg-yellow-500" : "bg-muted-foreground/40"
+                        }`} />
+                        <span className="font-mono text-xs text-foreground truncate">{e.title}</span>
+                        <span className={`font-mono text-[10px] shrink-0 ml-auto uppercase tracking-widest ${
+                          e.strength === "strong" ? "text-green-500/70" :
+                          e.strength === "weak" ? "text-yellow-500/70" : "text-muted-foreground/50"
+                        }`}>{e.strength}</span>
+                      </div>
+                      {e.visualSummary && (
+                        <p className="font-mono text-[10px] text-muted-foreground/70 leading-relaxed pl-3.5 line-clamp-2">
+                          {e.visualSummary}
+                        </p>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
             </div>
           </div>
         )}
