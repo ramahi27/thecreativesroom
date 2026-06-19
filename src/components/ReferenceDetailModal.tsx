@@ -72,17 +72,33 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       });
     const listCols =
       "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,categories,published,source,created_at,updated_at";
-    // If the opener provided an explicit nav order (drafts page, filtered grid,
-    // folder, bookmarks…), fetch THOSE refs by id so prev/next works regardless
-    // of published state. Otherwise fall back to the public published feed.
+    // If the opener provided an explicit nav order (drafts page, logs, filtered
+    // grid, folder, bookmarks…), only fetch the IMMEDIATE prev/next neighbours
+    // by id. A huge `.in("id", [...])` list (e.g. /logs with thousands of rows)
+    // overflows the request URL and silently returns empty, which used to break
+    // arrow navigation for admins on long lists.
     const navIds = getModalNavOrder();
-    const listQuery = navIds.length > 0
-      ? supabase.from("references").select(listCols).in("id", navIds).limit(navIds.length)
-      : supabase.from("references").select(listCols).eq("published", true).order("created_at", { ascending: false }).limit(300);
-    listQuery.then(({ data: list }) => {
+    if (navIds.length > 0) {
+      const idx = navIds.indexOf(id);
+      const neighbours: string[] = [];
+      if (idx !== -1 && navIds.length > 1) {
+        neighbours.push(navIds[(idx - 1 + navIds.length) % navIds.length]);
+        neighbours.push(navIds[(idx + 1) % navIds.length]);
+      }
+      if (neighbours.length === 0) {
+        setAllRefs([]);
+      } else {
+        supabase.from("references").select(listCols).in("id", neighbours).then(({ data: list }) => {
+          if (cancelled) return;
+          setAllRefs((list as unknown as Reference[]) || []);
+        });
+      }
+    } else {
+      supabase.from("references").select(listCols).eq("published", true).order("created_at", { ascending: false }).limit(300).then(({ data: list }) => {
         if (cancelled) return;
         setAllRefs((list as unknown as Reference[]) || []);
       });
+    }
     return () => { cancelled = true; };
   }, [id]);
 
