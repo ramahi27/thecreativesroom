@@ -159,6 +159,10 @@ const Logs = () => {
     const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
     return rows.filter((r) => !r.has_ai_metadata || (!r.audited_at && r.created_at > cutoff)).length;
   }, [rows]);
+  const countRedoWindow = useMemo(() => {
+    const cutoff = new Date(Date.now() - redoDays * 24 * 60 * 60 * 1000).toISOString();
+    return rows.filter((r) => r.created_at > cutoff).length;
+  }, [rows, redoDays]);
 
   // ── Sort handler ──────────────────────────────────────────────────────────────────────────────────────
   function handleSort(col: SortCol) {
