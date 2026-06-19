@@ -288,9 +288,9 @@ Deno.serve(async (req) => {
           .from("references")
           .select("id,title,type,brand,agency,year,source_url,notes", { count: "exact" })
           .eq("published", true)
-          .gte("created_at", since)
+          .gte("approved_at", since)
           .is("audited_at", null)
-          .order("created_at", { ascending: false })
+          .order("approved_at", { ascending: false, nullsFirst: false })
           .range(offset, offset + limit - 1);
 
         if (error) { send({ type: "error", message: error.message }); controller.close(); return; }
