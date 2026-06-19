@@ -398,13 +398,13 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       >
         {prev && (
           <button onClick={goPrev} aria-label="Previous reference"
-            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors">
+            className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors shadow-lg">
             <ChevronLeft className="h-4 w-4" />
           </button>
         )}
         {next && (
           <button onClick={goNext} aria-label="Next reference"
-            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors">
+            className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors shadow-lg">
             <ChevronRight className="h-4 w-4" />
           </button>
         )}
