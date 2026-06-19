@@ -121,6 +121,7 @@ const Logs = () => {
 
   // Process-new (merged backfill + audit)
   const [processing, setProcessing] = useState(false);
+  const [redoDays, setRedoDays] = useState<1 | 3 | 7>(3);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [processProgress, setProcessProgress] = useState<string>("");
   const [processLog, setProcessLog] = useState<AuditEntry[]>([]);
