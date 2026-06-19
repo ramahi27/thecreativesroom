@@ -283,13 +283,22 @@ Deno.serve(async (req) => {
         // ── Batch mode ───────────────────────────────────────────────────────────
         const offset = Math.max(0, parseInt(body?.offset ?? "0", 10) || 0);
         const limit = Math.min(Math.max(1, parseInt(body?.limit ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT), MAX_LIMIT);
-        const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+        const daysRaw = parseInt(body?.days ?? "3", 10);
+        const days = [1, 3, 7].includes(daysRaw) ? daysRaw : 3;
+        const redo = body?.redo === true;
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-        const { data: refs, error, count } = await admin
+        let query = admin
           .from("references")
           .select(SELECT, { count: "exact" })
-          .eq("published", true)
-          .or(`visual_summary.is.null,and(created_at.gte.${since},audited_at.is.null)`)
+          .eq("published", true);
+        if (redo) {
+          // Re-process everything added in the window, even if already audited
+          query = query.gte("created_at", since);
+        } else {
+          query = query.or(`visual_summary.is.null,and(created_at.gte.${since},audited_at.is.null)`);
+        }
+        const { data: refs, error, count } = await query
           .order("created_at", { ascending: false })
           .range(offset, offset + limit - 1);
 
