@@ -126,13 +126,18 @@ async function auditOne(ref: RefRow, apiKey: string, firecrawlKey: string | null
     pageContext ? `\npage_context:\n${pageContext}` : `\npage_context: (unavailable)`,
   ].join("\n");
 
+  const today = new Date();
+  const currentYear = today.getUTCFullYear();
+  const dateLine = `Today's date is ${today.toISOString().slice(0, 10)} (current year: ${currentYear}). Years up to and including ${currentYear} are NOT in the future.`;
+  const strictRule = `\n\nCRITICAL EVIDENCE RULE: You may only use "set" for brand, agency, or year when the page_context block explicitly states that value. If page_context is unavailable, or does not name the brand/agency/year, you MUST "keep" (or "clear" only if the current value is obvious junk like "COTW", "Cannes", a URL, or the brand repeated as agency). Do NOT invent an agency from general knowledge — agency attributions guessed from a campaign name are frequently wrong. When in doubt, keep.`;
+
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-2.5-pro",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: `${dateLine}\n\n${SYSTEM_PROMPT}${strictRule}` },
         { role: "user", content: userContext },
       ],
       tools: [TOOL],
