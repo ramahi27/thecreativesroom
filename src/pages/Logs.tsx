@@ -232,7 +232,7 @@ const Logs = () => {
     loadDeadLinks();
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase.rpc("get_reference_logs");
+      const { data, error } = await supabase.rpc("get_reference_logs").range(0, 49999);
       if (error) { console.error(error); setRows([]); setLoading(false); return; }
       const baseRows = (data as LogRow[]) || [];
       const ids = baseRows.map((r) => r.id);
@@ -420,7 +420,7 @@ const Logs = () => {
         if (!batchDone || !batchDone.hasMore) break;
         offset = batchDone.nextOffset ?? offset;
       }
-      const { data } = await supabase.rpc("get_reference_logs");
+      const { data } = await supabase.rpc("get_reference_logs").range(0, 49999);
       if (data) {
         const byId = new Map((data as LogRow[]).map((r) => [r.id, r]));
         setRows((prev) => prev.map((r) => {
@@ -562,7 +562,7 @@ const Logs = () => {
         offset = batchDone.nextOffset ?? offset;
       }
       toast.success("Visual enrichment complete");
-      const { data } = await supabase.rpc("get_reference_logs");
+      const { data } = await supabase.rpc("get_reference_logs").range(0, 49999);
       if (data) setRows(data as LogRow[]);
     } catch (err: any) {
       toast.error(err.message);
