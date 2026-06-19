@@ -157,11 +157,11 @@ const Logs = () => {
   const countNotEnriched = useMemo(() => rows.filter((r) => !r.visual_enriched_at).length, [rows]);
   const countPendingProcess = useMemo(() => {
     const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-    return rows.filter((r) => !r.has_ai_metadata || (!r.audited_at && r.created_at > cutoff)).length;
+    return rows.filter((r) => !r.has_ai_metadata || (!r.audited_at && (r.approved_at ?? r.created_at) > cutoff)).length;
   }, [rows]);
   const countRedoWindow = useMemo(() => {
     const cutoff = new Date(Date.now() - redoDays * 24 * 60 * 60 * 1000).toISOString();
-    return rows.filter((r) => r.created_at > cutoff).length;
+    return rows.filter((r) => (r.approved_at ?? r.created_at) > cutoff).length;
   }, [rows, redoDays]);
 
   // ── Sort handler ──────────────────────────────────────────────────────────────────────────────────────
