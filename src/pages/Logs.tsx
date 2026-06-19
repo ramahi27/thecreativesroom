@@ -367,8 +367,10 @@ const Logs = () => {
   }
 
   // ── Process new (bulk) ────────────────────────────────────────────────────────
-  async function handleProcessNew() {
+  async function handleProcessNew(opts?: { redo?: boolean; days?: 1 | 3 | 7 }) {
     if (processing) return;
+    const redo = opts?.redo === true;
+    const days = opts?.days ?? 3;
     setProcessing(true);
     setProcessProgress("Starting…");
     setProcessLog([]);
@@ -379,7 +381,7 @@ const Logs = () => {
         const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-new`, {
           method: "POST",
           headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ offset }),
+          body: JSON.stringify({ offset, days, redo }),
         });
         if (!res.ok || !res.body) {
           const txt = await res.text().catch(() => "");
