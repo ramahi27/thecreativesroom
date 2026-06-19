@@ -607,7 +607,7 @@ const Logs = () => {
         <div className="container py-3 flex flex-wrap items-center gap-3">
           <Button
             type="button"
-            onClick={handleProcessNew}
+            onClick={() => handleProcessNew()}
             disabled={processing || countPendingProcess === 0}
             variant="outline"
             className="font-mono text-xs uppercase tracking-widest h-9"
@@ -616,6 +616,29 @@ const Logs = () => {
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {processing ? processProgress || "Processing…" : `Process new (${countPendingProcess})`}
           </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              onClick={() => handleProcessNew({ redo: true, days: redoDays })}
+              disabled={processing || countRedoWindow === 0}
+              variant="outline"
+              className="font-mono text-xs uppercase tracking-widest h-9"
+              title="Re-process every reference added in the selected window, even if already audited"
+            >
+              <Wand2 className="h-3.5 w-3.5 mr-2" />
+              {processing ? "Working…" : `Redo (${countRedoWindow})`}
+            </Button>
+            <Select value={String(redoDays)} onValueChange={(v) => setRedoDays(Number(v) as 1 | 3 | 7)} disabled={processing}>
+              <SelectTrigger className="h-9 w-[110px] font-mono text-xs uppercase tracking-widest">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1" className="font-mono text-xs uppercase tracking-widest">1 day</SelectItem>
+                <SelectItem value="3" className="font-mono text-xs uppercase tracking-widest">3 days</SelectItem>
+                <SelectItem value="7" className="font-mono text-xs uppercase tracking-widest">7 days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button
             type="button"
             onClick={() => handleEnrichVisual(false)}
