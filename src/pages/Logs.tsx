@@ -232,7 +232,7 @@ const Logs = () => {
     loadDeadLinks();
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase.rpc("get_reference_logs");
+      const { data, error } = await supabase.rpc("get_reference_logs").range(0, 49999);
       if (error) { console.error(error); setRows([]); setLoading(false); return; }
       const baseRows = (data as LogRow[]) || [];
       const ids = baseRows.map((r) => r.id);
