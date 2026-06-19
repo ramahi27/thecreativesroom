@@ -72,13 +72,14 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       });
     const listCols =
       "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,categories,published,source,created_at,updated_at";
-    supabase
-      .from("references")
-      .select(listCols)
-      .eq("published", true)
-      .order("created_at", { ascending: false })
-      .limit(300)
-      .then(({ data: list }) => {
+    // If the opener provided an explicit nav order (drafts page, filtered grid,
+    // folder, bookmarks…), fetch THOSE refs by id so prev/next works regardless
+    // of published state. Otherwise fall back to the public published feed.
+    const navIds = getModalNavOrder();
+    const listQuery = navIds.length > 0
+      ? supabase.from("references").select(listCols).in("id", navIds).limit(navIds.length)
+      : supabase.from("references").select(listCols).eq("published", true).order("created_at", { ascending: false }).limit(300);
+    listQuery.then(({ data: list }) => {
         if (cancelled) return;
         setAllRefs((list as unknown as Reference[]) || []);
       });
