@@ -134,13 +134,17 @@ async function processOne(ref: RefRow, apiKey: string, firecrawlKey: string | nu
     pageContext ? `\npage_context:\n${pageContext}` : `\npage_context: (unavailable)`,
   ].join("\n");
 
+  const today = new Date();
+  const currentYear = today.getUTCFullYear();
+  const dateLine = `Today's date is ${today.toISOString().slice(0, 10)} (current year: ${currentYear}). Any year from 1950 through ${currentYear} INCLUSIVE is valid — ${currentYear} is the present, NOT the future. NEVER clear a year just because it is ${currentYear} or close to it. Only clear a year if it is greater than ${currentYear}, less than 1950, or clearly contradicted by page_context.`;
+
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-2.5-pro",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: `${dateLine}\n\n${SYSTEM_PROMPT}` },
         { role: "user", content: userContext },
       ],
       tools: [TOOL],
