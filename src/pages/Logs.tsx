@@ -562,7 +562,7 @@ const Logs = () => {
         offset = batchDone.nextOffset ?? offset;
       }
       toast.success("Visual enrichment complete");
-      const { data } = await supabase.rpc("get_reference_logs");
+      const { data } = await supabase.rpc("get_reference_logs").range(0, 49999);
       if (data) setRows(data as LogRow[]);
     } catch (err: any) {
       toast.error(err.message);
