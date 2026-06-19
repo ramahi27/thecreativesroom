@@ -203,22 +203,32 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     }
   }, [navigate, onClose]);
 
+  const advanceOrReturn = useCallback(() => {
+    if (next && next.id !== r?.id) {
+      navigate(refPath(next.id, next.title));
+    } else {
+      returnToOpener();
+    }
+  }, [next, r, navigate, returnToOpener]);
+
   async function handleDelete() {
     if (!r || !confirm("Delete this reference?")) return;
     const { error } = await supabase.from("references").delete().eq("id", r.id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
-    returnToOpener();
+    advanceOrReturn();
   }
 
   async function handleApprove() {
     if (!r) return;
+    const wasDraft = !r.published;
     const { error } = await supabase.from("references").update({ published: true }).eq("id", r.id);
     if (error) return toast.error(error.message);
     setR({ ...r, published: true } as Reference);
     toast.success("Published — now live on the main page");
     enrichReferenceMetadata(r.id);
-    returnToOpener();
+    if (wasDraft) advanceOrReturn();
+    else returnToOpener();
   }
 
   async function handleReport(e: React.FormEvent) {
