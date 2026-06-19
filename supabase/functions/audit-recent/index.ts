@@ -129,7 +129,7 @@ async function auditOne(ref: RefRow, apiKey: string, firecrawlKey: string | null
   const today = new Date();
   const currentYear = today.getUTCFullYear();
   const dateLine = `Today's date is ${today.toISOString().slice(0, 10)} (current year: ${currentYear}). Years up to and including ${currentYear} are NOT in the future.`;
-  const strictRule = `\n\nCRITICAL EVIDENCE RULE: You may only use "set" for brand, agency, or year when the page_context block explicitly states that value. If page_context is unavailable, or does not name the brand/agency/year, you MUST "keep" (or "clear" only if the current value is obvious junk like "COTW", "Cannes", a URL, or the brand repeated as agency). Do NOT invent an agency from general knowledge — agency attributions guessed from a campaign name are frequently wrong. When in doubt, keep.`;
+  const strictRule = `\n\nCRITICAL EVIDENCE RULE: You may only use "set" for brand, agency, or year when the page_context block explicitly states that value. If page_context is unavailable, or does not name the brand/agency/year, you MUST "keep" (or "clear" only if the current value is obvious junk like "COTW", "Cannes", a URL, or the brand repeated as agency). Do NOT invent an agency from general knowledge — agency attributions guessed from a campaign name are frequently wrong. When in doubt, keep.\n\nCRITICAL YEAR RULE: The current year is ${currentYear}. Any year from 1950 through ${currentYear} INCLUSIVE is valid and is NOT in the future. NEVER clear a year just because it is ${currentYear} or close to it — that is the present, not the future. Only clear a year if it is genuinely impossible (e.g. greater than ${currentYear}, less than 1950, or clearly contradicted by page_context). When in doubt about the year, keep.`;
 
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -288,9 +288,9 @@ Deno.serve(async (req) => {
           .from("references")
           .select("id,title,type,brand,agency,year,source_url,notes", { count: "exact" })
           .eq("published", true)
-          .gte("created_at", since)
+          .gte("approved_at", since)
           .is("audited_at", null)
-          .order("created_at", { ascending: false })
+          .order("approved_at", { ascending: false, nullsFirst: false })
           .range(offset, offset + limit - 1);
 
         if (error) { send({ type: "error", message: error.message }); controller.close(); return; }
