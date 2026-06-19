@@ -293,13 +293,14 @@ Deno.serve(async (req) => {
           .select(SELECT, { count: "exact" })
           .eq("published", true);
         if (redo) {
-          // Re-process everything added in the window, even if already audited
-          query = query.gte("created_at", since);
+          // Re-process everything APPROVED in the window (i.e. moved out of drafts),
+          // even if already audited.
+          query = query.gte("approved_at", since);
         } else {
-          query = query.or(`visual_summary.is.null,and(created_at.gte.${since},audited_at.is.null)`);
+          query = query.or(`visual_summary.is.null,and(approved_at.gte.${since},audited_at.is.null)`);
         }
         const { data: refs, error, count } = await query
-          .order("created_at", { ascending: false })
+          .order("approved_at", { ascending: false, nullsFirst: false })
           .range(offset, offset + limit - 1);
 
         if (error) { send({ type: "error", message: error.message }); controller.close(); return; }
