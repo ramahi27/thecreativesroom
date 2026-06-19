@@ -534,13 +534,13 @@ const Logs = () => {
             } else if (msg.type === "fix") {
               setEnrichProgress(msg.message);
               const vs = msg.changes?.find((c: any) => c.field === "visual_summary")?.to ?? null;
-              setEnrichLog(prev => [...prev, { kind: "fix", title: msg.title ?? "?", strength: msg.strength ?? "none", visualSummary: vs }].slice(-100));
+              setEnrichLog(prev => [...prev, { kind: "fix", title: msg.title ?? "?", strength: msg.strength ?? "none", visualSummary: vs } as EnrichEntry].slice(-100));
             } else if (msg.type === "skip") {
               setEnrichProgress(msg.message);
-              setEnrichLog(prev => [...prev, { kind: "skip", title: msg.title ?? msg.message ?? "?" }].slice(-100));
+              setEnrichLog(prev => [...prev, { kind: "skip", title: msg.title ?? msg.message ?? "?" } as EnrichEntry].slice(-100));
             } else if (msg.type === "warn") {
               setEnrichProgress(msg.message);
-              setEnrichLog(prev => [...prev, { kind: "warn", message: msg.message }].slice(-100));
+              setEnrichLog(prev => [...prev, { kind: "warn", message: msg.message } as EnrichEntry].slice(-100));
             } else if (msg.type === "error") {
               throw new Error(msg.message);
             } else if (msg.type === "done") {
