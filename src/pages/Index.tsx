@@ -405,10 +405,10 @@ const Index = () => {
     const time = (s?: string | null) => (s ? new Date(s).getTime() : 0);
     switch (sortBy) {
       case "newest":
-        sorted.sort((a, b) => time(b.created_at) - time(a.created_at));
+        sorted.sort((a, b) => time((b as any).approved_at ?? b.created_at) - time((a as any).approved_at ?? a.created_at));
         break;
       case "oldest":
-        sorted.sort((a, b) => time(a.created_at) - time(b.created_at));
+        sorted.sort((a, b) => time((a as any).approved_at ?? a.created_at) - time((b as any).approved_at ?? b.created_at));
         break;
       case "campaign_newest":
         sorted.sort((a, b) => (b.year || 0) - (a.year || 0));
