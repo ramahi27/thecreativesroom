@@ -207,7 +207,7 @@ const Logs = () => {
     const q = search.trim().toLowerCase();
     if (q) {
       result = result.filter((r) =>
-        [r.title, r.brand, r.created_by_email, r.approved_by_email]
+        [r.title, r.brand, r.created_by_email, r.approved_by_email, r.visual_summary]
           .filter(Boolean).join(" ").toLowerCase().includes(q),
       );
     }
