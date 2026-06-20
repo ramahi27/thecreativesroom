@@ -437,7 +437,7 @@ const Logs = () => {
         if (!batchDone || !batchDone.hasMore) break;
         offset = batchDone.nextOffset ?? offset;
       }
-      const { data } = await supabase.rpc("get_reference_logs").range(0, 49999);
+      const data = await fetchAllLogs().catch(() => null);
       if (data) {
         const byId = new Map((data as LogRow[]).map((r) => [r.id, r]));
         setRows((prev) => prev.map((r) => {
