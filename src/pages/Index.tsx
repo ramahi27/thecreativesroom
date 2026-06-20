@@ -267,11 +267,11 @@ const Index = () => {
     const { data, count, error } = await supabase
       .from("references")
       .select(
-        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,media_items,categories,published,source",
+        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,approved_at,media_items,categories,published,source",
         { count: "exact" }
       )
       .eq("published", true)
-      .order("created_at", { ascending: false })
+      .order("approved_at", { ascending: false, nullsFirst: false })
       .range(from, from + PAGE_SIZE - 1);
     if (error) return { list: [] as Reference[], total: 0 };
     return { list: (data as unknown as Reference[]) || [], total: count ?? 0 };
