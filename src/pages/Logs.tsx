@@ -26,6 +26,23 @@ function hasCompleteMetadata(r: { visual_summary?: string | null }): boolean {
   return hasValue(r.visual_summary);
 }
 
+async function fetchAllLogs(): Promise<LogRow[]> {
+  const PAGE = 1000;
+  const all: LogRow[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .rpc("get_reference_logs")
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const batch = (data as LogRow[]) || [];
+    all.push(...batch);
+    if (batch.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
+}
+
 type LogRow = {
   id: string;
   title: string;
