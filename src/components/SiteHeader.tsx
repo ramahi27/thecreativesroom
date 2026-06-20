@@ -38,7 +38,11 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 border-b hairline bg-background/70 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-baseline gap-2 group">
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <svg width="22" height="22" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0">
+            <rect width="32" height="32" rx="7" fill="#0A0A0A"/>
+            <path d="M 22,10 A 9,9 0 1,0 22,22" stroke="#F46A20" strokeWidth="4.5" strokeLinecap="round"/>
+          </svg>
           <span className="font-display text-2xl font-black tracking-tighter">The Creatives Room</span>
         </Link>
 
