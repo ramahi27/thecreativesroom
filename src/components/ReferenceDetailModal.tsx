@@ -222,6 +222,14 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [goPrev, goNext]);
 
+  // On mobile, pressing browser back while modal is open should go to home,
+  // not the previous reference URL.
+  useEffect(() => {
+    const handlePop = () => { navigate("/", { replace: true }); };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, [navigate]);
+
   const returnToOpener = useCallback(() => {
     if (peekModalReturn()) {
       consumeModalReturn(navigate, "/");
