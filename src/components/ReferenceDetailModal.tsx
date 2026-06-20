@@ -582,7 +582,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                     <Share2 className="h-3 w-3" />
                     Share
                   </button>
-                  {canDownload && (current?.url || r.source_url || r.media_url) && (
+                  {false && canDownload && (current?.url || r.source_url || r.media_url) && (
                     <button onClick={handleDownload} disabled={downloading}
                       className="inline-flex items-center gap-2 px-4 py-2 border hairline font-mono text-[11px] uppercase tracking-widest hover:bg-secondary disabled:opacity-50 disabled:cursor-wait"
                       aria-label="Download">
