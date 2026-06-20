@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { rememberModalReturn, setModalNavOrder } from "@/lib/modalReturn";
 import { refPath } from "@/lib/slug";
 
@@ -23,6 +24,23 @@ function hasValue(value: string | null | undefined) {
 
 function hasCompleteMetadata(r: { visual_summary?: string | null }): boolean {
   return hasValue(r.visual_summary);
+}
+
+async function fetchAllLogs(): Promise<LogRow[]> {
+  const PAGE = 1000;
+  const all: LogRow[] = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .rpc("get_reference_logs")
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    const batch = (data as LogRow[]) || [];
+    all.push(...batch);
+    if (batch.length < PAGE) break;
+    from += PAGE;
+  }
+  return all;
 }
 
 type LogRow = {
@@ -120,6 +138,7 @@ const Logs = () => {
 
   // Process-new (merged backfill + audit)
   const [processing, setProcessing] = useState(false);
+  const [redoDays, setRedoDays] = useState<1 | 3 | 7>(3);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [processProgress, setProcessProgress] = useState<string>("");
   const [processLog, setProcessLog] = useState<AuditEntry[]>([]);
@@ -155,8 +174,12 @@ const Logs = () => {
   const countNotEnriched = useMemo(() => rows.filter((r) => !r.visual_enriched_at).length, [rows]);
   const countPendingProcess = useMemo(() => {
     const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
-    return rows.filter((r) => !r.has_ai_metadata || (!r.audited_at && r.created_at > cutoff)).length;
+    return rows.filter((r) => !r.has_ai_metadata || (!r.audited_at && (r.approved_at ?? r.created_at) > cutoff)).length;
   }, [rows]);
+  const countRedoWindow = useMemo(() => {
+    const cutoff = new Date(Date.now() - redoDays * 24 * 60 * 60 * 1000).toISOString();
+    return rows.filter((r) => (r.approved_at ?? r.created_at) > cutoff).length;
+  }, [rows, redoDays]);
 
   // ── Sort handler ──────────────────────────────────────────────────────────────────────────────────────
   function handleSort(col: SortCol) {
@@ -226,9 +249,9 @@ const Logs = () => {
     loadDeadLinks();
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase.rpc("get_reference_logs");
-      if (error) { console.error(error); setRows([]); setLoading(false); return; }
-      const baseRows = (data as LogRow[]) || [];
+      let baseRows: LogRow[] = [];
+      try { baseRows = await fetchAllLogs(); }
+      catch (error) { console.error(error); setRows([]); setLoading(false); return; }
       const ids = baseRows.map((r) => r.id);
       const infoMap = new Map<string, {
         brand: string | null; agency: string | null; year: number | null;
@@ -365,8 +388,10 @@ const Logs = () => {
   }
 
   // ── Process new (bulk) ────────────────────────────────────────────────────────
-  async function handleProcessNew() {
+  async function handleProcessNew(opts?: { redo?: boolean; days?: 1 | 3 | 7 }) {
     if (processing) return;
+    const redo = opts?.redo === true;
+    const days = opts?.days ?? 3;
     setProcessing(true);
     setProcessProgress("Starting…");
     setProcessLog([]);
@@ -377,7 +402,7 @@ const Logs = () => {
         const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-new`, {
           method: "POST",
           headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ offset }),
+          body: JSON.stringify({ offset, days, redo }),
         });
         if (!res.ok || !res.body) {
           const txt = await res.text().catch(() => "");
@@ -412,7 +437,7 @@ const Logs = () => {
         if (!batchDone || !batchDone.hasMore) break;
         offset = batchDone.nextOffset ?? offset;
       }
-      const { data } = await supabase.rpc("get_reference_logs");
+      const data = await fetchAllLogs().catch(() => null);
       if (data) {
         const byId = new Map((data as LogRow[]).map((r) => [r.id, r]));
         setRows((prev) => prev.map((r) => {
@@ -534,13 +559,13 @@ const Logs = () => {
             } else if (msg.type === "fix") {
               setEnrichProgress(msg.message);
               const vs = msg.changes?.find((c: any) => c.field === "visual_summary")?.to ?? null;
-              setEnrichLog(prev => [...prev, { kind: "fix", title: msg.title ?? "?", strength: msg.strength ?? "none", visualSummary: vs }].slice(-100));
+              setEnrichLog(prev => [...prev, { kind: "fix", title: msg.title ?? "?", strength: msg.strength ?? "none", visualSummary: vs } as EnrichEntry].slice(-100));
             } else if (msg.type === "skip") {
               setEnrichProgress(msg.message);
-              setEnrichLog(prev => [...prev, { kind: "skip", title: msg.title ?? msg.message ?? "?" }].slice(-100));
+              setEnrichLog(prev => [...prev, { kind: "skip", title: msg.title ?? msg.message ?? "?" } as EnrichEntry].slice(-100));
             } else if (msg.type === "warn") {
               setEnrichProgress(msg.message);
-              setEnrichLog(prev => [...prev, { kind: "warn", message: msg.message }].slice(-100));
+              setEnrichLog(prev => [...prev, { kind: "warn", message: msg.message } as EnrichEntry].slice(-100));
             } else if (msg.type === "error") {
               throw new Error(msg.message);
             } else if (msg.type === "done") {
@@ -554,7 +579,7 @@ const Logs = () => {
         offset = batchDone.nextOffset ?? offset;
       }
       toast.success("Visual enrichment complete");
-      const { data } = await supabase.rpc("get_reference_logs");
+      const data = await fetchAllLogs().catch(() => null);
       if (data) setRows(data as LogRow[]);
     } catch (err: any) {
       toast.error(err.message);
@@ -599,7 +624,7 @@ const Logs = () => {
         <div className="container py-3 flex flex-wrap items-center gap-3">
           <Button
             type="button"
-            onClick={handleProcessNew}
+            onClick={() => handleProcessNew()}
             disabled={processing || countPendingProcess === 0}
             variant="outline"
             className="font-mono text-xs uppercase tracking-widest h-9"
@@ -608,6 +633,29 @@ const Logs = () => {
             <Sparkles className="h-3.5 w-3.5 mr-2" />
             {processing ? processProgress || "Processing…" : `Process new (${countPendingProcess})`}
           </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              onClick={() => handleProcessNew({ redo: true, days: redoDays })}
+              disabled={processing || countRedoWindow === 0}
+              variant="outline"
+              className="font-mono text-xs uppercase tracking-widest h-9"
+              title="Re-process every reference added in the selected window, even if already audited"
+            >
+              <Wand2 className="h-3.5 w-3.5 mr-2" />
+              {processing ? "Working…" : `Redo (${countRedoWindow})`}
+            </Button>
+            <Select value={String(redoDays)} onValueChange={(v) => setRedoDays(Number(v) as 1 | 3 | 7)} disabled={processing}>
+              <SelectTrigger className="h-9 w-[110px] font-mono text-xs uppercase tracking-widest">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1" className="font-mono text-xs uppercase tracking-widest">1 day</SelectItem>
+                <SelectItem value="3" className="font-mono text-xs uppercase tracking-widest">3 days</SelectItem>
+                <SelectItem value="7" className="font-mono text-xs uppercase tracking-widest">7 days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <Button
             type="button"
             onClick={() => handleEnrichVisual(false)}

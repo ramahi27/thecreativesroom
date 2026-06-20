@@ -134,13 +134,17 @@ async function processOne(ref: RefRow, apiKey: string, firecrawlKey: string | nu
     pageContext ? `\npage_context:\n${pageContext}` : `\npage_context: (unavailable)`,
   ].join("\n");
 
+  const today = new Date();
+  const currentYear = today.getUTCFullYear();
+  const dateLine = `Today's date is ${today.toISOString().slice(0, 10)} (current year: ${currentYear}). Any year from 1950 through ${currentYear} INCLUSIVE is valid — ${currentYear} is the present, NOT the future. NEVER clear a year just because it is ${currentYear} or close to it. Only clear a year if it is greater than ${currentYear}, less than 1950, or clearly contradicted by page_context.`;
+
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: "google/gemini-2.5-pro",
       messages: [
-        { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: `${dateLine}\n\n${SYSTEM_PROMPT}` },
         { role: "user", content: userContext },
       ],
       tools: [TOOL],
@@ -283,14 +287,24 @@ Deno.serve(async (req) => {
         // ── Batch mode ───────────────────────────────────────────────────────────
         const offset = Math.max(0, parseInt(body?.offset ?? "0", 10) || 0);
         const limit = Math.min(Math.max(1, parseInt(body?.limit ?? String(DEFAULT_LIMIT), 10) || DEFAULT_LIMIT), MAX_LIMIT);
-        const since = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
+        const daysRaw = parseInt(body?.days ?? "3", 10);
+        const days = [1, 3, 7].includes(daysRaw) ? daysRaw : 3;
+        const redo = body?.redo === true;
+        const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-        const { data: refs, error, count } = await admin
+        let query = admin
           .from("references")
           .select(SELECT, { count: "exact" })
-          .eq("published", true)
-          .or(`visual_summary.is.null,and(created_at.gte.${since},audited_at.is.null)`)
-          .order("created_at", { ascending: false })
+          .eq("published", true);
+        if (redo) {
+          // Re-process everything APPROVED in the window (i.e. moved out of drafts),
+          // even if already audited.
+          query = query.gte("approved_at", since);
+        } else {
+          query = query.or(`visual_summary.is.null,and(approved_at.gte.${since},audited_at.is.null)`);
+        }
+        const { data: refs, error, count } = await query
+          .order("approved_at", { ascending: false, nullsFirst: false })
           .range(offset, offset + limit - 1);
 
         if (error) { send({ type: "error", message: error.message }); controller.close(); return; }

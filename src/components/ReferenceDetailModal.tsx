@@ -72,16 +72,33 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       });
     const listCols =
       "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,categories,published,source,created_at,updated_at";
-    supabase
-      .from("references")
-      .select(listCols)
-      .eq("published", true)
-      .order("created_at", { ascending: false })
-      .limit(300)
-      .then(({ data: list }) => {
+    // If the opener provided an explicit nav order (drafts page, logs, filtered
+    // grid, folder, bookmarks…), only fetch the IMMEDIATE prev/next neighbours
+    // by id. A huge `.in("id", [...])` list (e.g. /logs with thousands of rows)
+    // overflows the request URL and silently returns empty, which used to break
+    // arrow navigation for admins on long lists.
+    const navIds = getModalNavOrder();
+    if (navIds.length > 0) {
+      const idx = navIds.indexOf(id);
+      const neighbours: string[] = [];
+      if (idx !== -1 && navIds.length > 1) {
+        neighbours.push(navIds[(idx - 1 + navIds.length) % navIds.length]);
+        neighbours.push(navIds[(idx + 1) % navIds.length]);
+      }
+      if (neighbours.length === 0) {
+        setAllRefs([]);
+      } else {
+        supabase.from("references").select(listCols).in("id", neighbours).then(({ data: list }) => {
+          if (cancelled) return;
+          setAllRefs((list as unknown as Reference[]) || []);
+        });
+      }
+    } else {
+      supabase.from("references").select(listCols).eq("published", true).order("created_at", { ascending: false }).limit(300).then(({ data: list }) => {
         if (cancelled) return;
         setAllRefs((list as unknown as Reference[]) || []);
       });
+    }
     return () => { cancelled = true; };
   }, [id]);
 
@@ -203,22 +220,32 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     }
   }, [navigate, onClose]);
 
+  const advanceOrReturn = useCallback(() => {
+    if (next && next.id !== r?.id) {
+      navigate(refPath(next.id, next.title));
+    } else {
+      returnToOpener();
+    }
+  }, [next, r, navigate, returnToOpener]);
+
   async function handleDelete() {
     if (!r || !confirm("Delete this reference?")) return;
     const { error } = await supabase.from("references").delete().eq("id", r.id);
     if (error) return toast.error(error.message);
     toast.success("Deleted");
-    returnToOpener();
+    advanceOrReturn();
   }
 
   async function handleApprove() {
     if (!r) return;
+    const wasDraft = !r.published;
     const { error } = await supabase.from("references").update({ published: true }).eq("id", r.id);
     if (error) return toast.error(error.message);
     setR({ ...r, published: true } as Reference);
     toast.success("Published — now live on the main page");
     enrichReferenceMetadata(r.id);
-    returnToOpener();
+    if (wasDraft) advanceOrReturn();
+    else returnToOpener();
   }
 
   async function handleReport(e: React.FormEvent) {
@@ -387,13 +414,13 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       >
         {prev && (
           <button onClick={goPrev} aria-label="Previous reference"
-            className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors">
+            className="fixed left-4 md:left-8 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors shadow-lg">
             <ChevronLeft className="h-4 w-4" />
           </button>
         )}
         {next && (
           <button onClick={goNext} aria-label="Next reference"
-            className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors">
+            className="fixed right-4 md:right-8 top-1/2 -translate-y-1/2 z-50 h-10 w-10 flex items-center justify-center rounded-full bg-background/80 hover:bg-background border hairline backdrop-blur-md transition-colors shadow-lg">
             <ChevronRight className="h-4 w-4" />
           </button>
         )}
