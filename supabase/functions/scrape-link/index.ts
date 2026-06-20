@@ -69,13 +69,18 @@ async function scrapeYouTube(url: string, id: string): Promise<Scraped> {
   try {
     const r = await fetch(
       `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}&format=json`,
+      { signal: AbortSignal.timeout(10000) },
     );
     if (r.ok) {
-      const d = await r.json();
+      const d = await r.json().catch(() => ({} as any));
       title = d.title || title;
       author = d.author_name || "";
+    } else {
+      console.warn("[scrape-link] youtube oembed non-ok", r.status, id);
     }
-  } catch {/* ignore */}
+  } catch (e) {
+    console.warn("[scrape-link] youtube oembed failed", id, e instanceof Error ? e.message : e);
+  }
   return {
     title,
     source_url: `https://www.youtube.com/watch?v=${id}`,
@@ -90,14 +95,21 @@ async function scrapeVimeo(url: string): Promise<Scraped> {
   let thumb: string | null = null;
   let author = "";
   try {
-    const r = await fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`);
+    const r = await fetch(
+      `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(10000) },
+    );
     if (r.ok) {
-      const d = await r.json();
+      const d = await r.json().catch(() => ({} as any));
       title = d.title || title;
       thumb = d.thumbnail_url || null;
       author = d.author_name || "";
+    } else {
+      console.warn("[scrape-link] vimeo oembed non-ok", r.status, url);
     }
-  } catch {/* ignore */}
+  } catch (e) {
+    console.warn("[scrape-link] vimeo oembed failed", url, e instanceof Error ? e.message : e);
+  }
   return { title, source_url: url, thumbnail_url: thumb, type: "video", brand_guess: author };
 }
 
