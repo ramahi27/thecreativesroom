@@ -69,13 +69,18 @@ async function scrapeYouTube(url: string, id: string): Promise<Scraped> {
   try {
     const r = await fetch(
       `https://www.youtube.com/oembed?url=${encodeURIComponent(`https://www.youtube.com/watch?v=${id}`)}&format=json`,
+      { signal: AbortSignal.timeout(10000) },
     );
     if (r.ok) {
-      const d = await r.json();
+      const d = await r.json().catch(() => ({} as any));
       title = d.title || title;
       author = d.author_name || "";
+    } else {
+      console.warn("[scrape-link] youtube oembed non-ok", r.status, id);
     }
-  } catch {/* ignore */}
+  } catch (e) {
+    console.warn("[scrape-link] youtube oembed failed", id, e instanceof Error ? e.message : e);
+  }
   return {
     title,
     source_url: `https://www.youtube.com/watch?v=${id}`,
@@ -90,14 +95,21 @@ async function scrapeVimeo(url: string): Promise<Scraped> {
   let thumb: string | null = null;
   let author = "";
   try {
-    const r = await fetch(`https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`);
+    const r = await fetch(
+      `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(url)}`,
+      { signal: AbortSignal.timeout(10000) },
+    );
     if (r.ok) {
-      const d = await r.json();
+      const d = await r.json().catch(() => ({} as any));
       title = d.title || title;
       thumb = d.thumbnail_url || null;
       author = d.author_name || "";
+    } else {
+      console.warn("[scrape-link] vimeo oembed non-ok", r.status, url);
     }
-  } catch {/* ignore */}
+  } catch (e) {
+    console.warn("[scrape-link] vimeo oembed failed", url, e instanceof Error ? e.message : e);
+  }
   return { title, source_url: url, thumbnail_url: thumb, type: "video", brand_guess: author };
 }
 
@@ -861,31 +873,45 @@ async function scrapeAndInsert(
     else if (u.hostname.includes("vimeo.com")) scraped = await scrapeVimeo(rawUrl);
     else scraped = await scrapeGeneric(rawUrl);
   } catch (e) {
-    return { ok: false, url: rawUrl, error: e instanceof Error ? e.message : "scrape failed" };
+    console.error("[scrape-link] scrape stage failed", rawUrl, e);
+    return { ok: false, url: rawUrl, error: `scrape failed: ${e instanceof Error ? e.message : String(e)}` };
   }
 
-  const meta = await inferMetadata(scraped, categories);
+  let meta;
+  try {
+    meta = await inferMetadata(scraped, categories);
+  } catch (e) {
+    console.error("[scrape-link] inferMetadata threw (using fallback)", e);
+    meta = {
+      brand: scraped.brand_guess || null,
+      agency: scraped.agency_guess || null,
+      categories: [] as string[],
+      tags: [] as string[],
+      year: scraped.year_guess ?? null,
+      clean_title: scraped.title,
+    };
+  }
+
   const allImages = (scraped.images || []).filter(Boolean);
 
   // ===== Keep only the MAIN campaign's images — always one draft =====
-  // Rule 1: if >8 images survived stripping, this is almost certainly a listing /
-  //   gallery page, not a single campaign. Trust only the og:image (index 0).
-  // Rule 2: for smaller sets, use AI grouping and keep the group that contains
-  //   the og:image (index 0). That's always the main campaign on a genuine campaign page.
   let mainImages = allImages;
   if (scraped.type === "image") {
     if (allImages.length > 8) {
-      // Listing-page guard: too many images to be a single campaign
       mainImages = allImages.slice(0, 1);
     } else if (allImages.length >= 2) {
-      const groups = await groupImagesIntoProjects(allImages, scraped.title, scraped.source_url);
-      if (groups.length > 1) {
-        const mainGroup = groups.find((g) => g.image_indices.includes(0)) ?? groups[0];
-        mainImages = [...mainGroup.image_indices]
-          .sort((a, b) => a - b)
-          .map((i) => allImages[i])
-          .filter(Boolean);
-        if (mainImages.length === 0) mainImages = allImages;
+      try {
+        const groups = await groupImagesIntoProjects(allImages, scraped.title, scraped.source_url);
+        if (groups.length > 1) {
+          const mainGroup = groups.find((g) => g.image_indices.includes(0)) ?? groups[0];
+          mainImages = [...mainGroup.image_indices]
+            .sort((a, b) => a - b)
+            .map((i) => allImages[i])
+            .filter(Boolean);
+          if (mainImages.length === 0) mainImages = allImages;
+        }
+      } catch (e) {
+        console.warn("[scrape-link] groupImagesIntoProjects threw (keeping all)", e);
       }
     }
   }
@@ -919,7 +945,10 @@ async function scrapeAndInsert(
     .insert(insertRow)
     .select("id, title, thumbnail_url, brand, categories, tags, type")
     .single();
-  if (insErr) return { ok: false, url: rawUrl, error: insErr.message };
+  if (insErr) {
+    console.error("[scrape-link] insert failed", insErr, { rawUrl, type: scraped.type });
+    return { ok: false, url: rawUrl, error: `insert failed: ${insErr.message}` };
+  }
   return { ok: true, draft: inserted, image_warning: !!scraped.image_warning };
 }
 
@@ -1013,14 +1042,18 @@ Deno.serve(async (req) => {
 
     // ===== Single URL =====
     const result = await scrapeAndInsert(rawUrl, supabase, userId, categories);
-    if (!result.ok) return json({ error: result.error }, 500);
+    if (!result.ok) {
+      // Return 200 with success:false so the client toast can show the real reason
+      // (supabase.functions.invoke hides response bodies on non-2xx status codes).
+      return json({ success: false, error: result.error });
+    }
     if ((result as any).split && Array.isArray((result as any).drafts)) {
       const drafts = (result as any).drafts;
       return json({ success: true, split: true, count: drafts.length, drafts, draft: drafts[0] });
     }
     return json({ success: true, draft: result.draft, image_warning: !!(result as any).image_warning });
   } catch (e) {
-    console.error("scrape-link error", e);
-    return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
+    console.error("[scrape-link] unhandled error", e);
+    return json({ success: false, error: e instanceof Error ? e.message : "Unknown error" });
   }
 });
