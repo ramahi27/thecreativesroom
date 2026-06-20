@@ -929,16 +929,25 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Missing auth" }, 401);
 
+    // Validate user JWT using the anon key (recommended Supabase pattern)
+    const supabaseUser = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      {
+        global: { headers: { Authorization: authHeader } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      },
+    );
+    const { data: { user }, error: userErr } = await supabaseUser.auth.getUser();
+    if (userErr || !user) return json({ error: "Invalid token" }, 401);
+    const userId = user.id;
+
+    // Admin check uses service role to bypass RLS
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
       { auth: { persistSession: false } },
     );
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-    if (userErr || !userData.user) return json({ error: "Invalid token" }, 401);
-    const userId = userData.user.id;
-
     const { data: roleRow } = await supabase
       .from("user_roles")
       .select("role")
