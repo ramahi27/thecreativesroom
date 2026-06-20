@@ -534,7 +534,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                 </div>
 
                 {totalSlides > 1 && (
-                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1" onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
                     {uploaded.map((m, i) => (
                       <button key={i} onClick={() => setActiveMedia(i)}
                         draggable={isAdmin && uploaded.length > 1}
