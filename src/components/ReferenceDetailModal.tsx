@@ -45,6 +45,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [embedError, setEmbedError] = useState(false);
+  const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -392,6 +393,25 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (error) { setR({ ...r, categories: current } as Reference); toast.error(error.message); }
   }
 
+  const handleSwipeStart = useCallback((e: React.TouchEvent) => {
+    const t = e.touches[0];
+    if (t) swipeStartRef.current = { x: t.clientX, y: t.clientY };
+  }, []);
+
+  const handleSwipeEnd = useCallback((e: React.TouchEvent) => {
+    const start = swipeStartRef.current;
+    swipeStartRef.current = null;
+    if (!start) return;
+    const t = e.changedTouches[0];
+    if (!t) return;
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Only count as swipe if horizontal movement dominates and exceeds threshold
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0) goNext();
+    else goPrev();
+  }, [goPrev, goNext]);
+
   const safeSourceUrl = r ? safeHref(r.source_url) : undefined;
   const platform = r ? detectPlatform(safeSourceUrl ?? null) : null;
   const embedUrl = r ? getEmbedUrl(safeSourceUrl ?? null) : null;
@@ -439,7 +459,11 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         ) : !r ? (
           <div className="p-12"><p className="font-display text-3xl italic text-muted-foreground">Not found.</p></div>
         ) : (
-          <div className="p-4 sm:p-6 md:p-10">
+          <div
+            className="p-4 sm:p-6 md:p-10"
+            onTouchStart={handleSwipeStart}
+            onTouchEnd={handleSwipeEnd}
+          >
             <div className="flex items-center justify-end">
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">← / → navigate</p>
             </div>
