@@ -1033,14 +1033,18 @@ Deno.serve(async (req) => {
 
     // ===== Single URL =====
     const result = await scrapeAndInsert(rawUrl, supabase, userId, categories);
-    if (!result.ok) return json({ error: result.error }, 500);
+    if (!result.ok) {
+      // Return 200 with success:false so the client toast can show the real reason
+      // (supabase.functions.invoke hides response bodies on non-2xx status codes).
+      return json({ success: false, error: result.error });
+    }
     if ((result as any).split && Array.isArray((result as any).drafts)) {
       const drafts = (result as any).drafts;
       return json({ success: true, split: true, count: drafts.length, drafts, draft: drafts[0] });
     }
     return json({ success: true, draft: result.draft, image_warning: !!(result as any).image_warning });
   } catch (e) {
-    console.error("scrape-link error", e);
-    return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
+    console.error("[scrape-link] unhandled error", e);
+    return json({ success: false, error: e instanceof Error ? e.message : "Unknown error" });
   }
 });
