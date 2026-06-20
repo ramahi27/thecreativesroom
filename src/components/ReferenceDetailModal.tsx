@@ -444,6 +444,12 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">← / → navigate</p>
             </div>
 
+            {/* Mobile-only title — above the image on small screens */}
+            <div className="lg:hidden mt-2 mb-4">
+              <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-2">⏵ {r.type}</p>
+              <h1 className="font-display text-3xl font-black tracking-tighter leading-[0.95]">{r.title}</h1>
+            </div>
+
             <div
               key={r?.id ?? id}
               className="grid lg:grid-cols-3 gap-10 mt-4"
