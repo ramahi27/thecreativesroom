@@ -167,9 +167,23 @@ const Drafts = () => {
       }
     }, 1200);
     try {
-      const { data, error } = await supabase.functions.invoke("scrape-link", { body: { url } });
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("Please sign in again before importing.");
+
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scrape-link`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url }),
+      });
       clearInterval(stepTimer);
-      if (error) throw error;
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || data?.message || "Failed to scrape link");
       if (!data?.success) throw new Error(data?.error || "Failed to scrape");
       toast.dismiss(tId);
       if (data.playlist) {
