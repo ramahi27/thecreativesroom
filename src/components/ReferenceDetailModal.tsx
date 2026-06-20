@@ -46,6 +46,8 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [embedError, setEmbedError] = useState(false);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const thumbStripRef = useRef<HTMLDivElement>(null);
+  const swipeIgnoreRef = useRef(false);
 
   useEffect(() => {
     if (!id) return;
@@ -410,10 +412,17 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
   const handleSwipeStart = useCallback((e: React.TouchEvent) => {
     const t = e.touches[0];
-    if (t) swipeStartRef.current = { x: t.clientX, y: t.clientY };
+    if (!t) return;
+    if (thumbStripRef.current?.contains(e.target as Node)) {
+      swipeIgnoreRef.current = true;
+      return;
+    }
+    swipeIgnoreRef.current = false;
+    swipeStartRef.current = { x: t.clientX, y: t.clientY };
   }, []);
 
   const handleSwipeEnd = useCallback((e: React.TouchEvent) => {
+    if (swipeIgnoreRef.current) { swipeIgnoreRef.current = false; return; }
     const start = swipeStartRef.current;
     swipeStartRef.current = null;
     if (!start) return;
@@ -421,7 +430,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!t) return;
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
-    // Only count as swipe if horizontal movement dominates and exceeds threshold
     if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
     if (dx < 0) goNext();
     else goPrev();
@@ -534,7 +542,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                 </div>
 
                 {totalSlides > 1 && (
-                  <div className="mt-3 flex gap-2 overflow-x-auto pb-1" onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
+                  <div ref={thumbStripRef} className="mt-3 flex gap-2 overflow-x-auto pb-1">
                     {uploaded.map((m, i) => (
                       <button key={i} onClick={() => setActiveMedia(i)}
                         draggable={isAdmin && uploaded.length > 1}
