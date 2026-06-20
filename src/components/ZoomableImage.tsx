@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 
 interface Props {
   src: string;
@@ -15,6 +15,7 @@ export function ZoomableImage({ src, alt, className, scale = 2.25 }: Props) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [zoomed, setZoomed] = useState(false);
   const [origin, setOrigin] = useState("50% 50%");
+  const [fullscreen, setFullscreen] = useState(false);
   const isTouchRef = useRef(false);
   const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
   const panRef = useRef<{
@@ -121,12 +122,7 @@ export function ZoomableImage({ src, alt, className, scale = 2.25 }: Props) {
 
       if (isDoubleTap) {
         lastTapRef.current = null;
-        if (zoomed) {
-          setZoomed(false);
-        } else {
-          setOriginFromPoint(t.clientX, t.clientY);
-          setZoomed(true);
-        }
+        setFullscreen(true);
       } else {
         lastTapRef.current = { time: now, x: t.clientX, y: t.clientY };
       }
@@ -134,7 +130,36 @@ export function ZoomableImage({ src, alt, className, scale = 2.25 }: Props) {
     [zoomed, setOriginFromPoint],
   );
 
+  useEffect(() => {
+    if (fullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [fullscreen]);
+
   return (
+    <>
+    {fullscreen && (
+      <div
+        className="fixed inset-0 z-[9999] bg-black flex items-center justify-center"
+        onClick={() => setFullscreen(false)}
+      >
+        <img
+          src={src}
+          alt={alt}
+          draggable={false}
+          className="w-full h-full object-contain select-none"
+        />
+        <button
+          className="absolute top-4 right-4 font-mono text-[11px] uppercase tracking-widest text-white/60 hover:text-white transition-colors px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm"
+          onClick={() => setFullscreen(false)}
+        >
+          ✕ Close
+        </button>
+      </div>
+    )}
     <div
       ref={wrapperRef}
       onClick={handleClick}
@@ -167,6 +192,7 @@ export function ZoomableImage({ src, alt, className, scale = 2.25 }: Props) {
         }}
       />
     </div>
+    </>
   );
 }
 
