@@ -267,11 +267,11 @@ const Index = () => {
     const { data, count, error } = await supabase
       .from("references")
       .select(
-        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,media_items,categories,published,source",
+        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,approved_at,media_items,categories,published,source",
         { count: "exact" }
       )
       .eq("published", true)
-      .order("created_at", { ascending: false })
+      .order("approved_at", { ascending: false, nullsFirst: false })
       .range(from, from + PAGE_SIZE - 1);
     if (error) return { list: [] as Reference[], total: 0 };
     return { list: (data as unknown as Reference[]) || [], total: count ?? 0 };
@@ -405,10 +405,10 @@ const Index = () => {
     const time = (s?: string | null) => (s ? new Date(s).getTime() : 0);
     switch (sortBy) {
       case "newest":
-        sorted.sort((a, b) => time(b.created_at) - time(a.created_at));
+        sorted.sort((a, b) => time((b as any).approved_at ?? b.created_at) - time((a as any).approved_at ?? a.created_at));
         break;
       case "oldest":
-        sorted.sort((a, b) => time(a.created_at) - time(b.created_at));
+        sorted.sort((a, b) => time((a as any).approved_at ?? a.created_at) - time((b as any).approved_at ?? b.created_at));
         break;
       case "campaign_newest":
         sorted.sort((a, b) => (b.year || 0) - (a.year || 0));
