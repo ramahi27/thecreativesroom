@@ -144,8 +144,18 @@
   }
   .reveal-card:hover {
     transform: scale(1.018);
-    box-shadow: var(--shadow-cinema);
+    box-shadow: 0 0 50px -10px hsl(18 95% 58% / 0.14), var(--shadow-cinema);
     border-color: hsl(var(--hairline) / 1.6);
+  }
+
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes heroIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 }
 

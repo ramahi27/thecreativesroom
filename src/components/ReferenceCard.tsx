@@ -46,6 +46,7 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
     : (r.thumbnail_url || null);
   const [pos, setPos] = useState<string>("center 35%");
   const [thumbError, setThumbError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   const Icon = r.type === "video" ? Play : r.type === "image" ? ImageIcon : Link2;
 
@@ -57,7 +58,7 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
         if (orderedIds && orderedIds.length > 0) setModalNavOrder(orderedIds);
         else clearModalNavOrder();
       }}
-      className="reveal-card group block rounded-2xl overflow-hidden bg-card border hairline flex flex-col transition-all hover:border-foreground/20 hover:shadow-lg hover:shadow-black/20"
+      className="reveal-card group block rounded-2xl overflow-hidden bg-card border hairline flex flex-col transition-all hover:border-foreground/20"
     >
       <div className={`relative overflow-hidden bg-muted ${masonry ? "" : "aspect-video"}`}>
         <BookmarkButton referenceId={r.id} />
@@ -71,9 +72,10 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
             onLoad={(e) => {
               const img = e.currentTarget;
               setPos(smartPosition(img.naturalWidth, img.naturalHeight));
+              setImgLoaded(true);
             }}
             onError={() => setThumbError(true)}
-            className={masonry ? "w-full h-auto block" : "h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"}
+            className={masonry ? "w-full h-auto block" : `h-full w-full object-cover transition-transform duration-700 group-hover:scale-105 transition-opacity duration-500 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
             style={masonry ? undefined : { objectPosition: pos }}
           />
         ) : (

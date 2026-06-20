@@ -37,6 +37,19 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+function SkeletonCard() {
+  return (
+    <div className="rounded-2xl overflow-hidden bg-card border hairline flex flex-col animate-pulse">
+      <div className="aspect-video bg-secondary" />
+      <div className="p-4 flex flex-col gap-3 flex-1" style={{ minHeight: "7rem" }}>
+        <div className="h-5 bg-secondary rounded-md w-3/4" />
+        <div className="h-4 bg-secondary rounded-md w-1/2" />
+        <div className="h-3 bg-secondary rounded-md w-1/3 mt-auto" />
+      </div>
+    </div>
+  );
+}
+
 const Index = () => {
   const { user, isAdmin } = useAuth();
   const { id: rawId } = useParams();
@@ -486,8 +499,8 @@ const Index = () => {
       {/* Hero */}
       <section className="relative overflow-hidden border-b hairline">
         <div className="container pt-20 md:pt-32 pb-8 md:pb-12 relative">
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-6">⏵ ARCHIVE</p>
-          <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black leading-[0.85] tracking-tighter max-w-5xl uppercase whitespace-pre-line">
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-6" style={{ animation: "heroIn 0.65s ease both" }}>⏵ ARCHIVE</p>
+          <h1 className="font-display text-6xl md:text-8xl lg:text-9xl font-black leading-[0.85] tracking-tighter max-w-5xl uppercase whitespace-pre-line" style={{ animation: "heroIn 0.65s ease both", animationDelay: "100ms" }}>
             THE REFERENCE{"\n"}
             <span className="italic font-light">ARCHIVE</span>&nbsp;&nbsp;FOR{"\n"}
             CREATIVES.
@@ -496,7 +509,7 @@ const Index = () => {
 
 
           {/* Visual quad — what you can do here */}
-          <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="mt-14 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3" style={{ animation: "heroIn 0.65s ease both", animationDelay: "220ms" }}>
             <button
               type="button"
               onClick={() => {
@@ -833,7 +846,9 @@ const Index = () => {
       {/* Grid */}
       <main id="archive" className="container py-12 scroll-mt-20">
         {loading ? (
-          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">Loading archive…</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
         ) : filtered.length === 0 ? (
           <div className="py-20 text-center">
             <p className="font-display text-3xl text-muted-foreground italic">
@@ -874,6 +889,7 @@ const Index = () => {
                     <div
                       key={r.id}
                       className={focusedIdx === i ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}
+                      style={{ animation: "cardIn 0.4s ease both", animationDelay: `${Math.min(i * 40, 500)}ms` }}
                     >
                       <ReferenceCard reference={r} orderedIds={order} priority={i < 4} />
                     </div>
