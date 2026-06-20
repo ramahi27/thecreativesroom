@@ -36,6 +36,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [activeMedia, setActiveMedia] = useState(0);
+  const [slideDir, setSlideDir] = useState<"left" | "right" | null>(null);
   const [tagInput, setTagInput] = useState("");
   const [reportOpen, setReportOpen] = useState(false);
   const [reportField, setReportField] = useState("brand");
@@ -189,8 +190,16 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     };
   }, [r, allRefs, navOrder, similarityOrdered]);
 
-  const goPrev = useCallback(() => prev && navigate(refPath(prev.id, prev.title)), [prev, navigate]);
-  const goNext = useCallback(() => next && navigate(refPath(next.id, next.title)), [next, navigate]);
+  const goPrev = useCallback(() => {
+    if (!prev) return;
+    setSlideDir("left");
+    navigate(refPath(prev.id, prev.title));
+  }, [prev, navigate]);
+  const goNext = useCallback(() => {
+    if (!next) return;
+    setSlideDir("right");
+    navigate(refPath(next.id, next.title));
+  }, [next, navigate]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -435,7 +444,13 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">← / → navigate</p>
             </div>
 
-            <div className="grid lg:grid-cols-3 gap-10 mt-4">
+            <div
+              key={r?.id ?? id}
+              className="grid lg:grid-cols-3 gap-10 mt-4"
+              style={slideDir ? {
+                animation: `${slideDir === "right" ? "slideFromRight" : "slideFromLeft"} 0.32s cubic-bezier(0.25, 0.46, 0.45, 0.94) both`
+              } : undefined}
+            >
               <div className="lg:col-span-2 min-w-0">
                 <div className="rounded-2xl bg-card border hairline overflow-hidden">
                   {currentIsEmbed && embedUrl ? (
