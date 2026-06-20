@@ -600,7 +600,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
               </div>
 
               <aside className="lg:col-span-1 space-y-6">
-                <div>
+                <div className="hidden lg:block">
                   <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-3">⏵ {r.type}</p>
                   {isAdmin ? (
                     <>
