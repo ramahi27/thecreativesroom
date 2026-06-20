@@ -439,7 +439,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         ) : !r ? (
           <div className="p-12"><p className="font-display text-3xl italic text-muted-foreground">Not found.</p></div>
         ) : (
-          <div className="p-6 md:p-10">
+          <div className="p-4 sm:p-6 md:p-10">
             <div className="flex items-center justify-end">
               <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">← / → navigate</p>
             </div>
@@ -483,7 +483,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                       <video ref={videoRef} src={current.url} controls
                         className="w-full bg-black object-contain max-h-[calc(95vh-16rem)]" />
                     ) : (
-                      <div className="aspect-video bg-black">
+                      <div className="bg-black h-[65vh] md:h-auto md:aspect-video">
                         <ZoomableImage src={current.url} alt={r.title} className="h-full" />
                       </div>
                     )
