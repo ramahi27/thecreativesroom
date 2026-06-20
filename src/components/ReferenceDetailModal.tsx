@@ -222,14 +222,6 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     return () => window.removeEventListener("keydown", onKey);
   }, [goPrev, goNext]);
 
-  // On mobile, pressing browser back while modal is open should go to home,
-  // not the previous reference URL.
-  useEffect(() => {
-    const handlePop = () => { navigate("/", { replace: true }); };
-    window.addEventListener("popstate", handlePop);
-    return () => window.removeEventListener("popstate", handlePop);
-  }, [navigate]);
-
   const returnToOpener = useCallback(() => {
     if (peekModalReturn()) {
       consumeModalReturn(navigate, "/");
@@ -237,6 +229,21 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       onClose();
     }
   }, [navigate, onClose]);
+
+  // Mirror the X button exactly on browser back: use a ref so the handler
+  // always sees the latest returnToOpener without re-registering the listener.
+  const returnToOpenerRef = useRef(returnToOpener);
+  useEffect(() => { returnToOpenerRef.current = returnToOpener; }, [returnToOpener]);
+
+  useEffect(() => {
+    const handlePop = () => {
+      // Push current URL back so React Router doesn't navigate to the popped URL.
+      window.history.pushState(null, "", window.location.href);
+      returnToOpenerRef.current();
+    };
+    window.addEventListener("popstate", handlePop);
+    return () => window.removeEventListener("popstate", handlePop);
+  }, []);
 
   const advanceOrReturn = useCallback(() => {
     if (next && next.id !== r?.id) {
