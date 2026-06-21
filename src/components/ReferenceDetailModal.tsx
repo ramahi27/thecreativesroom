@@ -177,9 +177,9 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (strict.length < 5) {
       const strictIds = new Set(strict.map((x) => x.id));
       const extras = similarityOrdered.filter((x) => !strictIds.has(x.id));
-      return [...strict, ...extras].slice(0, 8);
+      return [...strict, ...extras].slice(0, 5);
     }
-    return strict.slice(0, 8);
+    return strict.slice(0, 5);
   }, [similarityOrdered, r]);
 
   const { prev, next } = useMemo(() => {
