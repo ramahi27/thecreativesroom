@@ -99,6 +99,7 @@ const Newsletter = () => {
   const [subject, setSubject] = useState("");
   const [userCount, setUserCount] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
   useEffect(() => { document.title = "Newsletter — The Creatives Room"; }, []);
@@ -136,9 +137,9 @@ const Newsletter = () => {
   if (authLoading) return null;
   if (!user || !isAdmin) return <Navigate to="/" replace />;
 
-  async function handleSend() {
-    setConfirming(false);
-    setSending(true);
+  async function send(testOnly = false) {
+    const setLoading = testOnly ? setSendingTest : setSending;
+    setLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
@@ -152,20 +153,25 @@ const Newsletter = () => {
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ subject, preview, html }),
+          body: JSON.stringify({ subject, preview, html, testEmail: testOnly ? "r.laith27@gmail.com" : undefined }),
         },
       );
       const result = await res.json();
       if (!res.ok) {
         toast.error(result.error || "Failed to send");
       } else {
-        toast.success(`Sent to ${result.sent} user${result.sent === 1 ? "" : "s"}`);
+        toast.success(testOnly ? "Test sent to r.laith27@gmail.com" : `Sent to ${result.sent} user${result.sent === 1 ? "" : "s"}`);
       }
     } catch (e: any) {
       toast.error(e?.message || "Unknown error");
     } finally {
-      setSending(false);
+      setLoading(false);
     }
+  }
+
+  function handleSend() {
+    setConfirming(false);
+    send(false);
   }
 
   return (
@@ -234,15 +240,25 @@ const Newsletter = () => {
           )}
         </div>
 
-        {/* Send button */}
-        <Button
-          onClick={() => setConfirming(true)}
-          disabled={refs.length === 0 || !subject.trim() || sending || loadingRefs}
-          className="w-full font-mono text-xs uppercase tracking-widest"
-          size="lg"
-        >
-          {sending ? "Sending…" : userCount !== null ? `Send to ${userCount} users` : "Send"}
-        </Button>
+        {/* Send buttons */}
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={() => send(true)}
+            disabled={refs.length === 0 || !subject.trim() || sendingTest || sending || loadingRefs}
+            className="font-mono text-xs uppercase tracking-widest shrink-0"
+          >
+            {sendingTest ? "Sending…" : "Send test"}
+          </Button>
+          <Button
+            onClick={() => setConfirming(true)}
+            disabled={refs.length === 0 || !subject.trim() || sending || sendingTest || loadingRefs}
+            className="flex-1 font-mono text-xs uppercase tracking-widest"
+            size="lg"
+          >
+            {sending ? "Sending…" : userCount !== null ? `Send to ${userCount} users` : "Send"}
+          </Button>
+        </div>
       </main>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>

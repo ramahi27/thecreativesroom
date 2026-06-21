@@ -48,17 +48,23 @@ Deno.serve(async (req) => {
     const subject = String(body.subject || "").trim();
     const html = String(body.html || "").trim();
     const preview = String(body.preview || "").trim();
+    const testEmail = typeof body.testEmail === "string" ? body.testEmail.trim() : null;
 
     if (!subject) return json({ error: "Subject required" }, 400);
     if (!html) return json({ error: "Body required" }, 400);
 
-    // Fetch all user emails
-    const { data: users, error: usersErr } = await (supabase as any).rpc("get_user_overview");
-    if (usersErr) return json({ error: usersErr.message }, 500);
+    let emails: string[];
 
-    const emails: string[] = (Array.isArray(users) ? users : [])
-      .map((u: any) => u.email)
-      .filter((e: any): e is string => typeof e === "string" && e.includes("@"));
+    if (testEmail) {
+      emails = [testEmail];
+    } else {
+      // Fetch all user emails
+      const { data: users, error: usersErr } = await (supabase as any).rpc("get_user_overview");
+      if (usersErr) return json({ error: usersErr.message }, 500);
+      emails = (Array.isArray(users) ? users : [])
+        .map((u: any) => u.email)
+        .filter((e: any): e is string => typeof e === "string" && e.includes("@"));
+    }
 
     if (emails.length === 0) return json({ error: "No emails found" }, 400);
 
