@@ -15,7 +15,7 @@ import { usePageView } from "@/hooks/usePageView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Plus, Bookmark, Compass, ArrowUpRight, X, Sparkles, Loader2, Zap, LayoutGrid, List, LayoutDashboard } from "lucide-react";
+import { Search, Plus, Bookmark, Compass, ArrowUpRight, X, Sparkles, Loader2, Zap, LayoutGrid, LayoutDashboard } from "lucide-react";
 import { rememberModalReturn, setModalNavOrder, clearModalNavOrder } from "@/lib/modalReturn";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ import { CyclingPlaceholder } from "@/components/CyclingPlaceholder";
 
 type MediaFilter = "all" | "videos" | "photos";
 type SortBy = "default" | "newest" | "oldest" | "campaign_newest" | "campaign_oldest" | "title";
-type ViewMode = "grid" | "masonry" | "index";
+type ViewMode = "grid" | "masonry";
 
 const PAGE_SIZE = 100;
 
@@ -69,8 +69,10 @@ const Index = () => {
   const [search, setSearch] = useState("");
   const [briefFocused, setBriefFocused] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    try { return (localStorage.getItem("archive:view") as ViewMode) || "grid"; }
-    catch { return "grid"; }
+    try {
+      const saved = localStorage.getItem("archive:view") as ViewMode;
+      return saved === "grid" || saved === "masonry" ? saved : "grid";
+    } catch { return "grid"; }
   });
   useEffect(() => {
     try { localStorage.setItem("archive:view", viewMode); } catch {}
@@ -778,16 +780,6 @@ const Index = () => {
             >
               <LayoutDashboard className="h-3 w-3" strokeWidth={1.5} /> Board
             </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("index")}
-              aria-label="Index view"
-              className={`flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 transition-colors ${
-                viewMode === "index" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <List className="h-3 w-3" strokeWidth={1.5} /> Index
-            </button>
           </div>
 
           <div className="relative flex-1 min-w-[200px] max-w-md">
@@ -873,41 +865,16 @@ const Index = () => {
           </div>
         ) : (
           <>
-            {/* Index view column header — like the index at the back of a design annual */}
-            {viewMode === "index" && (
-              <div className="hidden md:flex items-baseline gap-4 px-3 pb-2 border-b border-foreground/20">
-                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground w-10 shrink-0">No.</span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground flex-1">Title</span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground w-40 shrink-0">Brand</span>
-                <span className="hidden lg:block font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground w-40 shrink-0">Agency</span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground w-16 shrink-0">Type</span>
-                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground w-12 text-right shrink-0">Year</span>
-              </div>
-            )}
-
             <div
               ref={gridRef}
               className={
-                viewMode === "grid"
-                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
-                  : viewMode === "masonry"
+                viewMode === "masonry"
                   ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-5"
-                  : "flex flex-col"
+                  : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
               }
             >
               {(() => {
                 const order = filtered.map((x) => x.id);
-                if (viewMode === "grid") {
-                  return filtered.map((r, i) => (
-                    <div
-                      key={r.id}
-                      className={focusedIdx === i ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}
-                      style={{ animation: "cardIn 0.4s ease both", animationDelay: `${Math.min(i * 40, 500)}ms` }}
-                    >
-                      <ReferenceCard reference={r} orderedIds={order} priority={i < 4} />
-                    </div>
-                  ));
-                }
                 if (viewMode === "masonry") {
                   return filtered.map((r, i) => (
                     <div
@@ -919,63 +886,15 @@ const Index = () => {
                     </div>
                   ));
                 }
-                // Index / contact-sheet view
-                return filtered.map((r, i) => {
-                  const isMagazine = (r.categories || []).includes("Magazine Covers");
-                  const showAgency = !isMagazine && r.agency;
-                  return (
-                    <Link
-                      key={r.id}
-                      to={refPath(r.id, r.title)}
-                      onClick={() => {
-                        rememberModalReturn();
-                        if (order.length > 0) setModalNavOrder(order);
-                        else clearModalNavOrder();
-                      }}
-                      className={`group relative flex items-baseline gap-4 px-3 py-3 border-b hairline transition-colors ${
-                        focusedIdx === i ? "bg-secondary" : "hover:bg-secondary/50"
-                      }`}
-                    >
-                      <span className="font-mono text-[11px] tabular-nums text-muted-foreground/70 w-10 shrink-0">
-                        {String(i + 1).padStart(3, "0")}
-                      </span>
-                      <span className="font-display text-lg md:text-xl font-light tracking-tight leading-snug flex-1 min-w-0 truncate group-hover:text-primary transition-colors">
-                        {r.title}
-                      </span>
-                      <span className="hidden md:block font-mono text-[11px] uppercase tracking-widest text-muted-foreground w-40 shrink-0 truncate">
-                        {r.brand || "—"}
-                      </span>
-                      <span className="hidden lg:block font-mono text-[11px] uppercase tracking-widest text-muted-foreground w-40 shrink-0 truncate">
-                        {showAgency ? r.agency : "—"}
-                      </span>
-                      <span className="hidden md:block font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60 w-16 shrink-0">
-                        {r.type === "image" ? "Photo" : r.type === "video" ? "Video" : "Link"}
-                      </span>
-                      <span className="font-mono text-[11px] tabular-nums text-muted-foreground/70 w-12 text-right shrink-0">
-                        {r.year || "—"}
-                      </span>
-
-                      {/* Contact-sheet hover peek */}
-                      {(() => {
-                        const mediaItems = (r as any).media_items as Array<{ url?: string; kind?: string }> | undefined;
-                        const peekSrc = r.type === "image"
-                          ? (Array.isArray(mediaItems) ? mediaItems.find((it) => it?.kind === "image")?.url : undefined) || r.media_url || r.thumbnail_url
-                          : r.thumbnail_url;
-                        if (!peekSrc) return null;
-                        return (
-                          <span className="pointer-events-none absolute right-28 top-1/2 -translate-y-1/2 z-20 opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 hidden lg:block">
-                            <img
-                              src={peekSrc}
-                              alt=""
-                              loading="lazy"
-                              className="max-h-48 max-w-[240px] w-auto h-auto block rounded-sm border hairline shadow-cinema"
-                            />
-                          </span>
-                        );
-                      })()}
-                    </Link>
-                  );
-                });
+                return filtered.map((r, i) => (
+                  <div
+                    key={r.id}
+                    className={focusedIdx === i ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}
+                    style={{ animation: "cardIn 0.4s ease both", animationDelay: `${Math.min(i * 40, 500)}ms` }}
+                  >
+                    <ReferenceCard reference={r} orderedIds={order} priority={i < 4} />
+                  </div>
+                ));
               })()}
             </div>
             {hasMore && (

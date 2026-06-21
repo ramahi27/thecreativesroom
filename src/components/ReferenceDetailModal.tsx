@@ -89,14 +89,23 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         neighbours.push(navIds[(idx - 1 + navIds.length) % navIds.length]);
         neighbours.push(navIds[(idx + 1) % navIds.length]);
       }
-      if (neighbours.length === 0) {
-        setAllRefs([]);
-      } else {
-        supabase.from("references").select(listCols).in("id", neighbours).then(({ data: list }) => {
-          if (cancelled) return;
-          setAllRefs((list as unknown as Reference[]) || []);
-        });
-      }
+      // Fetch neighbours (for nav arrows) + a broader pool (for "you might also like") in parallel.
+      Promise.all([
+        neighbours.length > 0
+          ? supabase.from("references").select(listCols).in("id", neighbours).then(({ data }) => (data as unknown as Reference[]) || [])
+          : Promise.resolve([] as Reference[]),
+        supabase.from("references").select(listCols).eq("published", true)
+          .order("created_at", { ascending: false }).limit(80)
+          .then(({ data }) => (data as unknown as Reference[]) || []),
+      ]).then(([navRefs, pool]) => {
+        if (cancelled) return;
+        const seen = new Set<string>();
+        const merged: Reference[] = [];
+        for (const ref of [...navRefs, ...pool]) {
+          if (!seen.has(ref.id)) { seen.add(ref.id); merged.push(ref); }
+        }
+        setAllRefs(merged);
+      });
     } else {
       supabase.from("references").select(listCols).eq("published", true).order("created_at", { ascending: false }).limit(300).then(({ data: list }) => {
         if (cancelled) return;
