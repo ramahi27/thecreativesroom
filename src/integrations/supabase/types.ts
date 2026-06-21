@@ -591,7 +591,7 @@ export type Database = {
       }
       admin_set_plan: {
         Args: { p_plan: string; p_user_id: string }
-        Returns: undefined
+        Returns: number
       }
       check_pro_access: { Args: never; Returns: boolean }
       get_admin_stats: { Args: never; Returns: Json }
