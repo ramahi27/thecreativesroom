@@ -29,6 +29,7 @@ const Welcome = lazy(() => import("./pages/Welcome.tsx"));
 const ProfileSettings = lazy(() => import("./pages/ProfileSettings.tsx"));
 const Pricing = lazy(() => import("./pages/Pricing.tsx"));
 const Contact = lazy(() => import("./pages/Contact.tsx"));
+const Newsletter = lazy(() => import("./pages/Newsletter.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/logs" element={<Logs />} />
             <Route path="/users" element={<Users />} />
+            <Route path="/newsletter" element={<Newsletter />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/welcome" element={<Welcome />} />

@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings, LayoutDashboard, ScrollText, Users, LogOut, Sun, Moon, Zap, Menu, X } from "lucide-react";
+import { Settings, LayoutDashboard, ScrollText, Users, LogOut, Sun, Moon, Zap, Menu, X, Mail } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 
 export function SiteHeader() {
@@ -142,6 +142,10 @@ export function SiteHeader() {
                       <Users className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
                       <span className="font-body text-sm">Users</span>
                     </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/newsletter")} className="rounded-lg gap-2.5">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
+                      <span className="font-body text-sm">Newsletter</span>
+                    </DropdownMenuItem>
                   </>
                 )}
                 <DropdownMenuSeparator className="my-1" />
@@ -224,6 +228,10 @@ export function SiteHeader() {
                     <DropdownMenuItem onClick={() => navigate("/users")} className="rounded-lg gap-2.5">
                       <Users className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
                       <span className="font-body text-sm">Users</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/newsletter")} className="rounded-lg gap-2.5">
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
+                      <span className="font-body text-sm">Newsletter</span>
                     </DropdownMenuItem>
                   </>
                 )}
