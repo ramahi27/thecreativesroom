@@ -242,7 +242,6 @@ const Users = () => {
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">#</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Username</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Plan</TableHead>
-                  <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Time on site</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Added</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Approved</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Joined</TableHead>
@@ -263,7 +262,6 @@ const Users = () => {
                         <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Free</span>
                       )}
                     </TableCell>
-                    <TableCell className="font-mono text-xs text-right">{formatDuration(r.time_spent_seconds)}</TableCell>
                     <TableCell className="font-mono text-xs text-right">{r.references_added}</TableCell>
                     <TableCell className="font-mono text-xs text-right">{r.references_approved}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">{formatDate(r.created_at)}</TableCell>
