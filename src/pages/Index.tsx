@@ -15,7 +15,7 @@ import { usePageView } from "@/hooks/usePageView";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Plus, Bookmark, Compass, ArrowUpRight, X, Sparkles, Loader2, Zap, LayoutGrid, List } from "lucide-react";
+import { Search, Plus, Bookmark, Compass, ArrowUpRight, X, Sparkles, Loader2, Zap, LayoutGrid, List, LayoutDashboard } from "lucide-react";
 import { rememberModalReturn, setModalNavOrder, clearModalNavOrder } from "@/lib/modalReturn";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,7 @@ import { CyclingPlaceholder } from "@/components/CyclingPlaceholder";
 
 type MediaFilter = "all" | "videos" | "photos";
 type SortBy = "default" | "newest" | "oldest" | "campaign_newest" | "campaign_oldest" | "title";
+type ViewMode = "grid" | "masonry" | "index";
 
 const PAGE_SIZE = 100;
 
@@ -67,8 +68,8 @@ const Index = () => {
   const [sortBy, setSortBy] = useState<SortBy>("default");
   const [search, setSearch] = useState("");
   const [briefFocused, setBriefFocused] = useState(false);
-  const [viewMode, setViewMode] = useState<"grid" | "index">(() => {
-    try { return (localStorage.getItem("archive:view") as "grid" | "index") || "grid"; }
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    try { return (localStorage.getItem("archive:view") as ViewMode) || "grid"; }
     catch { return "grid"; }
   });
   useEffect(() => {
@@ -769,6 +770,16 @@ const Index = () => {
             </button>
             <button
               type="button"
+              onClick={() => setViewMode("masonry")}
+              aria-label="Masonry view"
+              className={`flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 transition-colors ${
+                viewMode === "masonry" ? "bg-foreground text-background" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayoutDashboard className="h-3 w-3" strokeWidth={1.5} /> Board
+            </button>
+            <button
+              type="button"
               onClick={() => setViewMode("index")}
               aria-label="Index view"
               className={`flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] px-3 py-1.5 transition-colors ${
@@ -879,6 +890,8 @@ const Index = () => {
               className={
                 viewMode === "grid"
                   ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+                  : viewMode === "masonry"
+                  ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-5"
                   : "flex flex-col"
               }
             >
@@ -892,6 +905,17 @@ const Index = () => {
                       style={{ animation: "cardIn 0.4s ease both", animationDelay: `${Math.min(i * 40, 500)}ms` }}
                     >
                       <ReferenceCard reference={r} orderedIds={order} priority={i < 4} />
+                    </div>
+                  ));
+                }
+                if (viewMode === "masonry") {
+                  return filtered.map((r, i) => (
+                    <div
+                      key={r.id}
+                      className="break-inside-avoid mb-5"
+                      style={{ animation: "cardIn 0.4s ease both", animationDelay: `${Math.min(i * 40, 500)}ms` }}
+                    >
+                      <ReferenceCard reference={r} orderedIds={order} priority={i < 4} masonry />
                     </div>
                   ));
                 }

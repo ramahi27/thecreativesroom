@@ -156,16 +156,22 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
       .map((s) => s.x);
   }, [r, allRefs]);
 
-  const related = useMemo(
-    () => similarityOrdered.filter((x) => {
+  const related = useMemo(() => {
+    const strict = similarityOrdered.filter((x) => {
       const myTags = new Set((r?.tags || []).map((t) => t.toLowerCase()));
       const myCats = new Set((r?.categories || []).map((c) => c.toLowerCase()));
       const tagOverlap = (x.tags || []).some((t) => myTags.has(t.toLowerCase()));
       const catOverlap = (x.categories || []).some((c) => myCats.has(c.toLowerCase()));
       return tagOverlap || catOverlap;
-    }).slice(0, 6),
-    [similarityOrdered, r],
-  );
+    });
+    // Pad with best-scoring items if fewer than 5 strictly related refs exist
+    if (strict.length < 5) {
+      const strictIds = new Set(strict.map((x) => x.id));
+      const extras = similarityOrdered.filter((x) => !strictIds.has(x.id));
+      return [...strict, ...extras].slice(0, 8);
+    }
+    return strict.slice(0, 8);
+  }, [similarityOrdered, r]);
 
   const { prev, next } = useMemo(() => {
     if (!r) return { prev: null as Reference | null, next: null as Reference | null };
@@ -813,7 +819,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
             {related.length > 0 && (
               <div className="mt-12 border-t hairline pt-8">
                 <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-4">⏵ You might also like</p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {related.map((rel) => {
                     const thumb = rel.thumbnail_url || (rel.type === "image" ? rel.media_url : null);
                     return (
