@@ -241,6 +241,7 @@ const Users = () => {
                 <TableRow>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">#</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Username</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest">Email</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Plan</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Added</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Approved</TableHead>
@@ -253,6 +254,7 @@ const Users = () => {
                   <TableRow key={r.user_id}>
                     <TableCell className="font-mono text-xs text-muted-foreground">{i + 1}</TableCell>
                     <TableCell className="text-sm truncate max-w-[200px]">{r.username || "—"}</TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground truncate max-w-[200px]">{r.email || "—"}</TableCell>
                     <TableCell>
                       {r.is_admin ? (
                         <span className="font-mono text-[10px] uppercase tracking-widest text-primary">Admin</span>
