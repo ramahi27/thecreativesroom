@@ -45,6 +45,7 @@ const Newsletter = () => {
   const [subject, setSubject] = useState("");
   const [intro, setIntro] = useState("");
   const [userCount, setUserCount] = useState<number | null>(null);
+  const [theme, setTheme] = useState("");
   const [sending, setSending] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -108,6 +109,7 @@ const Newsletter = () => {
           body: JSON.stringify({
             subject,
             intro,
+            theme: theme.trim() || undefined,
             refs,
             testEmail: testOnly ? "r.laith27@gmail.com" : undefined,
           }),
@@ -156,6 +158,18 @@ const Newsletter = () => {
             onChange={(e) => setSubject(e.target.value)}
             className="font-body text-base"
           />
+        </div>
+
+        {/* Theme / current events */}
+        <div className="space-y-1.5">
+          <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Current events / focus <span className="opacity-50">(optional)</span></label>
+          <Input
+            value={theme}
+            onChange={(e) => setTheme(e.target.value)}
+            placeholder="e.g. Cannes 2026, World Cup, summer fashion…"
+            className="font-body text-base"
+          />
+          <p className="font-mono text-[10px] text-muted-foreground/50">AI uses this to pick the most relevant refs from the pool</p>
         </div>
 
         {/* Intro */}

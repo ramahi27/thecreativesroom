@@ -21,6 +21,7 @@ type RefInput = {
   categories: string[];
   type: string;
   visual_summary: string | null;
+  year: number | null;
 };
 
 function refUrl(r: RefInput): string {
@@ -39,17 +40,27 @@ function emailThumb(url: string): string {
   return url;
 }
 
-async function curateRefs(refs: RefInput[], apiKey: string): Promise<RefInput[]> {
+async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Promise<RefInput[]> {
   if (refs.length <= 5) return refs;
 
   const today = new Date().toISOString().split("T")[0];
   const list = refs.map((r, i) =>
-    `${i + 1}. "${r.title}"${r.brand ? ` by ${r.brand}` : ""}${r.categories?.[0] ? ` [${r.categories[0]}]` : ""}${r.visual_summary ? ` — ${r.visual_summary.slice(0, 100)}` : ""}`
+    `${i + 1}. "${r.title}"${r.brand ? ` by ${r.brand}` : ""}${r.year ? ` (${r.year})` : ""}${r.categories?.[0] ? ` [${r.categories[0]}]` : ""}${r.visual_summary ? ` — ${r.visual_summary.slice(0, 100)}` : ""}`
   ).join("\n");
+
+  const focusLine = theme
+    ? `The editor wants this week's newsletter to focus on: "${theme}". Prioritise references that connect to this theme.`
+    : `Pick refs most relevant to major world events, cultural moments, award seasons, sports, film festivals, fashion weeks, or trending topics happening right now.`;
 
   const prompt = `You are curating a weekly creative newsletter. Today is ${today}.
 
-From the references below, pick the 5–7 that are most relevant to what is happening in the world RIGHT NOW — major events, cultural moments, trending topics, award seasons, sports tournaments, film festivals, music releases, fashion weeks, product launches, etc. Prioritise timeliness and cultural resonance over variety.
+${focusLine}
+
+Rules:
+- Pick exactly 6–7 references total
+- At least 4–5 must be from 2026 (recent work feels timely)
+- At most 2 can be "classics" (older work that still earns its place by being exceptionally relevant to the theme)
+- Rank by relevance — most relevant first
 
 References:
 ${list}
@@ -214,6 +225,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const subject = String(body.subject || "").trim();
     const intro = String(body.intro || "").trim();
+    const theme = typeof body.theme === "string" ? body.theme.trim() : undefined;
     const refs: RefInput[] = Array.isArray(body.refs) ? body.refs : [];
     const testEmail = typeof body.testEmail === "string" ? body.testEmail.trim() : null;
 
@@ -222,7 +234,7 @@ Deno.serve(async (req) => {
 
     // Curate most world-relevant refs, then generate AI blurbs
     const apiKey = Deno.env.get("LOVABLE_API_KEY") ?? "";
-    const curatedRefs = apiKey ? await curateRefs(refs, apiKey) : refs;
+    const curatedRefs = apiKey ? await curateRefs(refs, apiKey, theme) : refs;
     const blurbs = apiKey ? await generateBlurbs(curatedRefs, apiKey) : {};
 
     const html = buildHtml(curatedRefs, blurbs, subject, intro);
