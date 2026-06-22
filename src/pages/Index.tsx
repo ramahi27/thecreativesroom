@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { PageMeta } from "@/components/PageMeta";
 import { CyclingPlaceholder } from "@/components/CyclingPlaceholder";
+import { WelcomeTour } from "@/components/WelcomeTour";
 
 type MediaFilter = "all" | "videos" | "photos";
 type SortBy = "default" | "newest" | "oldest" | "campaign_newest" | "campaign_oldest" | "title";
@@ -953,6 +954,8 @@ const Index = () => {
       <div className={briefUsage && briefUsage.plan !== "paid" && briefUsage.plan !== "admin" ? "-mt-20" : ""}>
         <SiteFooter />
       </div>
+
+      <WelcomeTour />
     </div>
   );
 };
