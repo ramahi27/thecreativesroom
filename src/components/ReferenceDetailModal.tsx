@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import type { Reference, MediaItem } from "@/lib/references";
-import { detectPlatform, getEmbedUrl, isVideoFile, safeHref } from "@/lib/references";
+import { detectPlatform, deriveThumbnail, getEmbedUrl, isVideoFile, safeHref } from "@/lib/references";
 import { useCategories } from "@/hooks/useCategories";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ChevronLeft, ChevronRight, ExternalLink, Check, Share2, Flag, Download } from "lucide-react";
@@ -56,7 +56,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     setEmbedError(false);
     let cancelled = false;
     const cols =
-      "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,media_items,categories,published,source";
+      "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,visual_summary,created_at,updated_at,media_items,categories,published,source";
     supabase
       .from("references")
       .select(cols)
@@ -118,16 +118,21 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   const jsonLd = useMemo(() => {
     if (!r) return null;
     const creator = r.brand || r.agency;
-    const image = r.thumbnail_url || r.media_url || undefined;
+    const thumb = r.thumbnail_url || (r.source_url ? deriveThumbnail(r.source_url) : null) || r.media_url || undefined;
+    const description = (r as any).visual_summary || r.notes || undefined;
+    const pageUrl = `https://thecreativesroom.com${refPath(r.id, r.title)}`;
+    const schemaType = r.type === "video" ? "VideoObject" : r.type === "image" ? "ImageObject" : "CreativeWork";
     return {
       "@context": "https://schema.org",
-      "@type": "CreativeWork",
+      "@type": schemaType,
       name: r.title,
-      url: `https://thecreativesroom.com${refPath(r.id, r.title)}`,
-      ...(image ? { image } : {}),
+      url: pageUrl,
+      ...(description ? { description } : {}),
+      ...(thumb ? { thumbnailUrl: thumb, image: thumb } : {}),
       ...(creator ? { creator: { "@type": "Organization", name: creator } } : {}),
       ...(r.brand ? { brand: { "@type": "Brand", name: r.brand } } : {}),
-      ...(r.year ? { datePublished: String(r.year) } : {}),
+      ...(r.year ? { datePublished: `${r.year}-01-01` } : {}),
+      ...(r.created_at ? { uploadDate: r.created_at } : {}),
       ...(r.categories?.length ? { genre: r.categories } : {}),
       ...(r.tags?.length ? { keywords: r.tags.join(", ") } : {}),
     };
@@ -138,7 +143,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     if (!r) return "";
     const bits = [r.brand, r.agency, r.year ? String(r.year) : null].filter(Boolean);
     const lead = bits.length ? `${bits.join(" · ")}. ` : "";
-    const tail = r.notes?.trim() || (r.categories?.length ? r.categories.join(", ") : "") || "Creative reference on The Creatives Room.";
+    const tail = (r as any).visual_summary?.trim() || r.notes?.trim() || (r.categories?.length ? r.categories.join(", ") : "") || "Creative reference on The Creatives Room.";
     return `${lead}${tail}`.slice(0, 200);
   }, [r]);
 
@@ -472,7 +477,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
           title={`${r.title} — The Creatives Room`}
           description={metaDescription}
           path={refPath(r.id, r.title)}
-          ogImage={r.thumbnail_url || r.media_url || undefined}
+          ogImage={r.thumbnail_url || (r.source_url ? deriveThumbnail(r.source_url) : undefined) || r.media_url || undefined}
         />
       )}
       <DialogContent
