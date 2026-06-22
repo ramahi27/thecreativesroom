@@ -175,6 +175,7 @@ const Newsletter = () => {
   const [refs, setRefs] = useState<Ref[]>([]);
   const [loadingRefs, setLoadingRefs] = useState(true);
   const [subject, setSubject] = useState("");
+  const [intro, setIntro] = useState("");
   const [userCount, setUserCount] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
