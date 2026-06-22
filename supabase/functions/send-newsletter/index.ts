@@ -30,19 +30,34 @@ function refUrl(r: RefInput): string {
 }
 
 // Proxy YouTube/Vimeo thumbnails through wsrv.nl so email clients can load them.
-// For YouTube, upgrade to maxresdefault (1280×720) before proxying.
+// For YouTube, try maxres → sd → hq with wsrv's chained fallback so we never end up with a 404 or 120px blur.
 function emailThumb(url: string): string {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname;
     if (host.includes("ytimg.com")) {
-      const hires = url.replace(
-        /\/(hqdefault|mqdefault|sddefault|default)\.jpg/,
-        "/maxresdefault.jpg",
-      );
-      return `https://wsrv.nl/?url=${encodeURIComponent(hires)}&w=1200&output=jpg&q=90`;
+      // Extract video id from /vi/<id>/...
+      const m = url.match(/\/vi\/([^/]+)\//);
+      if (m) {
+        const id = m[1];
+        const maxres = `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
+        const sd = `https://i.ytimg.com/vi/${id}/sddefault.jpg`;
+        const hq = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+        // wsrv `errorredirect` falls back if the primary 404s
+        return `https://wsrv.nl/?url=${encodeURIComponent(maxres)}&w=1200&output=jpg&q=90&errorredirect=${encodeURIComponent(
+          `https://wsrv.nl/?url=${sd}&w=1200&output=jpg&q=90&errorredirect=${encodeURIComponent(
+            `https://wsrv.nl/?url=${hq}&w=1200&output=jpg&q=90`,
+          )}`,
+        )}`;
+      }
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&output=jpg&q=90`;
     }
-    if (host.includes("vumbnail.com") || host.includes("vimeocdn.com")) {
+    if (host.includes("vumbnail.com")) {
+      // vumbnail.com/<id>.jpg → vumbnail.com/<id>_large.jpg (640w) is the largest reliable size
+      const large = url.replace(/(\/[^/]+?)(_(?:small|medium|large))?\.jpg$/, "$1_large.jpg");
+      return `https://wsrv.nl/?url=${encodeURIComponent(large)}&w=1200&output=jpg&q=90`;
+    }
+    if (host.includes("vimeocdn.com")) {
       return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&output=jpg&q=90`;
     }
   } catch { /* noop */ }
@@ -50,7 +65,7 @@ function emailThumb(url: string): string {
 }
 
 async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Promise<RefInput[]> {
-  if (refs.length <= 8) return refs;
+  if (refs.length === 0) return refs;
 
   const today = new Date().toISOString().split("T")[0];
   const list = refs.map((r, i) =>
@@ -59,22 +74,25 @@ async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Pro
 
   const focusLine = theme
     ? `The editor wants this week's newsletter to focus on: "${theme}". Prioritise references that connect to this theme.`
-    : `Pick refs most relevant to major world events, cultural moments, award seasons, sports, film festivals, fashion weeks, or trending topics happening right now.`;
+    : `First, think about what major cultural moments are happening THIS WEEK (${today}) — film festivals (Cannes, Sundance, Venice, TIFF), sports (World Cup, Olympics, Super Bowl, Wimbledon, Champions League final), award shows (Oscars, Grammys, Cannes Lions, D&AD), fashion weeks (Paris, Milan, NYFW), holidays, anniversaries, or breaking cultural news. Then pick refs that connect to those moments — brand, category, vibe, or subject matter.`;
 
   const prompt = `You are curating a weekly creative newsletter. Today is ${today}.
 
 ${focusLine}
 
-Rules:
-- Pick exactly 8–10 references total
-- At least 6–7 must be from 2024 or newer ("new")
-- At most 2 can be "classics" (2023 or older)
-- Rank by relevance — most relevant first
+STRICT rules — follow them exactly:
+- Return exactly 10 references
+- Exactly 8 MUST be from 2026
+- Exactly 2 MUST be older than 2026 (pre-2026)
+- The FIRST reference in your returned list MUST be a 2026 project
+- Rank by relevance to this week's moment — most relevant first
+- Among the 2026 picks, prioritise projects released closest to today
+- The 2 older projects should only be included if they meaningfully connect to this week's events
 
 References:
 ${list}
 
-Return ONLY a JSON array of 1-based indices in order of relevance. Example: [3, 7, 1, 5, 2]`;
+Return ONLY a JSON array of 1-based indices in the order you want them to appear. Example: [3, 7, 1, 5, 2, 9, 4, 6, 8, 10]`;
 
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -91,14 +109,14 @@ Return ONLY a JSON array of 1-based indices in order of relevance. Example: [3, 
   const text = data.choices?.[0]?.message?.content ?? "";
   try {
     const match = text.match(/\[[\d,\s]+\]/);
-    if (!match) return refs.slice(0, 7);
+    if (!match) return refs.slice(0, 10);
     const indices: number[] = JSON.parse(match[0]);
     const curated = indices
       .filter((i) => i >= 1 && i <= refs.length)
       .map((i) => refs[i - 1]);
     return curated.length >= 3 ? curated : refs.slice(0, 10);
   } catch {
-    return refs.slice(0, 7);
+    return refs.slice(0, 10);
   }
 }
 
