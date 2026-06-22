@@ -116,7 +116,15 @@ const Newsletter = () => {
       .order("created_at", { ascending: false })
       .limit(10);
     const items = (data || []) as Ref[];
-    setRefs(items);
+    // Backfill missing thumbnails from source_url (YouTube/Vimeo)
+    const enriched = await Promise.all(
+      items.map(async (r) => {
+        if (r.thumbnail_url || !r.source_url) return r;
+        const t = await fetchThumbnail(r.source_url).catch(() => null);
+        return t ? { ...r, thumbnail_url: t } : r;
+      }),
+    );
+    setRefs(enriched);
     if (!subject) {
       const now = new Date();
       const week = `${now.toLocaleString("default", { month: "long" })} ${now.getDate()}`;
