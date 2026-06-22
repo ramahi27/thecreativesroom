@@ -9,14 +9,10 @@ import { ReferenceCard } from "@/components/ReferenceCard";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/sonner";
 import type { Reference } from "@/lib/references";
-import { Check, Trash2, Trash, Copy, Sparkles, Link2, Tag, ChevronDown, ChevronUp } from "lucide-react";
+import { Check, Trash2, Trash, Copy, Sparkles, Link2, Tag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
-import { PinterestBoardImporter } from "@/components/PinterestBoardImporter";
-import { RssScraper } from "@/components/RssScraper";
-import { DandadScraper } from "@/components/DandadScraper";
-import { OneClubScraper } from "@/components/OneClubScraper";
 
 const PAGE_SIZE = 24;
 
@@ -43,7 +39,6 @@ const Drafts = () => {
   const [scrapeUrl, setScrapeUrl] = useState("");
   const [scraping, setScraping] = useState(false);
   const [linkChecking, setLinkChecking] = useState(false);
-  const [scrapersOpen, setScrapersOpen] = useState(false);
 
   async function handleCheckLinks() {
     setLinkChecking(true);
@@ -298,35 +293,6 @@ const Drafts = () => {
                 {scraping ? "Scraping…" : "Scrape & draft"}
               </Button>
             </form>
-          </div>
-
-          {/* Bulk scrapers */}
-          <div className="mt-6 max-w-2xl border hairline bg-muted/30">
-            <button
-              type="button"
-              onClick={() => setScrapersOpen((o) => !o)}
-              className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/50 transition-colors"
-            >
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" strokeWidth={1.5} />
-                <span className="font-mono text-xs uppercase tracking-widest">Bulk scrapers</span>
-                <span className="font-mono text-[10px] text-muted-foreground tracking-widest">
-                  — RSS feeds · Pinterest · D&AD · One Club
-                </span>
-              </div>
-              {scrapersOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-            </button>
-            {scrapersOpen && (
-              <div className="px-5 pb-6 space-y-8 border-t hairline pt-6">
-                <RssScraper />
-                <div className="border-t hairline" />
-                <PinterestBoardImporter />
-                <div className="border-t hairline" />
-                <DandadScraper />
-                <div className="border-t hairline" />
-                <OneClubScraper />
-              </div>
-            )}
           </div>
 
           {/* Source filter */}
