@@ -26,7 +26,6 @@ type RefInput = {
 
 type EnrichedContent = {
   blurbs: Record<string, string>;
-  hooks: Record<string, string>;
   intro: string;
   subject: string;
 };
@@ -149,7 +148,7 @@ async function generateEnrichedContent(
   apiKey: string,
   contextLine: string,
 ): Promise<EnrichedContent> {
-  const fallback: EnrichedContent = { blurbs: {}, hooks: {}, intro: "", subject: "" };
+  const fallback: EnrichedContent = { blurbs: {}, intro: "", subject: "" };
   if (refs.length === 0) return fallback;
 
   const list = refs.map((r, i) =>
@@ -164,8 +163,6 @@ ${list}
 Return a single JSON object with exactly these 4 keys:
 
 "blurbs": For each reference, one punchy sentence. Reference #1 (hero pick): max 32 words — room for a specific evocative detail. References #2–${refs.length}: max 24 words each. Rules: do NOT start with or repeat the title, be specific and evocative, sound like a creative director, no filler ("this is", "a must-see"). Format: { "1": "...", "2": "...", ... }
-
-"hooks": For each reference, a 5–7 word label connecting it to this week's moment. Be specific — name the actual event, not "this week". For classics with no strong tie: write a timeless hook (e.g. "Still the benchmark for car ads"). Format: { "1": "...", "2": "...", ... }
 
 "intro": A 2–3 sentence editorial opener. Name 1–2 specific current events from the context by name (not generically). Bridge to these references — explain the connective tissue. Max 55 words. Do NOT start with "This week".
 
@@ -189,7 +186,6 @@ Return a single JSON object with exactly these 4 keys:
     const parsed = JSON.parse(text);
     return {
       blurbs: parsed.blurbs ?? {},
-      hooks: parsed.hooks ?? {},
       intro: typeof parsed.intro === "string" ? parsed.intro : "",
       subject: typeof parsed.subject === "string" ? parsed.subject : "",
     };
@@ -198,7 +194,7 @@ Return a single JSON object with exactly these 4 keys:
   }
 }
 
-function buildHeroCard(r: RefInput, blurb: string, hook: string): string {
+function buildHeroCard(r: RefInput, blurb: string): string {
   const url = refUrl(r);
   const meta = [r.brand, r.categories?.[0]].filter(Boolean).join(" · ");
   const thumb = r.thumbnail_url
@@ -215,14 +211,13 @@ function buildHeroCard(r: RefInput, blurb: string, hook: string): string {
     <div style="padding:22px 26px 24px;">
       ${meta ? `<p style="margin:0 0 8px 0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.15em;color:#f46a20;">${meta}</p>` : ""}
       <p style="margin:0 0 10px 0;font-family:Georgia,serif;font-size:28px;font-weight:700;color:#f5f0e8;line-height:1.2;">${r.title}</p>
-      ${blurb ? `<p style="margin:0 0 10px 0;font-family:Georgia,serif;font-size:15px;color:#bbb;line-height:1.6;font-style:italic;">${blurb}</p>` : ""}
-      ${hook ? `<p style="margin:0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#f46a20;">${hook}</p>` : ""}
+      ${blurb ? `<p style="margin:0;font-family:Georgia,serif;font-size:15px;color:#bbb;line-height:1.6;font-style:italic;">${blurb}</p>` : ""}
     </div>
   </a>
 </td></tr>`;
 }
 
-function buildRegularCard(r: RefInput, blurb: string, hook: string): string {
+function buildRegularCard(r: RefInput, blurb: string): string {
   const url = refUrl(r);
   const meta = [r.brand, r.categories?.[0]].filter(Boolean).join(" · ");
   const thumb = r.thumbnail_url
@@ -236,8 +231,7 @@ function buildRegularCard(r: RefInput, blurb: string, hook: string): string {
     <div style="padding:16px 22px 18px;">
       ${meta ? `<p style="margin:0 0 5px 0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.15em;color:#f46a20;">${meta}</p>` : ""}
       <p style="margin:0 0 7px 0;font-family:Georgia,serif;font-size:18px;font-weight:700;color:#f5f0e8;line-height:1.25;">${r.title}</p>
-      ${blurb ? `<p style="margin:0 0 8px 0;font-family:Georgia,serif;font-size:14px;color:#999;line-height:1.55;font-style:italic;">${blurb}</p>` : ""}
-      ${hook ? `<p style="margin:0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#f46a20;">${hook}</p>` : ""}
+      ${blurb ? `<p style="margin:0;font-family:Georgia,serif;font-size:14px;color:#999;line-height:1.55;font-style:italic;">${blurb}</p>` : ""}
     </div>
   </a>
 </td></tr>`;
@@ -246,14 +240,13 @@ function buildRegularCard(r: RefInput, blurb: string, hook: string): string {
 function buildHtml(
   refs: RefInput[],
   blurbs: Record<string, string>,
-  hooks: Record<string, string>,
   subject: string,
   intro = "",
 ): string {
   const [hero, ...rest] = refs;
-  const heroRow = hero ? buildHeroCard(hero, blurbs["1"] || "", hooks["1"] || "") : "";
+  const heroRow = hero ? buildHeroCard(hero, blurbs["1"] || "") : "";
   const restRows = rest.map((r, i) =>
-    buildRegularCard(r, blurbs[String(i + 2)] || "", hooks[String(i + 2)] || "")
+    buildRegularCard(r, blurbs[String(i + 2)] || "")
   ).join("");
 
   return `<!DOCTYPE html>
@@ -356,7 +349,7 @@ Deno.serve(async (req) => {
     const curatedRefs = apiKey ? await curateRefs(refs, apiKey, contextLine) : refs;
     const enriched = apiKey
       ? await generateEnrichedContent(curatedRefs, apiKey, contextLine)
-      : { blurbs: {}, hooks: {}, intro: "", subject: "" };
+      : { blurbs: {}, intro: "", subject: "" };
 
     const resolvedSubject = subjectIsCustom ? subject : (enriched.subject || subject);
     const resolvedIntro = intro || enriched.intro || "";
@@ -365,7 +358,7 @@ Deno.serve(async (req) => {
       return json({ generatedSubject: enriched.subject, generatedIntro: enriched.intro, curatedCount: curatedRefs.length });
     }
 
-    const html = buildHtml(curatedRefs, enriched.blurbs, enriched.hooks, resolvedSubject, resolvedIntro);
+    const html = buildHtml(curatedRefs, enriched.blurbs, resolvedSubject, resolvedIntro);
     const preview = `${curatedRefs.length} reference${curatedRefs.length === 1 ? "" : "s"} — hand-picked for you`;
 
     let emails: string[];
