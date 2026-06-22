@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
+import { fetchThumbnail } from "@/lib/references";
 import {
   AlertDialog,
   AlertDialogAction,
