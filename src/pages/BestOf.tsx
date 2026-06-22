@@ -44,10 +44,10 @@ const BestOf = () => (
       <div className="container pt-20 md:pt-32 pb-10 md:pb-14">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-2">⏵ Collections</p>
         <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] mt-4 max-w-3xl">
-          Best Of &amp; Agencies
+          Best Of ...
         </h1>
         <p className="font-body text-base text-muted-foreground max-w-xl mt-6">
-          Curated archives of the most celebrated advertising — organised by theme, moment, and the agencies behind the work.
+          Curated archives of the most celebrated advertising, organized by theme, moment, and the agencies behind the work.
         </p>
       </div>
     </section>
