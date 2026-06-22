@@ -30,7 +30,11 @@ type Ref = {
   thumbnail_url: string | null;
   source_url: string | null;
   brand: string | null;
+  agency: string | null;
+  year: number | null;
   categories: string[];
+  tags: string[] | null;
+  notes: string | null;
   type: string;
 };
 
@@ -39,63 +43,123 @@ function refUrl(r: Ref): string {
   return `${SITE_URL}/ref/${r.id}${slug ? `-${slug}` : ""}`;
 }
 
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function emailThumbUrl(u: string): string {
-  // Route YouTube/Vimeo thumbs through wsrv.nl — many mail clients (Apple Mail,
-  // Outlook) silently block or time out on i.ytimg.com via their image proxy.
-  // wsrv.nl is widely allowlisted and returns a clean image.
   try {
     const host = new URL(u).hostname;
     if (host.includes("ytimg.com") || host.includes("vumbnail.com") || host.includes("vimeocdn.com")) {
-      return `https://wsrv.nl/?url=${encodeURIComponent(u)}&w=1120&h=400&fit=cover&output=jpg`;
+      return `https://wsrv.nl/?url=${encodeURIComponent(u)}&w=1240&h=700&fit=cover&output=jpg`;
     }
   } catch {}
   return u;
 }
 
-function buildHtml(refs: Ref[], subject: string): string {
+function typeLabel(t: string): string {
+  if (t === "video") return "▶ Video";
+  if (t === "image") return "◳ Image";
+  return "↗ Link";
+}
+
+function buildHtml(refs: Ref[], subject: string, intro: string): string {
+  const videoCount = refs.filter((r) => r.type === "video").length;
+  const imageCount = refs.filter((r) => r.type === "image").length;
+  const linkCount = refs.filter((r) => r.type === "link").length;
+  const statsParts = [
+    videoCount && `${videoCount} video${videoCount === 1 ? "" : "s"}`,
+    imageCount && `${imageCount} image${imageCount === 1 ? "" : "s"}`,
+    linkCount && `${linkCount} link${linkCount === 1 ? "" : "s"}`,
+  ].filter(Boolean).join(" · ");
+
   const rows = refs.map((r) => {
     const url = refUrl(r);
     const thumb = r.thumbnail_url
-      ? `<img src="${emailThumbUrl(r.thumbnail_url)}" alt="${r.title.replace(/"/g, "&quot;")}" width="560" style="width:100%;max-width:560px;height:200px;object-fit:cover;display:block;border-radius:8px 8px 0 0;" />`
-      : `<div style="width:100%;height:120px;background:#1a1a1a;border-radius:8px 8px 0 0;"></div>`;
-    const meta = [r.brand, r.categories?.[0]].filter(Boolean).join(" · ");
+      ? `<img src="${emailThumbUrl(r.thumbnail_url)}" alt="${esc(r.title)}" width="620" style="width:100%;max-width:620px;height:auto;display:block;border-radius:12px 12px 0 0;" />`
+      : `<div style="width:100%;height:140px;background:linear-gradient(135deg,#1a1a1a,#0f0f0f);border-radius:12px 12px 0 0;"></div>`;
+
+    const credits = [
+      r.brand && `<span style="color:#f5f0e8;font-weight:600;">${esc(r.brand)}</span>`,
+      r.agency && `<span style="color:#999;">${esc(r.agency)}</span>`,
+      r.year && `<span style="color:#666;">${r.year}</span>`,
+    ].filter(Boolean).join(' <span style="color:#333;">·</span> ');
+
+    const cats = (r.categories || []).slice(0, 2).map((c) =>
+      `<span style="display:inline-block;padding:3px 8px;margin:0 4px 4px 0;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:4px;font-family:monospace;font-size:9px;text-transform:uppercase;letter-spacing:0.12em;color:#a8a8a8;">${esc(c)}</span>`
+    ).join("");
+
+    const note = r.notes ? `<p style="margin:10px 0 0 0;font-family:Georgia,serif;font-size:14px;font-style:italic;color:#aaa;line-height:1.5;">${esc(r.notes.slice(0, 160))}${r.notes.length > 160 ? "…" : ""}</p>` : "";
+
     return `
-<tr><td style="padding:0 0 24px 0;">
-  <a href="${url}" style="display:block;text-decoration:none;background:#111;border-radius:8px;overflow:hidden;border:1px solid #222;">
-    ${thumb}
-    <div style="padding:16px 20px;">
-      <p style="margin:0 0 4px 0;font-family:Georgia,serif;font-size:18px;font-weight:700;color:#f5f0e8;line-height:1.3;">${r.title}</p>
-      ${meta ? `<p style="margin:0;font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#888;">${meta}</p>` : ""}
-    </div>
-  </a>
+<tr><td style="padding:0 0 28px 0;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f0f0f;border-radius:12px;overflow:hidden;border:1px solid #1f1f1f;">
+    <tr><td>
+      <a href="${url}" style="display:block;text-decoration:none;">${thumb}</a>
+    </td></tr>
+    <tr><td style="padding:20px 22px 22px 22px;">
+      <p style="margin:0 0 10px 0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.18em;color:#f46a20;">${typeLabel(r.type)}</p>
+      <a href="${url}" style="text-decoration:none;">
+        <h2 style="margin:0 0 8px 0;font-family:Georgia,serif;font-size:22px;font-weight:700;color:#f5f0e8;line-height:1.25;letter-spacing:-0.01em;">${esc(r.title)}</h2>
+      </a>
+      ${credits ? `<p style="margin:0 0 12px 0;font-family:'Helvetica Neue',Arial,sans-serif;font-size:13px;line-height:1.5;">${credits}</p>` : ""}
+      ${cats ? `<div style="margin:0 0 4px 0;">${cats}</div>` : ""}
+      ${note}
+      <p style="margin:16px 0 0 0;">
+        <a href="${url}" style="display:inline-block;font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.15em;color:#f46a20;text-decoration:none;">View reference →</a>
+      </p>
+    </td></tr>
+  </table>
 </td></tr>`;
   }).join("");
 
+  const introHtml = intro.trim()
+    ? `<tr><td style="padding:28px 0 8px 0;">
+        <p style="margin:0;font-family:Georgia,serif;font-size:16px;line-height:1.6;color:#cfcfcf;">${esc(intro).replace(/\n/g, "<br>")}</p>
+      </td></tr>`
+    : "";
+
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:Georgia,serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;">
-    <tr><td align="center" style="padding:40px 16px;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>
+<body style="margin:0;padding:0;background:#080808;font-family:Georgia,serif;-webkit-font-smoothing:antialiased;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#080808;">
+    <tr><td align="center" style="padding:48px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:620px;">
+
+        <!-- Brand -->
+        <tr><td style="padding:0 0 28px 0;text-align:center;">
+          <a href="${SITE_URL}" style="text-decoration:none;">
+            <p style="margin:0;font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.32em;color:#f46a20;">⏵ The Creatives Room</p>
+          </a>
+        </td></tr>
 
         <!-- Header -->
-        <tr><td style="padding:0 0 32px 0;border-bottom:1px solid #222;">
-          <p style="margin:0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.3em;color:#f46a20;">⏵ The Creatives Room</p>
-          <h1 style="margin:8px 0 0 0;font-family:Georgia,serif;font-size:28px;font-weight:900;color:#f5f0e8;letter-spacing:-0.02em;line-height:1.1;">${subject}</h1>
+        <tr><td style="padding:0 0 24px 0;border-bottom:1px solid #1f1f1f;">
+          <p style="margin:0 0 10px 0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.22em;color:#888;">This week in the room</p>
+          <h1 style="margin:0;font-family:Georgia,serif;font-size:34px;font-weight:900;color:#f5f0e8;letter-spacing:-0.025em;line-height:1.05;">${esc(subject)}</h1>
+          ${statsParts ? `<p style="margin:14px 0 0 0;font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.15em;color:#666;">${statsParts}</p>` : ""}
         </td></tr>
+
+        ${introHtml}
 
         <!-- References -->
         <tr><td style="padding:32px 0 0 0;">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            ${rows}
-          </table>
+          <table width="100%" cellpadding="0" cellspacing="0">${rows}</table>
+        </td></tr>
+
+        <!-- CTA -->
+        <tr><td style="padding:8px 0 32px 0;text-align:center;">
+          <a href="${SITE_URL}" style="display:inline-block;padding:14px 28px;background:#f46a20;color:#0a0a0a;font-family:monospace;font-size:12px;text-transform:uppercase;letter-spacing:0.18em;font-weight:700;text-decoration:none;border-radius:6px;">Browse the full library →</a>
         </td></tr>
 
         <!-- Footer -->
-        <tr><td style="padding:24px 0 0 0;border-top:1px solid #222;">
-          <p style="margin:0;font-family:monospace;font-size:10px;color:#555;text-align:center;">
-            You're receiving this because you have an account on <a href="${SITE_URL}" style="color:#f46a20;">thecreativesroom.com</a>
+        <tr><td style="padding:28px 0 0 0;border-top:1px solid #1f1f1f;text-align:center;">
+          <p style="margin:0 0 8px 0;font-family:Georgia,serif;font-size:13px;color:#888;font-style:italic;">A reference library for creatives — curated, not algorithmic.</p>
+          <p style="margin:0;font-family:monospace;font-size:10px;color:#444;letter-spacing:0.1em;">
+            <a href="${SITE_URL}" style="color:#f46a20;text-decoration:none;">thecreativesroom.com</a>
+            <span style="color:#333;"> · </span>
+            <a href="${SITE_URL}/settings" style="color:#666;text-decoration:none;">Manage account</a>
           </p>
         </td></tr>
 
