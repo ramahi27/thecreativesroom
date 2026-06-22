@@ -108,8 +108,8 @@ const CollectionPage = () => {
       </section>
 
       {collection.intro && (
-        <div className="container py-10 md:py-14 border-b hairline">
-          <p className="font-body text-base md:text-lg text-foreground/80 max-w-2xl leading-relaxed">
+        <div className="container py-10 md:py-12 border-b hairline">
+          <p className="font-body text-base text-muted-foreground max-w-2xl leading-relaxed">
             {collection.intro}
           </p>
         </div>
