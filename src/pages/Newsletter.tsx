@@ -232,7 +232,7 @@ const Newsletter = () => {
       const token = session?.access_token;
       if (!token) { toast.error("Not authenticated"); return; }
 
-      const html = buildHtml(refs, subject);
+      const html = buildHtml(refs, subject, intro);
       const preview = `${refs.length} new reference${refs.length === 1 ? "" : "s"} added this week`;
 
       const res = await fetch(
