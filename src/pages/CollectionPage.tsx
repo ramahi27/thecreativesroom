@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { PageMeta } from "@/components/PageMeta";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { type Reference } from "@/lib/references";
-import { findCollection } from "@/lib/collections";
+import { findCollection, collections } from "@/lib/collections";
 import NotFound from "@/pages/NotFound";
 
 function SkeletonCard() {
@@ -107,6 +107,14 @@ const CollectionPage = () => {
         </div>
       </section>
 
+      {collection.intro && (
+        <div className="container py-10 md:py-14 border-b hairline">
+          <p className="font-body text-base md:text-lg text-foreground/80 max-w-2xl leading-relaxed">
+            {collection.intro}
+          </p>
+        </div>
+      )}
+
       <main className="container py-12">
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -133,6 +141,43 @@ const CollectionPage = () => {
           </div>
         )}
       </main>
+
+      {(collection.closing || collection.related.length > 0) && (
+        <section className="border-t hairline">
+          <div className="container py-12 md:py-16 space-y-10">
+            {collection.closing && (
+              <div className="max-w-2xl">
+                <p className="font-body text-base text-muted-foreground leading-relaxed">
+                  {collection.closing}
+                </p>
+              </div>
+            )}
+            {collection.related.length > 0 && (
+              <div>
+                <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground/60 mb-4">
+                  Related collections
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  {collection.related.map((relSlug) => {
+                    const relSection = collections.find((c) => c.slug === relSlug)?.section;
+                    const relTitle = collections.find((c) => c.slug === relSlug)?.title;
+                    if (!relSection || !relTitle) return null;
+                    return (
+                      <a
+                        key={relSlug}
+                        href={`/${relSection}/${relSlug}`}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full border hairline text-sm font-mono hover:border-primary/50 hover:text-primary transition-colors"
+                      >
+                        {relTitle}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <SiteFooter />
     </div>
