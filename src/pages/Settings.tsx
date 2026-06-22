@@ -62,7 +62,7 @@ const Settings = () => {
   const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "Settings — The Creatives Room";
+    document.title = "Settings - The Creatives Room";
   }, []);
 
   useEffect(() => {
@@ -218,7 +218,7 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen grain">
-      <PageMeta title="Settings — The Creatives Room" description="Admin settings." noindex />
+      <PageMeta title="Settings - The Creatives Room" description="Admin settings." noindex />
       <SiteHeader />
 
       <section className="border-b hairline">

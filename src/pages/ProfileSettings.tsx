@@ -59,7 +59,7 @@ const ProfileSettings = () => {
   }
 
   useEffect(() => {
-    document.title = "My Profile — The Creatives Room";
+    document.title = "My Profile - The Creatives Room";
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
 
@@ -222,7 +222,7 @@ const ProfileSettings = () => {
 
   return (
     <div className="min-h-screen grain flex flex-col">
-      <PageMeta title="My Profile — The Creatives Room" description="Manage your profile settings." noindex />
+      <PageMeta title="My Profile - The Creatives Room" description="Manage your profile settings." noindex />
       <SiteHeader />
       <main className="flex-1">
         <div className="container py-10 flex flex-col md:flex-row gap-0 md:gap-12 max-w-4xl">

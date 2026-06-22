@@ -16,7 +16,7 @@ const ResetPassword = () => {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    document.title = "Reset password — The Creatives Room";
+    document.title = "Reset password - The Creatives Room";
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setReady(true);
     });
@@ -47,7 +47,7 @@ const ResetPassword = () => {
 
   return (
     <div className="min-h-screen grain">
-      <PageMeta title="Reset password — The Creatives Room" description="Reset your account password." noindex />
+      <PageMeta title="Reset password - The Creatives Room" description="Reset your account password." noindex />
       <SiteHeader />
       <main className="container max-w-md py-20">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-4">⏵ Recover</p>

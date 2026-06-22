@@ -56,7 +56,7 @@ const AddReference = () => {
   const [imageUrlPreviewOk, setImageUrlPreviewOk] = useState<boolean | null>(null);
 
   useEffect(() => {
-    document.title = isEdit ? "Edit reference — The Creatives Room" : "Add reference — The Creatives Room";
+    document.title = isEdit ? "Edit reference - The Creatives Room" : "Add reference - The Creatives Room";
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate, isEdit]);
 
@@ -373,7 +373,7 @@ const AddReference = () => {
 
   return (
     <div className="min-h-screen grain flex flex-col">
-      <PageMeta title={isEdit ? "Edit reference — The Creatives Room" : "Add reference — The Creatives Room"} description="Add or edit a creative reference." noindex />
+      <PageMeta title={isEdit ? "Edit reference - The Creatives Room" : "Add reference - The Creatives Room"} description="Add or edit a creative reference." noindex />
       <SiteHeader />
       <main className="flex-1 container max-w-2xl py-12">
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary mb-4">

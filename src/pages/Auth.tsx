@@ -96,7 +96,7 @@ const Auth = () => {
   return (
     <div className="min-h-screen grain">
       <PageMeta
-        title="Sign in — The Creatives Room"
+        title="Sign in - The Creatives Room"
         description="Sign in or create an account to save references, build collections, and explore the creative archive."
         path="/auth"
         noindex

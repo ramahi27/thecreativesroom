@@ -105,7 +105,7 @@ export default async (request: Request, context: Context) => {
   })();
 
   const ogImage = ref.thumbnail_url ?? derivedThumb ?? DEFAULT_OG_IMAGE;
-  const title = escape(`${ref.title ?? "Reference"} — The Creatives Room`);
+  const title = escape(`${ref.title ?? "Reference"} - The Creatives Room`);
   const desc = escape(description.slice(0, 200));
   const img = escape(ogImage);
   const url = escape(canonicalUrl);

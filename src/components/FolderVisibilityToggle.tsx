@@ -28,7 +28,7 @@ export function FolderVisibilityToggle({ isPublic, onToggle, username, folderId,
     const url = folderShareUrl(username, slugify(folderName || folderId));
     try {
       if (navigator.share) {
-        await navigator.share({ url, title: "Collection — The Creatives Room" });
+        await navigator.share({ url, title: "Collection - The Creatives Room" });
         return;
       }
     } catch {}

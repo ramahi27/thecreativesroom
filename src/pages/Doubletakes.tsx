@@ -106,7 +106,7 @@ const Doubletakes = () => {
   const [dismissedPairs, setDismissedPairs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    document.title = "Doubletakes — The Creatives Room";
+    document.title = "Doubletakes - The Creatives Room";
   }, []);
 
   const orderedPairKey = (x: string, y: string) => (x < y ? `${x}|${y}` : `${y}|${x}`);
@@ -203,7 +203,7 @@ const Doubletakes = () => {
 
   return (
     <div className="min-h-screen grain">
-      <PageMeta title="Doubletakes — The Creatives Room" description="Potential duplicate references." noindex />
+      <PageMeta title="Doubletakes - The Creatives Room" description="Potential duplicate references." noindex />
       <SiteHeader />
 
       <section className="border-b hairline">

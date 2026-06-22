@@ -148,7 +148,7 @@ const UserProfile = () => {
   return (
     <div className="min-h-screen grain flex flex-col">
       <PageMeta
-        title={`@${profile.username} — The Creatives Room`}
+        title={`@${profile.username} - The Creatives Room`}
         description={
           profile.bio?.trim()
             ? profile.bio.slice(0, 155)

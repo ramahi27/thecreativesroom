@@ -34,7 +34,7 @@ function CollectionRow({ c, index }: { c: (typeof collections)[number]; index: n
 const BestOf = () => (
   <div className="min-h-screen grain">
     <PageMeta
-      title="Best Of & Agencies — The Creatives Room"
+      title="Best Of & Agencies - The Creatives Room"
       description="Curated collections of the best advertising campaigns by theme and agency — from Cannes Grand Prix winners to Nike, Ogilvy, and Wieden+Kennedy."
       path="/best-of"
     />

@@ -6,7 +6,7 @@ const Terms = () => {
   return (
     <div className="min-h-screen grain flex flex-col">
       <PageMeta
-        title="Terms of Service — The Creatives Room"
+        title="Terms of Service - The Creatives Room"
         description="The rules of the road for using The Creatives Room — a non-commercial, community-curated archive of creative work."
         path="/terms"
       />

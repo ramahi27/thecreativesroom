@@ -17,7 +17,7 @@ const Uncategorized = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    document.title = "Uncategorized — The Creatives Room";
+    document.title = "Uncategorized - The Creatives Room";
   }, []);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ const Uncategorized = () => {
 
   return (
     <div className="min-h-screen grain">
-      <PageMeta title="Uncategorized — The Creatives Room" description="Uncategorized references." noindex />
+      <PageMeta title="Uncategorized - The Creatives Room" description="Uncategorized references." noindex />
       <SiteHeader />
 
       <section className="border-b hairline">
