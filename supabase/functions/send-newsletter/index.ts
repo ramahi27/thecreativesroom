@@ -64,6 +64,29 @@ function emailThumb(url: string): string {
   return url;
 }
 
+// Fetch top headlines from BBC News RSS — no API key needed
+async function fetchCurrentEvents(): Promise<string> {
+  try {
+    const res = await fetch("https://feeds.bbci.co.uk/news/world/rss.xml", {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; newsletter-curator/1.0)" },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return "";
+    const xml = await res.text();
+    // Parse CDATA-wrapped titles first, then plain titles
+    let titles = [...xml.matchAll(/<title><!\[CDATA\[(.+?)\]\]><\/title>/g)].map((m) => m[1]);
+    if (titles.length === 0) {
+      titles = [...xml.matchAll(/<item>[\s\S]*?<title>(.*?)<\/title>/g)].map((m) =>
+        m[1].replace(/<!\[CDATA\[|\]\]>/g, "").trim(),
+      );
+    }
+    // Skip the feed's own title (first match) and take top 15 headlines
+    return titles.slice(1, 16).join(" | ");
+  } catch {
+    return "";
+  }
+}
+
 async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Promise<RefInput[]> {
   if (refs.length === 0) return refs;
 
@@ -72,9 +95,15 @@ async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Pro
     `${i + 1}. "${r.title}"${r.brand ? ` by ${r.brand}` : ""}${r.year ? ` (${r.year})` : ""}${r.categories?.[0] ? ` [${r.categories[0]}]` : ""}${r.visual_summary ? ` — ${r.visual_summary.slice(0, 100)}` : ""}`
   ).join("\n");
 
-  const focusLine = theme
-    ? `The editor wants this week's newsletter to focus on: "${theme}". Prioritise references that connect to this theme.`
-    : `First, think about what major cultural moments are happening THIS WEEK (${today}) — film festivals (Cannes, Sundance, Venice, TIFF), sports (World Cup, Olympics, Super Bowl, Wimbledon, Champions League final), award shows (Oscars, Grammys, Cannes Lions, D&AD), fashion weeks (Paris, Milan, NYFW), holidays, anniversaries, or breaking cultural news. Then pick refs that connect to those moments — brand, category, vibe, or subject matter.`;
+  let focusLine: string;
+  if (theme) {
+    focusLine = `The editor wants this week's newsletter to focus on: "${theme}". Prioritise references that connect to this theme.`;
+  } else {
+    const headlines = await fetchCurrentEvents();
+    focusLine = headlines
+      ? `Here are today's top world headlines (${today}): ${headlines}\n\nUse these to identify what's culturally resonant right now. Pick refs that connect — by brand, industry, aesthetic, subject matter, or adjacent creative territory.`
+      : `Think about the biggest cultural moments happening this week — film festivals, sports, award shows, fashion weeks, product launches — and pick refs that connect by brand, category, or vibe.`;
+  }
 
   const prompt = `You are curating a weekly creative newsletter. Today is ${today}.
 
