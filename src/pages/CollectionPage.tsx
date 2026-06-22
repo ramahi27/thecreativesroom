@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -23,8 +23,10 @@ function SkeletonCard() {
 }
 
 const CollectionPage = () => {
-  const { section, slug } = useParams<{ section: string; slug: string }>();
-  const collection = section && slug ? findCollection(section, slug) : undefined;
+  const { slug } = useParams<{ slug: string }>();
+  const { pathname } = useLocation();
+  const section = pathname.startsWith("/agencies/") ? "agencies" : "best-of";
+  const collection = slug ? findCollection(section, slug) : undefined;
 
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
