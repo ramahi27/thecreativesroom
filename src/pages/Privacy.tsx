@@ -21,7 +21,7 @@ const Privacy = () => {
 
         <div className="space-y-8 font-body text-base leading-relaxed text-foreground/90">
           <p className="text-sm text-muted-foreground font-mono uppercase tracking-widest">
-            Last updated: 14 June 2026
+            Last updated: 22 June 2026
           </p>
 
           <section className="space-y-3">
@@ -47,6 +47,12 @@ const Privacy = () => {
                 tags, notes and bookmarks you save to your collection.
               </li>
               <li>
+                <strong>Newsletter</strong> — if you create an account, your
+                email address may be used to send you our curated newsletter
+                featuring selected references from the archive. You can
+                unsubscribe at any time (see Section 5).
+              </li>
+              <li>
                 <strong>Usage data</strong> — anonymous page views, the pages
                 you visit and time spent, used only to improve the site.
               </li>
@@ -63,8 +69,14 @@ const Privacy = () => {
               <li>To create and maintain your account.</li>
               <li>To save your collection and submissions.</li>
               <li>To moderate user-submitted content before it appears publicly.</li>
+              <li>To send our curated newsletter to registered users (you can unsubscribe at any time).</li>
               <li>To understand how the site is used and improve it.</li>
             </ul>
+            <p>
+              We use <strong>Resend</strong> (resend.com) as our email delivery provider. Your email
+              address is shared with Resend solely for the purpose of delivering our newsletter.
+              Resend does not use your data for any other purpose.
+            </p>
             <p>We do not sell your data and we do not share it with third parties for marketing.</p>
           </section>
 
@@ -86,6 +98,11 @@ const Privacy = () => {
               <li>Access, edit or delete the content you have submitted.</li>
               <li>Delete your account and associated data by contacting us.</li>
               <li>Request a copy of the personal data we hold about you.</li>
+              <li>
+                <strong>Unsubscribe from our newsletter</strong> — reply to any newsletter email
+                with "unsubscribe" in the subject, or contact us directly and we will remove
+                you from the mailing list immediately.
+              </li>
             </ul>
           </section>
 

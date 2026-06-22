@@ -21,7 +21,7 @@ const Terms = () => {
 
         <div className="space-y-8 font-body text-base leading-relaxed text-foreground/90">
           <p className="text-sm text-muted-foreground font-mono uppercase tracking-widest">
-            Last updated: 14 June 2026
+            Last updated: 22 June 2026
           </p>
 
           <section className="space-y-3">
@@ -98,7 +98,24 @@ const Terms = () => {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-display text-2xl font-bold tracking-tight">7. Disclaimer & liability</h2>
+            <h2 className="font-display text-2xl font-bold tracking-tight">7. Newsletter & email communications</h2>
+            <p>
+              By creating an account you may receive our curated newsletter — a
+              periodic selection of references from the archive. We will not send
+              promotional emails on behalf of third parties. Newsletter frequency
+              is determined by us and may change over time.
+            </p>
+            <p>
+              To stop receiving newsletter emails, reply to any newsletter with
+              "unsubscribe" in the subject line, or contact us directly. We will
+              remove you from the list within a few working days. Transactional
+              emails related to your account (password reset, etc.) cannot be
+              opted out of while your account is active.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-display text-2xl font-bold tracking-tight">8. Disclaimer & liability</h2>
             <p>
               The Service is provided "as is", without warranties of any kind.
               To the fullest extent permitted by law, we are not liable for any
@@ -108,7 +125,7 @@ const Terms = () => {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-display text-2xl font-bold tracking-tight">8. Changes</h2>
+            <h2 className="font-display text-2xl font-bold tracking-tight">9. Changes</h2>
             <p>
               We may update these Terms from time to time. Continued use of the
               Service after changes are posted constitutes acceptance of the
@@ -117,7 +134,7 @@ const Terms = () => {
           </section>
 
           <section className="space-y-3">
-            <h2 className="font-display text-2xl font-bold tracking-tight">9. Contact</h2>
+            <h2 className="font-display text-2xl font-bold tracking-tight">10. Contact</h2>
             <p>
               For takedown requests, account questions, or any other enquiry,
               please reach out via the contact channel listed on the site.
