@@ -87,7 +87,7 @@ const Pricing = () => {
   return (
     <div className="min-h-screen grain flex flex-col">
       <PageMeta
-        title="Pricing — The Creatives Room"
+        title="Pricing - The Creatives Room"
         description="Upgrade to Pro and unlock unlimited AI brief matches plus unlimited folders."
       />
       <SiteHeader />

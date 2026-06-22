@@ -241,7 +241,7 @@ const Logs = () => {
     setReports(((data as any[]) || []).map((r) => ({ ...r, ref_title: r.references?.title ?? r.reference_id })));
   }
 
-  useEffect(() => { document.title = "Admin · Logs — The Creatives Room"; }, []);
+  useEffect(() => { document.title = "Admin · Logs - The Creatives Room"; }, []);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -605,7 +605,7 @@ const Logs = () => {
   // ── Render ──────────────────────────────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen grain">
-      <PageMeta title="Admin · Logs — The Creatives Room" description="Reference approval logs." noindex />
+      <PageMeta title="Admin · Logs - The Creatives Room" description="Reference approval logs." noindex />
       <SiteHeader />
 
       {/* Page header */}

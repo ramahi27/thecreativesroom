@@ -66,7 +66,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         if (cancelled) return;
         setR(one ? (one as unknown as Reference) : null);
         if (one) {
-          document.title = `${(one as any).title} — The Creatives Room`;
+          document.title = `${(one as any).title} - The Creatives Room`;
           const canonical = refPath((one as any).id, (one as any).title);
           if (window.location.pathname !== canonical) {
             navigate(canonical, { replace: true });
@@ -474,7 +474,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
     <Dialog open onOpenChange={(o) => !o && returnToOpener()}>
       {r && (
         <PageMeta
-          title={`${r.title} — The Creatives Room`}
+          title={`${r.title} - The Creatives Room`}
           description={metaDescription}
           path={refPath(r.id, r.title)}
           ogImage={r.thumbnail_url || (r.source_url ? deriveThumbnail(r.source_url) : undefined) || r.media_url || undefined}

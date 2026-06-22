@@ -66,7 +66,7 @@ const Welcome = () => {
   return (
     <div className="min-h-screen grain">
       <PageMeta
-        title="Choose a username — The Creatives Room"
+        title="Choose a username - The Creatives Room"
         description="Pick your username to complete your account setup."
         path="/welcome"
         noindex

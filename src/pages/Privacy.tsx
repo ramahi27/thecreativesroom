@@ -6,7 +6,7 @@ const Privacy = () => {
   return (
     <div className="min-h-screen grain flex flex-col">
       <PageMeta
-        title="Privacy Policy — The Creatives Room"
+        title="Privacy Policy - The Creatives Room"
         description="How The Creatives Room collects, uses, and protects your data on our curated archive of ad film and photo references."
         path="/privacy"
       />

@@ -108,7 +108,7 @@ const Bookmarks = () => {
   const { video: VIDEO_CATEGORIES, photo: PHOTO_CATEGORIES } = useCategories();
 
   useEffect(() => {
-    document.title = "My Collection — The Creatives Room";
+    document.title = "My Collection - The Creatives Room";
     if (!authLoading && !user) navigate("/auth");
   }, [user, authLoading, navigate]);
 
@@ -299,7 +299,7 @@ const Bookmarks = () => {
 
   return (
     <div className="min-h-screen grain">
-      <PageMeta title="My Collection — The Creatives Room" description="Your saved references." noindex />
+      <PageMeta title="My Collection - The Creatives Room" description="Your saved references." noindex />
       <SiteHeader />
       <CollectionProfileHeader
         profile={profile}

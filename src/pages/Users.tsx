@@ -91,7 +91,7 @@ const Users = () => {
   }
 
   useEffect(() => {
-    document.title = "Admin · Users — The Creatives Room";
+    document.title = "Admin · Users - The Creatives Room";
   }, []);
 
   useEffect(() => {
@@ -179,7 +179,7 @@ const Users = () => {
 
   return (
     <div className="min-h-screen grain">
-      <PageMeta title="Admin · Users — The Creatives Room" description="User management." noindex />
+      <PageMeta title="Admin · Users - The Creatives Room" description="User management." noindex />
       <SiteHeader />
 
       <section className="border-b hairline">

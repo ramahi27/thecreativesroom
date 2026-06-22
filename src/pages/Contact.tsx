@@ -62,7 +62,7 @@ const Contact = () => {
   return (
     <div className="min-h-screen grain flex flex-col">
       <PageMeta
-        title="Contact — The Creatives Room"
+        title="Contact - The Creatives Room"
         description="Send us a question, suggestion, or bug report."
         path="/contact"
       />

@@ -58,7 +58,7 @@ const Newsletter = () => {
   const [addUrl, setAddUrl] = useState("");
   const [addingUrl, setAddingUrl] = useState(false);
 
-  useEffect(() => { document.title = "Newsletter — The Creatives Room"; }, []);
+  useEffect(() => { document.title = "Newsletter - The Creatives Room"; }, []);
 
   const fetchRefs = useCallback(async (shuffle = false) => {
     setLoadingRefs(true);

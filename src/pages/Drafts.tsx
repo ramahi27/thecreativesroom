@@ -71,7 +71,7 @@ const Drafts = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    document.title = "Drafts — The Creatives Room";
+    document.title = "Drafts - The Creatives Room";
   }, []);
 
   useEffect(() => {
@@ -251,7 +251,7 @@ const Drafts = () => {
 
   return (
     <div className="min-h-screen grain">
-      <PageMeta title="Drafts — The Creatives Room" description="Pending reference drafts." noindex />
+      <PageMeta title="Drafts - The Creatives Room" description="Pending reference drafts." noindex />
       <SiteHeader />
 
       <section className="border-b hairline">
