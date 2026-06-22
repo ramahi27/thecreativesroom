@@ -30,19 +30,34 @@ function refUrl(r: RefInput): string {
 }
 
 // Proxy YouTube/Vimeo thumbnails through wsrv.nl so email clients can load them.
-// For YouTube, upgrade to maxresdefault (1280×720) before proxying.
+// For YouTube, try maxres → sd → hq with wsrv's chained fallback so we never end up with a 404 or 120px blur.
 function emailThumb(url: string): string {
   try {
     const parsed = new URL(url);
     const host = parsed.hostname;
     if (host.includes("ytimg.com")) {
-      const hires = url.replace(
-        /\/(hqdefault|mqdefault|sddefault|default)\.jpg/,
-        "/maxresdefault.jpg",
-      );
-      return `https://wsrv.nl/?url=${encodeURIComponent(hires)}&w=1200&output=jpg&q=90`;
+      // Extract video id from /vi/<id>/...
+      const m = url.match(/\/vi\/([^/]+)\//);
+      if (m) {
+        const id = m[1];
+        const maxres = `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
+        const sd = `https://i.ytimg.com/vi/${id}/sddefault.jpg`;
+        const hq = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+        // wsrv `errorredirect` falls back if the primary 404s
+        return `https://wsrv.nl/?url=${encodeURIComponent(maxres)}&w=1200&output=jpg&q=90&errorredirect=${encodeURIComponent(
+          `https://wsrv.nl/?url=${sd}&w=1200&output=jpg&q=90&errorredirect=${encodeURIComponent(
+            `https://wsrv.nl/?url=${hq}&w=1200&output=jpg&q=90`,
+          )}`,
+        )}`;
+      }
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&output=jpg&q=90`;
     }
-    if (host.includes("vumbnail.com") || host.includes("vimeocdn.com")) {
+    if (host.includes("vumbnail.com")) {
+      // vumbnail.com/<id>.jpg → vumbnail.com/<id>_large.jpg (640w) is the largest reliable size
+      const large = url.replace(/(\/[^/]+?)(_(?:small|medium|large))?\.jpg$/, "$1_large.jpg");
+      return `https://wsrv.nl/?url=${encodeURIComponent(large)}&w=1200&output=jpg&q=90`;
+    }
+    if (host.includes("vimeocdn.com")) {
       return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&output=jpg&q=90`;
     }
   } catch { /* noop */ }
