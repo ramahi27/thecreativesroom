@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
+import { fetchThumbnail } from "@/lib/references";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -115,7 +116,15 @@ const Newsletter = () => {
       .order("created_at", { ascending: false })
       .limit(10);
     const items = (data || []) as Ref[];
-    setRefs(items);
+    // Backfill missing thumbnails from source_url (YouTube/Vimeo)
+    const enriched = await Promise.all(
+      items.map(async (r) => {
+        if (r.thumbnail_url || !r.source_url) return r;
+        const t = await fetchThumbnail(r.source_url).catch(() => null);
+        return t ? { ...r, thumbnail_url: t } : r;
+      }),
+    );
+    setRefs(enriched);
     if (!subject) {
       const now = new Date();
       const week = `${now.toLocaleString("default", { month: "long" })} ${now.getDate()}`;
@@ -176,7 +185,7 @@ const Newsletter = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <PageMeta title="Newsletter" />
+      <PageMeta title="Newsletter" description="Admin newsletter composer" noindex />
       <SiteHeader />
 
       <main className="flex-1 container max-w-2xl py-12 space-y-8">
