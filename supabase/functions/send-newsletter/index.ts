@@ -83,7 +83,10 @@ async function fetchCurrentEvents(): Promise<string> {
         m[1].replace(/<!\[CDATA\[|\]\]>/g, "").trim(),
       );
     }
-    return titles.slice(1, 16).join(" | ");
+    // Keep only culturally relevant headlines — drop crime, war, disasters
+    const blocklist = /\b(kill|killed|dead|death|murder|arrest|bust|cocaine|drug|war|attack|shoot|stab|bomb|terror|court|prison|jail|guilty|verdict|resign|flood|earthquake|hurricane|wildfire|hostage|kidnap|rape|crash|explosion|sanction|protest|riot|refugee|migrant|poverty|famine|drought)\b/i;
+    const cultural = titles.slice(1).filter((t) => !blocklist.test(t));
+    return cultural.slice(0, 15).join(" | ");
   } catch {
     return "";
   }
@@ -166,7 +169,7 @@ Return a single JSON object with exactly these 4 keys:
 
 "intro": A 2–3 sentence editorial opener. Name 1–2 specific current events from the context by name (not generically). Bridge to these references — explain the connective tissue. Max 55 words. Do NOT start with "This week".
 
-"subject": A punchy email subject line, 8–10 words, no trailing punctuation. Reference 1–2 named current events. Hint at creative content. Do NOT say "newsletter" or "The Creatives Room". Example style: "Cannes, Wimbledon, and the ads you need to see"`;
+"subject": A punchy email subject line, 8–10 words, no trailing punctuation. Reference 1–2 named cultural moments ONLY — festivals, sports championships, award shows, film releases, fashion weeks, product launches. NEVER mention crime, violence, political crises, or negative news. Hint at creative content. Do NOT say "newsletter" or "The Creatives Room". Example style: "Cannes, Wimbledon, and the ads you need to see"`;
 
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
