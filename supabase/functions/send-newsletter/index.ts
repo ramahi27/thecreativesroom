@@ -33,10 +33,53 @@ function emailThumb(url: string): string {
   try {
     const host = new URL(url).hostname;
     if (host.includes("ytimg.com") || host.includes("vumbnail.com") || host.includes("vimeocdn.com")) {
-      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&h=680&fit=cover&output=jpg`;
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&output=jpg`;
     }
   } catch { /* noop */ }
   return url;
+}
+
+async function curateRefs(refs: RefInput[], apiKey: string): Promise<RefInput[]> {
+  if (refs.length <= 5) return refs;
+
+  const today = new Date().toISOString().split("T")[0];
+  const list = refs.map((r, i) =>
+    `${i + 1}. "${r.title}"${r.brand ? ` by ${r.brand}` : ""}${r.categories?.[0] ? ` [${r.categories[0]}]` : ""}${r.visual_summary ? ` — ${r.visual_summary.slice(0, 100)}` : ""}`
+  ).join("\n");
+
+  const prompt = `You are curating a weekly creative newsletter. Today is ${today}.
+
+From the references below, pick the 5–7 that are most relevant to what is happening in the world RIGHT NOW — major events, cultural moments, trending topics, award seasons, sports tournaments, film festivals, music releases, fashion weeks, product launches, etc. Prioritise timeliness and cultural resonance over variety.
+
+References:
+${list}
+
+Return ONLY a JSON array of 1-based indices in order of relevance. Example: [3, 7, 1, 5, 2]`;
+
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+    }),
+  });
+
+  if (!res.ok) return refs.slice(0, 7);
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content ?? "";
+  try {
+    const match = text.match(/\[[\d,\s]+\]/);
+    if (!match) return refs.slice(0, 7);
+    const indices: number[] = JSON.parse(match[0]);
+    const curated = indices
+      .filter((i) => i >= 1 && i <= refs.length)
+      .map((i) => refs[i - 1]);
+    return curated.length >= 3 ? curated : refs.slice(0, 7);
+  } catch {
+    return refs.slice(0, 7);
+  }
 }
 
 async function generateBlurbs(refs: RefInput[], apiKey: string): Promise<Record<string, string>> {
@@ -78,8 +121,8 @@ function buildHtml(refs: RefInput[], blurbs: Record<string, string>, subject: st
     const url = refUrl(r);
     const blurb = blurbs[String(i + 1)] || "";
     const thumb = r.thumbnail_url
-      ? `<img src="${emailThumb(r.thumbnail_url)}" alt="${r.title.replace(/"/g, "&quot;")}" width="560" style="width:100%;max-width:560px;height:220px;object-fit:cover;display:block;border-radius:8px 8px 0 0;" />`
-      : `<div style="width:100%;height:100px;background:#1a1a1a;border-radius:8px 8px 0 0;"></div>`;
+      ? `<img src="${emailThumb(r.thumbnail_url)}" alt="${r.title.replace(/"/g, "&quot;")}" width="560" style="width:100%;max-width:560px;display:block;border-radius:8px 8px 0 0;" />`
+      : `<div style="width:100%;height:80px;background:#1a1a1a;border-radius:8px 8px 0 0;"></div>`;
     const meta = [r.brand, r.categories?.[0]].filter(Boolean).join(" · ");
     return `
 <tr><td style="padding:0 0 28px 0;">
@@ -177,12 +220,13 @@ Deno.serve(async (req) => {
     if (!subject) return json({ error: "Subject required" }, 400);
     if (refs.length === 0) return json({ error: "No references" }, 400);
 
-    // Generate AI blurbs
+    // Curate most world-relevant refs, then generate AI blurbs
     const apiKey = Deno.env.get("LOVABLE_API_KEY") ?? "";
-    const blurbs = apiKey ? await generateBlurbs(refs, apiKey) : {};
+    const curatedRefs = apiKey ? await curateRefs(refs, apiKey) : refs;
+    const blurbs = apiKey ? await generateBlurbs(curatedRefs, apiKey) : {};
 
-    const html = buildHtml(refs, blurbs, subject, intro);
-    const preview = `${refs.length} new reference${refs.length === 1 ? "" : "s"} — hand-picked for you`;
+    const html = buildHtml(curatedRefs, blurbs, subject, intro);
+    const preview = `${curatedRefs.length} reference${curatedRefs.length === 1 ? "" : "s"} — hand-picked for you`;
 
     let emails: string[];
     if (testEmail) {

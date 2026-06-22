@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const DAYS = 7;
+const DAYS = 30;
 
 type Ref = {
   id: string;
@@ -60,7 +60,7 @@ const Newsletter = () => {
       .eq("published", true)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(20);
     const items = (data || []) as Ref[];
     // Backfill missing thumbnails from source_url (YouTube/Vimeo)
     const enriched = await Promise.all(
@@ -174,7 +174,7 @@ const Newsletter = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              {loadingRefs ? "Loading…" : `${refs.length} reference${refs.length === 1 ? "" : "s"} from the last ${DAYS} days`}
+              {loadingRefs ? "Loading…" : `${refs.length} candidate${refs.length === 1 ? "" : "s"} · AI picks the most relevant`}
             </label>
             <button onClick={fetchRefs} className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors">
               <RefreshCw className="h-3 w-3" />
@@ -210,7 +210,7 @@ const Newsletter = () => {
         </div>
 
         <p className="font-mono text-[10px] text-muted-foreground/60">
-          AI will write a short blurb for each reference when you send.
+          AI will pick the most relevant to current world events, then write a blurb for each.
         </p>
 
         {/* Send buttons */}
