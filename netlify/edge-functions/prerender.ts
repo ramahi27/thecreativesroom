@@ -46,7 +46,7 @@ export default async (request: Request, context: Context) => {
     const apiUrl =
       `${SUPABASE_URL}/rest/v1/references` +
       `?id=eq.${id}&published=eq.true` +
-      `&select=id,title,brand,agency,year,thumbnail_url,notes,categories` +
+      `&select=id,title,type,brand,agency,year,thumbnail_url,source_url,visual_summary,notes,categories` +
       `&limit=1`;
     const res = await fetch(apiUrl, {
       headers: {
@@ -69,24 +69,46 @@ export default async (request: Request, context: Context) => {
   const canonicalUrl = `${SITE}${canonicalPath}`;
 
   const metaParts = [ref.brand, ref.agency, ref.year ? String(ref.year) : null].filter(Boolean);
+  const bodyText = ref.visual_summary || ref.notes || "";
   const description = metaParts.length
-    ? `${metaParts.join(" · ")}. ${(ref.notes ?? "").slice(0, 120) || "Creative reference on The Creatives Room."}`
-    : (ref.notes ?? "").slice(0, 200) || "Creative reference on The Creatives Room.";
+    ? `${metaParts.join(" · ")}. ${bodyText.slice(0, 140) || "Creative reference on The Creatives Room."}`
+    : bodyText.slice(0, 200) || "Creative reference on The Creatives Room.";
 
-  const ogImage = ref.thumbnail_url ?? DEFAULT_OG_IMAGE;
+  const derivedThumb = (() => {
+    const src: string = ref.source_url ?? "";
+    try {
+      const u = new URL(src);
+      if (u.hostname.includes("youtube.com")) {
+        const vid = u.searchParams.get("v")
+          || (u.pathname.startsWith("/shorts/") ? u.pathname.split("/")[2] : null)
+          || (u.pathname.startsWith("/embed/") ? u.pathname.split("/")[2] : null);
+        if (vid) return `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+      }
+      if (u.hostname === "youtu.be") {
+        const vid = u.pathname.slice(1);
+        if (vid) return `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+      }
+    } catch { /* ignore */ }
+    return null;
+  })();
+
+  const ogImage = ref.thumbnail_url ?? derivedThumb ?? DEFAULT_OG_IMAGE;
   const title = escape(`${ref.title ?? "Reference"} — The Creatives Room`);
   const desc = escape(description.slice(0, 200));
   const img = escape(ogImage);
   const url = escape(canonicalUrl);
 
+  const schemaType = ref.type === "video" ? "VideoObject" : ref.type === "image" ? "ImageObject" : "CreativeWork";
   const jsonLd = JSON.stringify({
     "@context": "https://schema.org",
-    "@type": "CreativeWork",
+    "@type": schemaType,
     name: ref.title,
     url: canonicalUrl,
     image: ogImage,
+    thumbnailUrl: ogImage,
+    ...(bodyText ? { description: bodyText.slice(0, 300) } : {}),
     ...(ref.brand ? { brand: { "@type": "Brand", name: ref.brand } } : {}),
-    ...(ref.year ? { datePublished: String(ref.year) } : {}),
+    ...(ref.year ? { datePublished: `${ref.year}-01-01` } : {}),
     ...(Array.isArray(ref.categories) && ref.categories.length
       ? { genre: ref.categories }
       : {}),
