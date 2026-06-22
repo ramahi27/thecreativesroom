@@ -24,6 +24,13 @@ type RefInput = {
   year: number | null;
 };
 
+type EnrichedContent = {
+  blurbs: Record<string, string>;
+  hooks: Record<string, string>;
+  intro: string;
+  subject: string;
+};
+
 function refUrl(r: RefInput): string {
   const slug = r.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
   return `${SITE_URL}/ref/${r.id}${slug ? `-${slug}` : ""}`;
@@ -36,14 +43,12 @@ function emailThumb(url: string): string {
     const parsed = new URL(url);
     const host = parsed.hostname;
     if (host.includes("ytimg.com")) {
-      // Extract video id from /vi/<id>/...
       const m = url.match(/\/vi\/([^/]+)\//);
       if (m) {
         const id = m[1];
         const maxres = `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`;
         const sd = `https://i.ytimg.com/vi/${id}/sddefault.jpg`;
         const hq = `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
-        // wsrv `errorredirect` falls back if the primary 404s
         return `https://wsrv.nl/?url=${encodeURIComponent(maxres)}&w=1200&output=jpg&q=90&errorredirect=${encodeURIComponent(
           `https://wsrv.nl/?url=${sd}&w=1200&output=jpg&q=90&errorredirect=${encodeURIComponent(
             `https://wsrv.nl/?url=${hq}&w=1200&output=jpg&q=90`,
@@ -53,7 +58,6 @@ function emailThumb(url: string): string {
       return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&output=jpg&q=90`;
     }
     if (host.includes("vumbnail.com")) {
-      // vumbnail.com/<id>.jpg → vumbnail.com/<id>_large.jpg (640w) is the largest reliable size
       const large = url.replace(/(\/[^/]+?)(_(?:small|medium|large))?\.jpg$/, "$1_large.jpg");
       return `https://wsrv.nl/?url=${encodeURIComponent(large)}&w=1200&output=jpg&q=90`;
     }
@@ -73,21 +77,19 @@ async function fetchCurrentEvents(): Promise<string> {
     });
     if (!res.ok) return "";
     const xml = await res.text();
-    // Parse CDATA-wrapped titles first, then plain titles
     let titles = [...xml.matchAll(/<title><!\[CDATA\[(.+?)\]\]><\/title>/g)].map((m) => m[1]);
     if (titles.length === 0) {
       titles = [...xml.matchAll(/<item>[\s\S]*?<title>(.*?)<\/title>/g)].map((m) =>
         m[1].replace(/<!\[CDATA\[|\]\]>/g, "").trim(),
       );
     }
-    // Skip the feed's own title (first match) and take top 15 headlines
     return titles.slice(1, 16).join(" | ");
   } catch {
     return "";
   }
 }
 
-async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Promise<RefInput[]> {
+async function curateRefs(refs: RefInput[], apiKey: string, contextLine: string): Promise<RefInput[]> {
   if (refs.length === 0) return refs;
 
   const today = new Date().toISOString().split("T")[0];
@@ -95,19 +97,9 @@ async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Pro
     `${i + 1}. "${r.title}"${r.brand ? ` by ${r.brand}` : ""}${r.year ? ` (${r.year})` : ""}${r.categories?.[0] ? ` [${r.categories[0]}]` : ""}${r.visual_summary ? ` — ${r.visual_summary.slice(0, 100)}` : ""}`
   ).join("\n");
 
-  let focusLine: string;
-  if (theme) {
-    focusLine = `The editor wants this week's newsletter to focus on: "${theme}". Prioritise references that connect to this theme.`;
-  } else {
-    const headlines = await fetchCurrentEvents();
-    focusLine = headlines
-      ? `Here are today's top world headlines (${today}): ${headlines}\n\nUse these to identify what's culturally resonant right now. Pick refs that connect — by brand, industry, aesthetic, subject matter, or adjacent creative territory.`
-      : `Think about the biggest cultural moments happening this week — film festivals, sports, award shows, fashion weeks, product launches — and pick refs that connect by brand, category, or vibe.`;
-  }
-
   const prompt = `You are curating a weekly creative newsletter. Today is ${today}.
 
-${focusLine}
+${contextLine}
 
 STRICT rules — follow them exactly:
 - Return exactly 10 references
@@ -149,17 +141,32 @@ Return ONLY a JSON array of 1-based indices in the order you want them to appear
   }
 }
 
-async function generateBlurbs(refs: RefInput[], apiKey: string): Promise<Record<string, string>> {
+async function generateEnrichedContent(
+  refs: RefInput[],
+  apiKey: string,
+  contextLine: string,
+): Promise<EnrichedContent> {
+  const fallback: EnrichedContent = { blurbs: {}, hooks: {}, intro: "", subject: "" };
+  if (refs.length === 0) return fallback;
+
   const list = refs.map((r, i) =>
-    `${i + 1}. "${r.title}"${r.brand ? ` by ${r.brand}` : ""}${r.categories?.[0] ? ` [${r.categories[0]}]` : ""}${r.visual_summary ? ` — context: ${r.visual_summary}` : ""}`
+    `${i + 1}. "${r.title}"${r.brand ? ` by ${r.brand}` : ""}${r.year ? ` (${r.year})` : ""}${r.categories?.[0] ? ` [${r.categories[0]}]` : ""}${r.visual_summary ? ` — ${r.visual_summary.slice(0, 120)}` : ""}`
   ).join("\n");
 
-  const prompt = `You are writing a creative newsletter for a reference archive called The Creatives Room. For each reference below, write ONE punchy sentence (max 18 words) that makes readers excited to click. Rules: do NOT start with or repeat the title, be specific and evocative, sound like a creative director recommending work to their team, no filler phrases like "this is" or "a must-see".
+  const prompt = `You are writing content for The Creatives Room — a curated creative reference newsletter. Today's context: ${contextLine}
 
 References:
 ${list}
 
-Return ONLY a JSON object like: { "1": "...", "2": "...", ... }`;
+Return a single JSON object with exactly these 4 keys:
+
+"blurbs": For each reference, one punchy sentence. Reference #1 (hero pick): max 32 words — room for a specific evocative detail. References #2–${refs.length}: max 24 words each. Rules: do NOT start with or repeat the title, be specific and evocative, sound like a creative director, no filler ("this is", "a must-see"). Format: { "1": "...", "2": "...", ... }
+
+"hooks": For each reference, a 5–7 word label connecting it to this week's moment. Be specific — name the actual event, not "this week". For classics with no strong tie: write a timeless hook (e.g. "Still the benchmark for car ads"). Format: { "1": "...", "2": "...", ... }
+
+"intro": A 2–3 sentence editorial opener. Name 1–2 specific current events from the context by name (not generically). Bridge to these references — explain the connective tissue. Max 55 words. Do NOT start with "This week".
+
+"subject": A punchy email subject line, 8–10 words, no trailing punctuation. Reference 1–2 named current events. Hint at creative content. Do NOT say "newsletter" or "The Creatives Room". Example style: "Cannes, Wimbledon, and the ads you need to see"`;
 
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -168,41 +175,83 @@ Return ONLY a JSON object like: { "1": "...", "2": "...", ... }`;
       model: "google/gemini-2.5-flash",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.8,
+      response_format: { type: "json_object" },
     }),
   });
 
-  if (!res.ok) return {};
+  if (!res.ok) return fallback;
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content ?? "";
   try {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return {};
-    return JSON.parse(match[0]);
+    const parsed = JSON.parse(text);
+    return {
+      blurbs: parsed.blurbs ?? {},
+      hooks: parsed.hooks ?? {},
+      intro: typeof parsed.intro === "string" ? parsed.intro : "",
+      subject: typeof parsed.subject === "string" ? parsed.subject : "",
+    };
   } catch {
-    return {};
+    return fallback;
   }
 }
 
-function buildHtml(refs: RefInput[], blurbs: Record<string, string>, subject: string, intro = ""): string {
-  const rows = refs.map((r, i) => {
-    const url = refUrl(r);
-    const blurb = blurbs[String(i + 1)] || "";
-    const thumb = r.thumbnail_url
-      ? `<img src="${emailThumb(r.thumbnail_url)}" alt="${r.title.replace(/"/g, "&quot;")}" width="560" style="width:100%;max-width:560px;display:block;border-radius:8px 8px 0 0;" />`
-      : `<div style="width:100%;height:80px;background:#1a1a1a;border-radius:8px 8px 0 0;"></div>`;
-    const meta = [r.brand, r.categories?.[0]].filter(Boolean).join(" · ");
-    return `
-<tr><td style="padding:0 0 28px 0;">
-  <a href="${url}" style="display:block;text-decoration:none;background:#111;border-radius:10px;overflow:hidden;border:1px solid #222;">
-    ${thumb}
-    <div style="padding:18px 22px 20px;">
-      ${meta ? `<p style="margin:0 0 6px 0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.15em;color:#f46a20;">${meta}</p>` : ""}
-      <p style="margin:0 0 8px 0;font-family:Georgia,serif;font-size:20px;font-weight:700;color:#f5f0e8;line-height:1.25;">${r.title}</p>
-      ${blurb ? `<p style="margin:0;font-family:Georgia,serif;font-size:14px;color:#999;line-height:1.55;font-style:italic;">${blurb}</p>` : ""}
+function buildHeroCard(r: RefInput, blurb: string, hook: string): string {
+  const url = refUrl(r);
+  const meta = [r.brand, r.categories?.[0]].filter(Boolean).join(" · ");
+  const thumb = r.thumbnail_url
+    ? `<img src="${emailThumb(r.thumbnail_url)}" alt="${r.title.replace(/"/g, "&quot;")}" width="560" style="width:100%;max-width:560px;display:block;" />`
+    : `<div style="width:100%;height:80px;background:#1a1a1a;"></div>`;
+
+  return `
+<tr><td style="padding:0 0 36px 0;">
+  <a href="${url}" style="display:block;text-decoration:none;background:#111;border-radius:12px;overflow:hidden;border:1px solid #333;">
+    <div style="padding:14px 24px 0;">
+      <p style="margin:0;font-family:monospace;font-size:9px;text-transform:uppercase;letter-spacing:0.25em;color:#f46a20;">★ Pick of the week</p>
+    </div>
+    <div style="margin-top:12px;">${thumb}</div>
+    <div style="padding:22px 26px 24px;">
+      ${meta ? `<p style="margin:0 0 8px 0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.15em;color:#f46a20;">${meta}</p>` : ""}
+      <p style="margin:0 0 10px 0;font-family:Georgia,serif;font-size:28px;font-weight:700;color:#f5f0e8;line-height:1.2;">${r.title}</p>
+      ${blurb ? `<p style="margin:0 0 10px 0;font-family:Georgia,serif;font-size:15px;color:#bbb;line-height:1.6;font-style:italic;">${blurb}</p>` : ""}
+      ${hook ? `<p style="margin:0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#f46a20;">${hook}</p>` : ""}
     </div>
   </a>
 </td></tr>`;
-  }).join("");
+}
+
+function buildRegularCard(r: RefInput, blurb: string, hook: string): string {
+  const url = refUrl(r);
+  const meta = [r.brand, r.categories?.[0]].filter(Boolean).join(" · ");
+  const thumb = r.thumbnail_url
+    ? `<img src="${emailThumb(r.thumbnail_url)}" alt="${r.title.replace(/"/g, "&quot;")}" width="560" style="width:100%;max-width:560px;display:block;border-radius:6px 6px 0 0;" />`
+    : `<div style="width:100%;height:80px;background:#1a1a1a;border-radius:6px 6px 0 0;"></div>`;
+
+  return `
+<tr><td style="padding:0 0 24px 0;">
+  <a href="${url}" style="display:block;text-decoration:none;background:#111;border-radius:10px;overflow:hidden;border:1px solid #222;">
+    ${thumb}
+    <div style="padding:16px 22px 18px;">
+      ${meta ? `<p style="margin:0 0 5px 0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.15em;color:#f46a20;">${meta}</p>` : ""}
+      <p style="margin:0 0 7px 0;font-family:Georgia,serif;font-size:18px;font-weight:700;color:#f5f0e8;line-height:1.25;">${r.title}</p>
+      ${blurb ? `<p style="margin:0 0 8px 0;font-family:Georgia,serif;font-size:14px;color:#999;line-height:1.55;font-style:italic;">${blurb}</p>` : ""}
+      ${hook ? `<p style="margin:0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#f46a20;">${hook}</p>` : ""}
+    </div>
+  </a>
+</td></tr>`;
+}
+
+function buildHtml(
+  refs: RefInput[],
+  blurbs: Record<string, string>,
+  hooks: Record<string, string>,
+  subject: string,
+  intro = "",
+): string {
+  const [hero, ...rest] = refs;
+  const heroRow = hero ? buildHeroCard(hero, blurbs["1"] || "", hooks["1"] || "") : "";
+  const restRows = rest.map((r, i) =>
+    buildRegularCard(r, blurbs[String(i + 2)] || "", hooks[String(i + 2)] || "")
+  ).join("");
 
   return `<!DOCTYPE html>
 <html>
@@ -226,7 +275,8 @@ function buildHtml(refs: RefInput[], blurbs: Record<string, string>, subject: st
         <!-- References -->
         <tr><td style="padding:32px 0 0 0;">
           <table width="100%" cellpadding="0" cellspacing="0">
-            ${rows}
+            ${heroRow}
+            ${restRows}
           </table>
         </td></tr>
 
@@ -281,19 +331,33 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const subject = String(body.subject || "").trim();
     const intro = String(body.intro || "").trim();
-    const theme = typeof body.theme === "string" ? body.theme.trim() : undefined;
+    const theme = typeof body.theme === "string" ? body.theme.trim() : "";
+    const subjectIsCustom = body.subjectIsCustom === true;
     const refs: RefInput[] = Array.isArray(body.refs) ? body.refs : [];
     const testEmail = typeof body.testEmail === "string" ? body.testEmail.trim() : null;
 
     if (!subject) return json({ error: "Subject required" }, 400);
     if (refs.length === 0) return json({ error: "No references" }, 400);
 
-    // Curate most world-relevant refs, then generate AI blurbs
     const apiKey = Deno.env.get("LOVABLE_API_KEY") ?? "";
-    const curatedRefs = apiKey ? await curateRefs(refs, apiKey, theme) : refs;
-    const blurbs = apiKey ? await generateBlurbs(curatedRefs, apiKey) : {};
 
-    const html = buildHtml(curatedRefs, blurbs, subject, intro);
+    // Fetch live news once — shared by curation and content generation
+    const headlines = theme ? "" : await fetchCurrentEvents();
+    const contextLine = theme
+      ? `The editor wants this week's newsletter to focus on: "${theme}". Prioritise references that connect to this theme.`
+      : headlines
+      ? `Here are today's top world headlines: ${headlines}\n\nUse these to identify what's culturally resonant right now. Pick refs that connect — by brand, industry, aesthetic, subject matter, or adjacent creative territory.`
+      : `Think about the biggest cultural moments happening this week — film festivals, sports, award shows, fashion weeks, product launches — and pick refs that connect by brand, category, or vibe.`;
+
+    const curatedRefs = apiKey ? await curateRefs(refs, apiKey, contextLine) : refs;
+    const enriched = apiKey
+      ? await generateEnrichedContent(curatedRefs, apiKey, contextLine)
+      : { blurbs: {}, hooks: {}, intro: "", subject: "" };
+
+    const resolvedSubject = subjectIsCustom ? subject : (enriched.subject || subject);
+    const resolvedIntro = intro || enriched.intro || "";
+
+    const html = buildHtml(curatedRefs, enriched.blurbs, enriched.hooks, resolvedSubject, resolvedIntro);
     const preview = `${curatedRefs.length} reference${curatedRefs.length === 1 ? "" : "s"} — hand-picked for you`;
 
     let emails: string[];
@@ -321,7 +385,7 @@ Deno.serve(async (req) => {
       const messages = chunk.map((to) => ({
         from,
         to,
-        subject,
+        subject: resolvedSubject,
         html: `<div style="display:none;max-height:0;overflow:hidden;">${preview}</div>${html}`,
       }));
 
@@ -338,7 +402,7 @@ Deno.serve(async (req) => {
       sent += chunk.length;
     }
 
-    return json({ sent });
+    return json({ sent, generatedSubject: enriched.subject, generatedIntro: enriched.intro });
   } catch (e: any) {
     return json({ error: e?.message ?? "Unknown error" }, 500);
   }

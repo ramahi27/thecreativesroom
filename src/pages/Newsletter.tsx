@@ -46,9 +46,11 @@ const Newsletter = () => {
   const [intro, setIntro] = useState("");
   const [userCount, setUserCount] = useState<number | null>(null);
   const [theme, setTheme] = useState("");
+  const [subjectIsCustom, setSubjectIsCustom] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [aiPreview, setAiPreview] = useState<{ subject: string; intro: string } | null>(null);
 
   useEffect(() => { document.title = "Newsletter — The Creatives Room"; }, []);
 
@@ -110,6 +112,7 @@ const Newsletter = () => {
             subject,
             intro,
             theme: theme.trim() || undefined,
+            subjectIsCustom,
             refs,
             testEmail: testOnly ? "r.laith27@gmail.com" : undefined,
           }),
@@ -120,6 +123,9 @@ const Newsletter = () => {
         toast.error(result.error || "Failed to send");
       } else {
         toast.success(testOnly ? "Test sent to r.laith27@gmail.com" : `Sent to ${result.sent} user${result.sent === 1 ? "" : "s"}`);
+        if (result.generatedSubject || result.generatedIntro) {
+          setAiPreview({ subject: result.generatedSubject || "", intro: result.generatedIntro || "" });
+        }
       }
     } catch (e: any) {
       toast.error(e?.message || "Unknown error");
@@ -155,9 +161,10 @@ const Newsletter = () => {
           <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Subject line</label>
           <Input
             value={subject}
-            onChange={(e) => setSubject(e.target.value)}
+            onChange={(e) => { setSubject(e.target.value); setSubjectIsCustom(true); }}
             className="font-body text-base"
           />
+          <p className="font-mono text-[10px] text-muted-foreground/50">AI will generate a timely subject unless you edit this</p>
         </div>
 
         {/* Theme / current events */}
@@ -174,7 +181,7 @@ const Newsletter = () => {
 
         {/* Intro */}
         <div className="space-y-1.5">
-          <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Intro note <span className="opacity-50">(optional)</span></label>
+          <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Intro note — AI will write one if left blank</label>
           <textarea
             value={intro}
             onChange={(e) => setIntro(e.target.value)}
@@ -246,6 +253,37 @@ const Newsletter = () => {
             {sending ? "Sending…" : userCount !== null ? `Send to ${userCount} users` : "Send"}
           </Button>
         </div>
+
+        {/* AI-generated preview — shown after test send */}
+        {aiPreview && (
+          <div className="space-y-3 border hairline rounded-xl p-4 bg-secondary/40">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-primary">AI generated — review before sending to all</p>
+            {aiPreview.subject && (
+              <div className="space-y-1">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Subject</p>
+                <p className="font-body text-sm text-foreground">{aiPreview.subject}</p>
+                <button
+                  onClick={() => { setSubject(aiPreview.subject); setSubjectIsCustom(false); }}
+                  className="font-mono text-[10px] uppercase tracking-widest text-primary hover:underline"
+                >
+                  Use this subject
+                </button>
+              </div>
+            )}
+            {aiPreview.intro && (
+              <div className="space-y-1">
+                <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Intro</p>
+                <p className="font-body text-sm text-foreground/80 leading-relaxed">{aiPreview.intro}</p>
+                <button
+                  onClick={() => setIntro(aiPreview.intro)}
+                  className="font-mono text-[10px] uppercase tracking-widest text-primary hover:underline"
+                >
+                  Use this intro
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </main>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
