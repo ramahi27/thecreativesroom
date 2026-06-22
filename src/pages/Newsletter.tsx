@@ -188,7 +188,7 @@ const Newsletter = () => {
     const since = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000).toISOString();
     const { data } = await supabase
       .from("references")
-      .select("id,title,thumbnail_url,source_url,brand,categories,type")
+      .select("id,title,thumbnail_url,source_url,brand,agency,year,categories,tags,notes,type")
       .eq("published", true)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
