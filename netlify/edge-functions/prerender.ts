@@ -163,6 +163,7 @@ export default async (request: Request, context: Context) => {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "public, max-age=300, stale-while-revalidate=3600",
+      "vary": "User-Agent",
     },
   });
 };
