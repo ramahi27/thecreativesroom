@@ -49,7 +49,9 @@ export function getEmbedUrl(url: string | null): string | null {
   try {
     const u = new URL(url);
     if (u.hostname.includes("youtube.com")) {
-      const id = u.searchParams.get("v");
+      const id = u.searchParams.get("v")
+        || (u.pathname.startsWith("/shorts/") ? u.pathname.split("/")[2] : null)
+        || (u.pathname.startsWith("/embed/") ? u.pathname.split("/")[2] : null);
       if (id) return `https://www.youtube.com/embed/${id}`;
     }
     if (u.hostname === "youtu.be") {
@@ -70,9 +72,11 @@ export function getEmbedUrl(url: string | null): string | null {
 export function deriveThumbnail(url: string): string | null {
   try {
     const u = new URL(url);
-    // YouTube
+    // YouTube (watch, shorts, embed, youtu.be)
     if (u.hostname.includes("youtube.com")) {
-      const id = u.searchParams.get("v");
+      const id = u.searchParams.get("v")
+        || (u.pathname.startsWith("/shorts/") ? u.pathname.split("/")[2] : null)
+        || (u.pathname.startsWith("/embed/") ? u.pathname.split("/")[2] : null);
       if (id) return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
     }
     if (u.hostname === "youtu.be") {
