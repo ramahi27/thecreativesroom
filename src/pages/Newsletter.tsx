@@ -185,7 +185,7 @@ const Newsletter = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <PageMeta title="Newsletter" />
+      <PageMeta title="Newsletter" description="Admin newsletter composer" noindex />
       <SiteHeader />
 
       <main className="flex-1 container max-w-2xl py-12 space-y-8">
