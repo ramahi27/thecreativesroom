@@ -82,12 +82,12 @@ ${focusLine}
 
 STRICT rules — follow them exactly:
 - Return exactly 10 references
-- Exactly 8 MUST be from 2026
-- Exactly 2 MUST be older than 2026 (pre-2026)
-- The FIRST reference in your returned list MUST be a 2026 project
+- Exactly 8 MUST be from 2024 or newer ("new")
+- Exactly 2 MUST be from 2023 or older ("classics")
+- The FIRST reference in your returned list MUST be a new (2024+) project
 - Rank by relevance to this week's moment — most relevant first
-- Among the 2026 picks, prioritise projects released closest to today
-- The 2 older projects should only be included if they meaningfully connect to this week's events
+- Among the new picks, prioritise projects released closest to today
+- The 2 classics should only be included if they meaningfully connect to this week's events
 
 References:
 ${list}
