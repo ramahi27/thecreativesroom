@@ -57,18 +57,27 @@ const Newsletter = () => {
 
   useEffect(() => { document.title = "Newsletter — The Creatives Room"; }, []);
 
-  const fetchRefs = useCallback(async (showToast = false) => {
+  const fetchRefs = useCallback(async (shuffle = false) => {
     setLoadingRefs(true);
     try {
       const since = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000).toISOString();
+      // Pull a wider pool so refresh can re-sample a different 30
       const { data } = await supabase
         .from("references")
         .select("id,title,thumbnail_url,source_url,brand,agency,year,categories,tags,notes,type,visual_summary")
         .eq("published", true)
         .gte("created_at", since)
         .order("created_at", { ascending: false })
-        .limit(30);
-      const items = (data || []) as Ref[];
+        .limit(150);
+      let items = (data || []) as Ref[];
+      if (shuffle) {
+        // Fisher–Yates shuffle so each refresh gives the AI a different candidate slice
+        for (let i = items.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [items[i], items[j]] = [items[j], items[i]];
+        }
+      }
+      items = items.slice(0, 30);
       const enriched = await Promise.all(
         items.map(async (r) => {
           if (r.thumbnail_url || !r.source_url) return r;
@@ -77,7 +86,7 @@ const Newsletter = () => {
         }),
       );
       setRefs(enriched);
-      if (showToast) toast.success(`${enriched.length} ref${enriched.length === 1 ? "" : "s"} loaded`);
+      if (shuffle) toast.success(`${enriched.length} fresh candidate${enriched.length === 1 ? "" : "s"} loaded`);
     } finally {
       setLoadingRefs(false);
     }
