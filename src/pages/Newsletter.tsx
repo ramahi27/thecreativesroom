@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const DAYS = 30;
+const DAYS = 60;
 
 type Ref = {
   id: string;
