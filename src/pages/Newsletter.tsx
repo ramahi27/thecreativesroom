@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
+import { fetchThumbnail } from "@/lib/references";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,17 +29,21 @@ type Ref = {
   thumbnail_url: string | null;
   source_url: string | null;
   brand: string | null;
+  agency: string | null;
+  year: number | null;
   categories: string[];
+  tags: string[] | null;
+  notes: string | null;
   type: string;
   visual_summary: string | null;
 };
-
 
 const Newsletter = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const [refs, setRefs] = useState<Ref[]>([]);
   const [loadingRefs, setLoadingRefs] = useState(true);
   const [subject, setSubject] = useState("");
+  const [intro, setIntro] = useState("");
   const [userCount, setUserCount] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
@@ -51,13 +56,21 @@ const Newsletter = () => {
     const since = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000).toISOString();
     const { data } = await supabase
       .from("references")
-      .select("id,title,thumbnail_url,source_url,brand,categories,type,visual_summary")
+      .select("id,title,thumbnail_url,source_url,brand,agency,year,categories,tags,notes,type,visual_summary")
       .eq("published", true)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(10);
     const items = (data || []) as Ref[];
-    setRefs(items);
+    // Backfill missing thumbnails from source_url (YouTube/Vimeo)
+    const enriched = await Promise.all(
+      items.map(async (r) => {
+        if (r.thumbnail_url || !r.source_url) return r;
+        const t = await fetchThumbnail(r.source_url).catch(() => null);
+        return t ? { ...r, thumbnail_url: t } : r;
+      }),
+    );
+    setRefs(enriched);
     if (!subject) {
       const now = new Date();
       const week = `${now.toLocaleString("default", { month: "long" })} ${now.getDate()}`;
@@ -94,6 +107,7 @@ const Newsletter = () => {
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({
             subject,
+            intro,
             refs,
             testEmail: testOnly ? "r.laith27@gmail.com" : undefined,
           }),
@@ -119,7 +133,7 @@ const Newsletter = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <PageMeta title="Newsletter" />
+      <PageMeta title="Newsletter" description="Admin newsletter composer" noindex />
       <SiteHeader />
 
       <main className="flex-1 container max-w-2xl py-12 space-y-8">
@@ -141,6 +155,18 @@ const Newsletter = () => {
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             className="font-body text-base"
+          />
+        </div>
+
+        {/* Intro */}
+        <div className="space-y-1.5">
+          <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Intro note <span className="opacity-50">(optional)</span></label>
+          <textarea
+            value={intro}
+            onChange={(e) => setIntro(e.target.value)}
+            rows={3}
+            placeholder="A short personal note to open the email…"
+            className="w-full font-body text-base bg-background border hairline rounded-md px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-ring"
           />
         </div>
 
@@ -182,6 +208,10 @@ const Newsletter = () => {
             </div>
           )}
         </div>
+
+        <p className="font-mono text-[10px] text-muted-foreground/60">
+          AI will write a short blurb for each reference when you send.
+        </p>
 
         {/* Send buttons */}
         <div className="flex gap-3">

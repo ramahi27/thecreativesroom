@@ -2,8 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 const json = (body: unknown, status = 200) =>
@@ -63,7 +62,7 @@ Return ONLY a JSON object like: { "1": "...", "2": "...", ... }`;
   }
 }
 
-function buildHtml(refs: RefInput[], blurbs: Record<string, string>, subject: string): string {
+function buildHtml(refs: RefInput[], blurbs: Record<string, string>, subject: string, intro = ""): string {
   const rows = refs.map((r, i) => {
     const url = refUrl(r);
     const blurb = blurbs[String(i + 1)] || "";
@@ -98,8 +97,13 @@ function buildHtml(refs: RefInput[], blurbs: Record<string, string>, subject: st
           <h1 style="margin:0;font-family:Georgia,serif;font-size:30px;font-weight:900;color:#f5f0e8;letter-spacing:-0.02em;line-height:1.1;">${subject}</h1>
         </td></tr>
 
+        ${intro ? `<!-- Intro -->
+        <tr><td style="padding:24px 0 8px 0;">
+          <p style="margin:0;font-family:Georgia,serif;font-size:15px;line-height:1.65;color:#cfcfcf;">${intro.replace(/\n/g, "<br>")}</p>
+        </td></tr>` : ""}
+
         <!-- References -->
-        <tr><td style="padding:36px 0 0 0;">
+        <tr><td style="padding:32px 0 0 0;">
           <table width="100%" cellpadding="0" cellspacing="0">
             ${rows}
           </table>
@@ -131,23 +135,20 @@ Deno.serve(async (req) => {
     if (!authHeader) return json({ error: "Missing auth" }, 401);
 
     // Validate JWT with anon key
-    const supabaseUser = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      {
-        global: { headers: { Authorization: authHeader } },
-        auth: { persistSession: false, autoRefreshToken: false },
-      },
-    );
-    const { data: { user }, error: userErr } = await supabaseUser.auth.getUser();
+    const supabaseUser = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const {
+      data: { user },
+      error: userErr,
+    } = await supabaseUser.auth.getUser();
     if (userErr || !user) return json({ error: "Invalid token" }, 401);
 
     // Admin check via service role
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-      { auth: { persistSession: false } },
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
+      auth: { persistSession: false },
+    });
     const { data: roleRow } = await supabase
       .from("user_roles")
       .select("role")
@@ -158,6 +159,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     const subject = String(body.subject || "").trim();
+    const intro = String(body.intro || "").trim();
     const refs: RefInput[] = Array.isArray(body.refs) ? body.refs : [];
     const testEmail = typeof body.testEmail === "string" ? body.testEmail.trim() : null;
 
@@ -168,7 +170,7 @@ Deno.serve(async (req) => {
     const apiKey = Deno.env.get("LOVABLE_API_KEY") ?? "";
     const blurbs = apiKey ? await generateBlurbs(refs, apiKey) : {};
 
-    const html = buildHtml(refs, blurbs, subject);
+    const html = buildHtml(refs, blurbs, subject, intro);
     const preview = `${refs.length} new reference${refs.length === 1 ? "" : "s"} — hand-picked for you`;
 
     let emails: string[];
