@@ -39,11 +39,24 @@ function refUrl(r: Ref): string {
   return `${SITE_URL}/ref/${r.id}${slug ? `-${slug}` : ""}`;
 }
 
+function emailThumbUrl(u: string): string {
+  // Route YouTube/Vimeo thumbs through wsrv.nl — many mail clients (Apple Mail,
+  // Outlook) silently block or time out on i.ytimg.com via their image proxy.
+  // wsrv.nl is widely allowlisted and returns a clean image.
+  try {
+    const host = new URL(u).hostname;
+    if (host.includes("ytimg.com") || host.includes("vumbnail.com") || host.includes("vimeocdn.com")) {
+      return `https://wsrv.nl/?url=${encodeURIComponent(u)}&w=1120&h=400&fit=cover&output=jpg`;
+    }
+  } catch {}
+  return u;
+}
+
 function buildHtml(refs: Ref[], subject: string): string {
   const rows = refs.map((r) => {
     const url = refUrl(r);
     const thumb = r.thumbnail_url
-      ? `<img src="${r.thumbnail_url}" alt="${r.title.replace(/"/g, "&quot;")}" width="560" style="width:100%;max-width:560px;height:200px;object-fit:cover;display:block;border-radius:8px 8px 0 0;" />`
+      ? `<img src="${emailThumbUrl(r.thumbnail_url)}" alt="${r.title.replace(/"/g, "&quot;")}" width="560" style="width:100%;max-width:560px;height:200px;object-fit:cover;display:block;border-radius:8px 8px 0 0;" />`
       : `<div style="width:100%;height:120px;background:#1a1a1a;border-radius:8px 8px 0 0;"></div>`;
     const meta = [r.brand, r.categories?.[0]].filter(Boolean).join(" · ");
     return `
