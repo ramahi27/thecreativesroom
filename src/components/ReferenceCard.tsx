@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import type { Reference } from "@/lib/references";
+import { deriveThumbnail } from "@/lib/references";
 import { Play, ImageIcon, Link2 } from "lucide-react";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { FolderPickerButton } from "@/components/FolderPickerButton";
@@ -43,7 +44,7 @@ export function ReferenceCard({ reference: r, orderedIds, priority, masonry }: P
   const extraImages = Math.max(0, mediaImages.length - 1);
   const thumb = r.type === "image"
     ? (firstMediaImage || r.thumbnail_url || r.media_url)
-    : (r.thumbnail_url || null);
+    : (r.thumbnail_url || (r.source_url ? deriveThumbnail(r.source_url) : null));
   const [pos, setPos] = useState<string>("center 35%");
   const [thumbError, setThumbError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
