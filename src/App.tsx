@@ -30,6 +30,7 @@ const ProfileSettings = lazy(() => import("./pages/ProfileSettings.tsx"));
 const Pricing = lazy(() => import("./pages/Pricing.tsx"));
 const Contact = lazy(() => import("./pages/Contact.tsx"));
 const Newsletter = lazy(() => import("./pages/Newsletter.tsx"));
+const CollectionPage = lazy(() => import("./pages/CollectionPage.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -64,6 +65,10 @@ const App = () => (
             {/* Unified profile + folder routes */}
             <Route path="/u/:username" element={<UserProfile />} />
             <Route path="/u/:username/:folderSlug" element={<UserFolder />} />
+
+            {/* SEO collection pages */}
+            <Route path="/best-of/:slug" element={<CollectionPage />} />
+            <Route path="/agencies/:slug" element={<CollectionPage />} />
 
             {/* Redirects: legacy paths */}
             <Route path="/collection" element={<MyCollectionRedirect />} />
