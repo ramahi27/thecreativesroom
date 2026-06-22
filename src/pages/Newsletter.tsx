@@ -61,7 +61,7 @@ const Newsletter = () => {
       .eq("published", true)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(30);
     const items = (data || []) as Ref[];
     // Backfill missing thumbnails from source_url (YouTube/Vimeo)
     const enriched = await Promise.all(

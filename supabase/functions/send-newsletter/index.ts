@@ -29,19 +29,28 @@ function refUrl(r: RefInput): string {
   return `${SITE_URL}/ref/${r.id}${slug ? `-${slug}` : ""}`;
 }
 
-// Proxy YouTube/Vimeo thumbnails through wsrv.nl so email clients can load them
+// Proxy YouTube/Vimeo thumbnails through wsrv.nl so email clients can load them.
+// For YouTube, upgrade to maxresdefault (1280×720) before proxying.
 function emailThumb(url: string): string {
   try {
-    const host = new URL(url).hostname;
-    if (host.includes("ytimg.com") || host.includes("vumbnail.com") || host.includes("vimeocdn.com")) {
-      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&output=jpg`;
+    const parsed = new URL(url);
+    const host = parsed.hostname;
+    if (host.includes("ytimg.com")) {
+      const hires = url.replace(
+        /\/(hqdefault|mqdefault|sddefault|default)\.jpg/,
+        "/maxresdefault.jpg",
+      );
+      return `https://wsrv.nl/?url=${encodeURIComponent(hires)}&w=1200&output=jpg&q=90`;
+    }
+    if (host.includes("vumbnail.com") || host.includes("vimeocdn.com")) {
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&output=jpg&q=90`;
     }
   } catch { /* noop */ }
   return url;
 }
 
 async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Promise<RefInput[]> {
-  if (refs.length <= 5) return refs;
+  if (refs.length <= 8) return refs;
 
   const today = new Date().toISOString().split("T")[0];
   const list = refs.map((r, i) =>
@@ -57,8 +66,8 @@ async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Pro
 ${focusLine}
 
 Rules:
-- Pick exactly 6–7 references total
-- At least 4–5 must be from 2026 (recent work feels timely)
+- Pick exactly 8–10 references total
+- At least 6–7 must be from 2026 (recent work feels timely)
 - At most 2 can be "classics" (older work that still earns its place by being exceptionally relevant to the theme)
 - Rank by relevance — most relevant first
 
@@ -77,7 +86,7 @@ Return ONLY a JSON array of 1-based indices in order of relevance. Example: [3, 
     }),
   });
 
-  if (!res.ok) return refs.slice(0, 7);
+  if (!res.ok) return refs.slice(0, 10);
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content ?? "";
   try {
@@ -87,7 +96,7 @@ Return ONLY a JSON array of 1-based indices in order of relevance. Example: [3, 
     const curated = indices
       .filter((i) => i >= 1 && i <= refs.length)
       .map((i) => refs[i - 1]);
-    return curated.length >= 3 ? curated : refs.slice(0, 7);
+    return curated.length >= 3 ? curated : refs.slice(0, 10);
   } catch {
     return refs.slice(0, 7);
   }
