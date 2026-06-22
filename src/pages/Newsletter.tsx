@@ -57,7 +57,7 @@ const Newsletter = () => {
 
   useEffect(() => { document.title = "Newsletter — The Creatives Room"; }, []);
 
-  const fetchRefs = useCallback(async () => {
+  const fetchRefs = useCallback(async (showToast = false) => {
     setLoadingRefs(true);
     try {
       const since = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -77,6 +77,7 @@ const Newsletter = () => {
         }),
       );
       setRefs(enriched);
+      if (showToast) toast.success(`${enriched.length} ref${enriched.length === 1 ? "" : "s"} loaded`);
     } finally {
       setLoadingRefs(false);
     }
@@ -197,9 +198,9 @@ const Newsletter = () => {
             <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
               {loadingRefs ? "Loading…" : `${refs.length} candidate${refs.length === 1 ? "" : "s"} · AI picks the most relevant`}
             </label>
-            <button onClick={fetchRefs} className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors">
-              <RefreshCw className="h-3 w-3" />
-              Refresh
+            <button onClick={() => fetchRefs(true)} className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors">
+              <RefreshCw className={`h-3 w-3 ${loadingRefs ? "animate-spin" : ""}`} />
+              {loadingRefs ? "Refreshing…" : "Refresh"}
             </button>
           </div>
 
