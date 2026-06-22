@@ -842,12 +842,19 @@ const Index = () => {
               ));
             })()}
           </div>
-          <div className="mt-12 border-t hairline" />
+          <div className="mt-16 flex items-center gap-4">
+            <div className="flex-1 border-t-2 border-border/60" />
+            <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 shrink-0">Full archive below</p>
+            <div className="flex-1 border-t-2 border-border/60" />
+          </div>
         </section>
       )}
 
       {/* Grid */}
       <main id="archive" className="container py-12 scroll-mt-20">
+        {matches.length > 0 && (
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/40 mb-8">⏵ Full archive</p>
+        )}
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {Array.from({ length: 12 }).map((_, i) => <SkeletonCard key={i} />)}
