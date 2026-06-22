@@ -20,7 +20,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const SITE_URL = "https://thecreativesroom.com";
 const DAYS = 7;
 
 type Ref = {
@@ -31,66 +30,9 @@ type Ref = {
   brand: string | null;
   categories: string[];
   type: string;
+  visual_summary: string | null;
 };
 
-function refUrl(r: Ref): string {
-  const slug = r.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
-  return `${SITE_URL}/ref/${r.id}${slug ? `-${slug}` : ""}`;
-}
-
-function buildHtml(refs: Ref[], subject: string): string {
-  const rows = refs.map((r) => {
-    const url = refUrl(r);
-    const thumb = r.thumbnail_url
-      ? `<img src="${r.thumbnail_url}" alt="${r.title.replace(/"/g, "&quot;")}" width="560" style="width:100%;max-width:560px;height:200px;object-fit:cover;display:block;border-radius:8px 8px 0 0;" />`
-      : `<div style="width:100%;height:120px;background:#1a1a1a;border-radius:8px 8px 0 0;"></div>`;
-    const meta = [r.brand, r.categories?.[0]].filter(Boolean).join(" · ");
-    return `
-<tr><td style="padding:0 0 24px 0;">
-  <a href="${url}" style="display:block;text-decoration:none;background:#111;border-radius:8px;overflow:hidden;border:1px solid #222;">
-    ${thumb}
-    <div style="padding:16px 20px;">
-      <p style="margin:0 0 4px 0;font-family:Georgia,serif;font-size:18px;font-weight:700;color:#f5f0e8;line-height:1.3;">${r.title}</p>
-      ${meta ? `<p style="margin:0;font-family:monospace;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;color:#888;">${meta}</p>` : ""}
-    </div>
-  </a>
-</td></tr>`;
-  }).join("");
-
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:Georgia,serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;">
-    <tr><td align="center" style="padding:40px 16px;">
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;">
-
-        <!-- Header -->
-        <tr><td style="padding:0 0 32px 0;border-bottom:1px solid #222;">
-          <p style="margin:0;font-family:monospace;font-size:10px;text-transform:uppercase;letter-spacing:0.3em;color:#f46a20;">⏵ The Creatives Room</p>
-          <h1 style="margin:8px 0 0 0;font-family:Georgia,serif;font-size:28px;font-weight:900;color:#f5f0e8;letter-spacing:-0.02em;line-height:1.1;">${subject}</h1>
-        </td></tr>
-
-        <!-- References -->
-        <tr><td style="padding:32px 0 0 0;">
-          <table width="100%" cellpadding="0" cellspacing="0">
-            ${rows}
-          </table>
-        </td></tr>
-
-        <!-- Footer -->
-        <tr><td style="padding:24px 0 0 0;border-top:1px solid #222;">
-          <p style="margin:0;font-family:monospace;font-size:10px;color:#555;text-align:center;">
-            You're receiving this because you have an account on <a href="${SITE_URL}" style="color:#f46a20;">thecreativesroom.com</a>
-          </p>
-        </td></tr>
-
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
-}
 
 const Newsletter = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
@@ -109,7 +51,7 @@ const Newsletter = () => {
     const since = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000).toISOString();
     const { data } = await supabase
       .from("references")
-      .select("id,title,thumbnail_url,source_url,brand,categories,type")
+      .select("id,title,thumbnail_url,source_url,brand,categories,type,visual_summary")
       .eq("published", true)
       .gte("created_at", since)
       .order("created_at", { ascending: false })
@@ -145,15 +87,16 @@ const Newsletter = () => {
       const token = session?.access_token;
       if (!token) { toast.error("Not authenticated"); return; }
 
-      const html = buildHtml(refs, subject);
-      const preview = `${refs.length} new reference${refs.length === 1 ? "" : "s"} added this week`;
-
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-newsletter`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ subject, preview, html, testEmail: testOnly ? "r.laith27@gmail.com" : undefined }),
+          body: JSON.stringify({
+            subject,
+            refs,
+            testEmail: testOnly ? "r.laith27@gmail.com" : undefined,
+          }),
         },
       );
       const result = await res.json();
