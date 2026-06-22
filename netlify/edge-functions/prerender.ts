@@ -74,7 +74,7 @@ export default async (request: Request, context: Context) => {
     ? `${metaParts.join(" · ")}. ${bodyText.slice(0, 140) || "Creative reference on The Creatives Room."}`
     : bodyText.slice(0, 200) || "Creative reference on The Creatives Room.";
 
-  const derivedThumb = (() => {
+  const derivedThumb = await (async () => {
     const src: string = ref.source_url ?? "";
     try {
       const u = new URL(src);
@@ -87,6 +87,18 @@ export default async (request: Request, context: Context) => {
       if (u.hostname === "youtu.be") {
         const vid = u.pathname.slice(1);
         if (vid) return `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`;
+      }
+      if (u.hostname.includes("vimeo.com")) {
+        try {
+          const r = await fetch(
+            `https://vimeo.com/api/oembed.json?url=${encodeURIComponent(src)}`,
+            { signal: AbortSignal.timeout(2500) }
+          );
+          if (r.ok) {
+            const data = await r.json();
+            if (data?.thumbnail_url) return data.thumbnail_url as string;
+          }
+        } catch { /* ignore */ }
       }
     } catch { /* ignore */ }
     return null;
