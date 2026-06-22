@@ -335,6 +335,7 @@ Deno.serve(async (req) => {
     const subjectIsCustom = body.subjectIsCustom === true;
     const refs: RefInput[] = Array.isArray(body.refs) ? body.refs : [];
     const testEmail = typeof body.testEmail === "string" ? body.testEmail.trim() : null;
+    const previewOnly = body.previewOnly === true;
 
     if (!subject) return json({ error: "Subject required" }, 400);
     if (refs.length === 0) return json({ error: "No references" }, 400);
@@ -356,6 +357,10 @@ Deno.serve(async (req) => {
 
     const resolvedSubject = subjectIsCustom ? subject : (enriched.subject || subject);
     const resolvedIntro = intro || enriched.intro || "";
+
+    if (previewOnly) {
+      return json({ generatedSubject: enriched.subject, generatedIntro: enriched.intro, curatedCount: curatedRefs.length });
+    }
 
     const html = buildHtml(curatedRefs, enriched.blurbs, enriched.hooks, resolvedSubject, resolvedIntro);
     const preview = `${curatedRefs.length} reference${curatedRefs.length === 1 ? "" : "s"} — hand-picked for you`;
