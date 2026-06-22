@@ -42,7 +42,10 @@ const Newsletter = () => {
   const { user, isAdmin, loading: authLoading } = useAuth();
   const [refs, setRefs] = useState<Ref[]>([]);
   const [loadingRefs, setLoadingRefs] = useState(true);
-  const [subject, setSubject] = useState("");
+  const [subject, setSubject] = useState(() => {
+    const now = new Date();
+    return `New this week — ${now.toLocaleString("default", { month: "long" })} ${now.getDate()}`;
+  });
   const [intro, setIntro] = useState("");
   const [userCount, setUserCount] = useState<number | null>(null);
   const [theme, setTheme] = useState("");
@@ -56,30 +59,27 @@ const Newsletter = () => {
 
   const fetchRefs = useCallback(async () => {
     setLoadingRefs(true);
-    const since = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000).toISOString();
-    const { data } = await supabase
-      .from("references")
-      .select("id,title,thumbnail_url,source_url,brand,agency,year,categories,tags,notes,type,visual_summary")
-      .eq("published", true)
-      .gte("created_at", since)
-      .order("created_at", { ascending: false })
-      .limit(30);
-    const items = (data || []) as Ref[];
-    // Backfill missing thumbnails from source_url (YouTube/Vimeo)
-    const enriched = await Promise.all(
-      items.map(async (r) => {
-        if (r.thumbnail_url || !r.source_url) return r;
-        const t = await fetchThumbnail(r.source_url).catch(() => null);
-        return t ? { ...r, thumbnail_url: t } : r;
-      }),
-    );
-    setRefs(enriched);
-    if (!subject) {
-      const now = new Date();
-      const week = `${now.toLocaleString("default", { month: "long" })} ${now.getDate()}`;
-      setSubject(`New this week — ${week}`);
+    try {
+      const since = new Date(Date.now() - DAYS * 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await supabase
+        .from("references")
+        .select("id,title,thumbnail_url,source_url,brand,agency,year,categories,tags,notes,type,visual_summary")
+        .eq("published", true)
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      const items = (data || []) as Ref[];
+      const enriched = await Promise.all(
+        items.map(async (r) => {
+          if (r.thumbnail_url || !r.source_url) return r;
+          const t = await fetchThumbnail(r.source_url).catch(() => null);
+          return t ? { ...r, thumbnail_url: t } : r;
+        }),
+      );
+      setRefs(enriched);
+    } finally {
+      setLoadingRefs(false);
     }
-    setLoadingRefs(false);
   }, []);
 
   useEffect(() => {
