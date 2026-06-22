@@ -31,6 +31,7 @@ const Pricing = lazy(() => import("./pages/Pricing.tsx"));
 const Contact = lazy(() => import("./pages/Contact.tsx"));
 const Newsletter = lazy(() => import("./pages/Newsletter.tsx"));
 const CollectionPage = lazy(() => import("./pages/CollectionPage.tsx"));
+const BestOf = lazy(() => import("./pages/BestOf.tsx"));
 
 const queryClient = new QueryClient();
 
@@ -67,6 +68,7 @@ const App = () => (
             <Route path="/u/:username/:folderSlug" element={<UserFolder />} />
 
             {/* SEO collection pages */}
+            <Route path="/best-of" element={<BestOf />} />
             <Route path="/best-of/:slug" element={<CollectionPage />} />
             <Route path="/agencies/:slug" element={<CollectionPage />} />
 

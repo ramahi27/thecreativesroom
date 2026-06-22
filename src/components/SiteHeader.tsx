@@ -61,6 +61,9 @@ export function SiteHeader() {
               Upgrade
             </Link>
           )}
+          <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
+            <Link to="/best-of">Best Of</Link>
+          </Button>
           {user && profile?.username && (
             <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
               <Link to={`/u/${profile.username}`}>My Collection</Link>
@@ -265,6 +268,12 @@ export function SiteHeader() {
               {theme === "dark" ? "Switch to Day" : "Switch to Night"}
             </button>
 
+            <Link
+              to="/best-of"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-mono text-[11px] uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            >
+              Best Of
+            </Link>
             {user && profile?.username && (
               <Link
                 to={`/u/${profile.username}`}
