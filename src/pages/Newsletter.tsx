@@ -288,6 +288,18 @@ const Newsletter = () => {
           />
         </div>
 
+        {/* Intro */}
+        <div className="space-y-1.5">
+          <label className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Intro note (optional)</label>
+          <textarea
+            value={intro}
+            onChange={(e) => setIntro(e.target.value)}
+            rows={3}
+            placeholder="A short personal note to open the email…"
+            className="w-full font-body text-base bg-background border hairline rounded-md px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+
         {/* References preview */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
