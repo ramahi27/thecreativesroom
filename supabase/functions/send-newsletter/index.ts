@@ -67,8 +67,8 @@ ${focusLine}
 
 Rules:
 - Pick exactly 8–10 references total
-- At least 6–7 must be from 2026 (recent work feels timely)
-- At most 2 can be "classics" (older work that still earns its place by being exceptionally relevant to the theme)
+- At least 6–7 must be from 2024 or newer ("new")
+- At most 2 can be "classics" (2023 or older)
 - Rank by relevance — most relevant first
 
 References:
