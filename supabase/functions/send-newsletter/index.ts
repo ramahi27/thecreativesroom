@@ -28,12 +28,23 @@ function refUrl(r: RefInput): string {
   return `${SITE_URL}/ref/${r.id}${slug ? `-${slug}` : ""}`;
 }
 
+// Proxy YouTube/Vimeo thumbnails through wsrv.nl so email clients can load them
+function emailThumb(url: string): string {
+  try {
+    const host = new URL(url).hostname;
+    if (host.includes("ytimg.com") || host.includes("vumbnail.com") || host.includes("vimeocdn.com")) {
+      return `https://wsrv.nl/?url=${encodeURIComponent(url)}&w=1200&h=680&fit=cover&output=jpg`;
+    }
+  } catch { /* noop */ }
+  return url;
+}
+
 async function generateBlurbs(refs: RefInput[], apiKey: string): Promise<Record<string, string>> {
   const list = refs.map((r, i) =>
     `${i + 1}. "${r.title}"${r.brand ? ` by ${r.brand}` : ""}${r.categories?.[0] ? ` [${r.categories[0]}]` : ""}${r.visual_summary ? ` — context: ${r.visual_summary}` : ""}`
   ).join("\n");
 
-  const prompt = `You are writing a creative newsletter for a creative reference archive called The Creatives Room. For each reference below, write a single punchy sentence (max 20 words) that makes readers excited to click and watch/view it. Be specific, evocative, and direct — no fluff, no "this is a great" filler. Sound like a creative director recommending work to their team.
+  const prompt = `You are writing a creative newsletter for a reference archive called The Creatives Room. For each reference below, write ONE punchy sentence (max 18 words) that makes readers excited to click. Rules: do NOT start with or repeat the title, be specific and evocative, sound like a creative director recommending work to their team, no filler phrases like "this is" or "a must-see".
 
 References:
 ${list}
@@ -67,7 +78,7 @@ function buildHtml(refs: RefInput[], blurbs: Record<string, string>, subject: st
     const url = refUrl(r);
     const blurb = blurbs[String(i + 1)] || "";
     const thumb = r.thumbnail_url
-      ? `<img src="${r.thumbnail_url}" alt="${r.title.replace(/"/g, "&quot;")}" width="560" style="width:100%;max-width:560px;height:220px;object-fit:cover;display:block;border-radius:8px 8px 0 0;" />`
+      ? `<img src="${emailThumb(r.thumbnail_url)}" alt="${r.title.replace(/"/g, "&quot;")}" width="560" style="width:100%;max-width:560px;height:220px;object-fit:cover;display:block;border-radius:8px 8px 0 0;" />`
       : `<div style="width:100%;height:100px;background:#1a1a1a;border-radius:8px 8px 0 0;"></div>`;
     const meta = [r.brand, r.categories?.[0]].filter(Boolean).join(" · ");
     return `
