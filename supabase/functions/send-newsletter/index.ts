@@ -65,7 +65,7 @@ function emailThumb(url: string): string {
 }
 
 async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Promise<RefInput[]> {
-  if (refs.length <= 8) return refs;
+  if (refs.length === 0) return refs;
 
   const today = new Date().toISOString().split("T")[0];
   const list = refs.map((r, i) =>
@@ -80,16 +80,19 @@ async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Pro
 
 ${focusLine}
 
-STRICT rules:
-- Pick exactly 8–10 references
-- 6–8 MUST be from 2026 (recent work feels timely) — only fall back to older if there genuinely aren't enough good 2026 picks
-- AT MOST 1–2 can be older "classics", and only if they tie directly to this week's events
+STRICT rules — follow them exactly:
+- Return exactly 10 references
+- Exactly 8 MUST be from 2026
+- Exactly 2 MUST be older than 2026 (pre-2026)
+- The FIRST reference in your returned list MUST be a 2026 project
 - Rank by relevance to this week's moment — most relevant first
+- Among the 2026 picks, prioritise projects released closest to today
+- The 2 older projects should only be included if they meaningfully connect to this week's events
 
 References:
 ${list}
 
-Return ONLY a JSON array of 1-based indices in order of relevance. Example: [3, 7, 1, 5, 2]`;
+Return ONLY a JSON array of 1-based indices in the order you want them to appear. Example: [3, 7, 1, 5, 2, 9, 4, 6, 8, 10]`;
 
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -106,14 +109,14 @@ Return ONLY a JSON array of 1-based indices in order of relevance. Example: [3, 
   const text = data.choices?.[0]?.message?.content ?? "";
   try {
     const match = text.match(/\[[\d,\s]+\]/);
-    if (!match) return refs.slice(0, 7);
+    if (!match) return refs.slice(0, 10);
     const indices: number[] = JSON.parse(match[0]);
     const curated = indices
       .filter((i) => i >= 1 && i <= refs.length)
       .map((i) => refs[i - 1]);
     return curated.length >= 3 ? curated : refs.slice(0, 10);
   } catch {
-    return refs.slice(0, 7);
+    return refs.slice(0, 10);
   }
 }
 
