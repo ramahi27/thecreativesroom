@@ -74,17 +74,17 @@ async function curateRefs(refs: RefInput[], apiKey: string, theme?: string): Pro
 
   const focusLine = theme
     ? `The editor wants this week's newsletter to focus on: "${theme}". Prioritise references that connect to this theme.`
-    : `Pick refs most relevant to major world events, cultural moments, award seasons, sports, film festivals, fashion weeks, or trending topics happening right now.`;
+    : `First, think about what major cultural moments are happening THIS WEEK (${today}) — film festivals (Cannes, Sundance, Venice, TIFF), sports (World Cup, Olympics, Super Bowl, Wimbledon, Champions League final), award shows (Oscars, Grammys, Cannes Lions, D&AD), fashion weeks (Paris, Milan, NYFW), holidays, anniversaries, or breaking cultural news. Then pick refs that connect to those moments — brand, category, vibe, or subject matter.`;
 
   const prompt = `You are curating a weekly creative newsletter. Today is ${today}.
 
 ${focusLine}
 
-Rules:
-- Pick exactly 8–10 references total
-- At least 6–7 must be from 2026 (recent work feels timely)
-- At most 2 can be "classics" (older work that still earns its place by being exceptionally relevant to the theme)
-- Rank by relevance — most relevant first
+STRICT rules:
+- Pick exactly 8–10 references
+- 6–8 MUST be from 2026 (recent work feels timely) — only fall back to older if there genuinely aren't enough good 2026 picks
+- AT MOST 1–2 can be older "classics", and only if they tie directly to this week's events
+- Rank by relevance to this week's moment — most relevant first
 
 References:
 ${list}
