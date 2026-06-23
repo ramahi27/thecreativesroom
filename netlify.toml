@@ -2,6 +2,10 @@
   path = "/ref/*"
   function = "prerender"
 
+[[edge_functions]]
+  path = "/sitemap.xml"
+  function = "sitemap"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

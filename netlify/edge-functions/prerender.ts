@@ -68,11 +68,15 @@ export default async (request: Request, context: Context) => {
   const canonicalPath = slug ? `/ref/${id}-${slug}` : `/ref/${id}`;
   const canonicalUrl = `${SITE}${canonicalPath}`;
 
-  const metaParts = [ref.brand, ref.agency, ref.year ? String(ref.year) : null].filter(Boolean);
   const bodyText = ref.visual_summary || ref.notes || "";
-  const description = metaParts.length
-    ? `${metaParts.join(" · ")}. ${bodyText.slice(0, 140) || "Creative reference on The Creatives Room."}`
-    : bodyText.slice(0, 200) || "Creative reference on The Creatives Room.";
+  const descParts = [
+    "A creative reference",
+    ref.brand ? `of ${ref.brand}` : null,
+    ref.title ? `'s ${ref.title}` : null,
+    ref.agency ? `by ${ref.agency}` : null,
+  ].filter(Boolean).join(" ");
+  const typeLabel = ref.type === "video" ? "Video" : ref.type === "image" ? "Image" : "Link";
+  const description = `${descParts}. ${typeLabel} work${ref.year ? ` from ${ref.year}` : ""}. Save to your collection on The Creatives Room.`.slice(0, 160);
 
   const derivedThumb = await (async () => {
     const src: string = ref.source_url ?? "";
@@ -105,7 +109,8 @@ export default async (request: Request, context: Context) => {
   })();
 
   const ogImage = ref.thumbnail_url ?? derivedThumb ?? DEFAULT_OG_IMAGE;
-  const title = escape(`${ref.title ?? "Reference"} - The Creatives Room`);
+  const titleParts = [ref.title ?? "Reference", ref.agency, ref.year ? String(ref.year) : null].filter(Boolean);
+  const title = escape(titleParts.join(" - ") + " | The Creatives Room");
   const desc = escape(description.slice(0, 200));
   const img = escape(ogImage);
   const url = escape(canonicalUrl);
@@ -120,10 +125,11 @@ export default async (request: Request, context: Context) => {
     thumbnailUrl: ogImage,
     ...(bodyText ? { description: bodyText.slice(0, 300) } : {}),
     ...(ref.brand ? { brand: { "@type": "Brand", name: ref.brand } } : {}),
+    ...(ref.agency ? { creator: { "@type": "Organization", name: ref.agency } } : {}),
     ...(ref.year ? { datePublished: `${ref.year}-01-01` } : {}),
-    ...(Array.isArray(ref.categories) && ref.categories.length
-      ? { genre: ref.categories }
-      : {}),
+    ...(Array.isArray(ref.categories) && ref.categories.length ? { genre: ref.categories } : {}),
+    ...(Array.isArray(ref.tags) && ref.tags.length ? { keywords: ref.tags.join(", ") } : {}),
+    ...(ref.type === "video" && ref.source_url ? { contentUrl: ref.source_url } : {}),
   });
 
   const html = `<!DOCTYPE html>
@@ -135,7 +141,7 @@ export default async (request: Request, context: Context) => {
   <meta name="description" content="${desc}" />
   <link rel="canonical" href="${url}" />
 
-  <meta property="og:type" content="website" />
+  <meta property="og:type" content="article" />
   <meta property="og:site_name" content="The Creatives Room" />
   <meta property="og:title" content="${title}" />
   <meta property="og:description" content="${desc}" />

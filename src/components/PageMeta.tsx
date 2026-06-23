@@ -9,13 +9,17 @@ interface Props {
   ogImage?: string;
   /** Skip indexing this route. */
   noindex?: boolean;
+  /** Override og:type. Defaults to "website". Use "article" for ref pages. */
+  ogType?: string;
+  /** JSON-LD structured data object injected as <script type="application/ld+json">. */
+  jsonLd?: Record<string, unknown>;
 }
 
 const SITE_ORIGIN = "https://thecreativesroom.com";
 const DEFAULT_OG_IMAGE =
   "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/85b2d7b6-2ea9-40f1-9a84-ff6ce724a400/id-preview-6e9b7ec6--c1071d5f-a0f4-47b6-a6b0-b43f20d0a8c0.lovable.app-1777200045504.png";
 
-export function PageMeta({ title, description, path, ogImage, noindex }: Props) {
+export function PageMeta({ title, description, path, ogImage, noindex, ogType, jsonLd }: Props) {
   const pathname = path ?? window.location.pathname;
   const canonical = `${SITE_ORIGIN}${pathname}`;
   const image = ogImage || DEFAULT_OG_IMAGE;
@@ -24,7 +28,8 @@ export function PageMeta({ title, description, path, ogImage, noindex }: Props) 
       <title>{title}</title>
       <meta name="description" content={description} />
       <link rel="canonical" href={canonical} />
-      <meta property="og:type" content="website" />
+      <meta property="og:type" content={ogType ?? "website"} />
+      <meta property="og:site_name" content="The Creatives Room" />
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       <meta property="og:url" content={canonical} />
@@ -36,6 +41,9 @@ export function PageMeta({ title, description, path, ogImage, noindex }: Props) 
       <meta name="twitter:description" content={description} />
       <meta name="twitter:image" content={image} />
       {noindex && <meta name="robots" content="noindex, nofollow" />}
+      {jsonLd && (
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+      )}
     </Helmet>
   );
 }

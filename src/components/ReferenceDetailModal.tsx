@@ -66,7 +66,8 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
         if (cancelled) return;
         setR(one ? (one as unknown as Reference) : null);
         if (one) {
-          document.title = `${(one as any).title} - The Creatives Room`;
+          const o = one as any;
+          document.title = [o.title, o.agency, o.year ? String(o.year) : null].filter(Boolean).join(" - ") + " | The Creatives Room";
           const canonical = refPath((one as any).id, (one as any).title);
           if (window.location.pathname !== canonical) {
             navigate(canonical, { replace: true });
@@ -141,10 +142,36 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
 
   const metaDescription = useMemo(() => {
     if (!r) return "";
-    const bits = [r.brand, r.agency, r.year ? String(r.year) : null].filter(Boolean);
-    const lead = bits.length ? `${bits.join(" · ")}. ` : "";
-    const tail = (r as any).visual_summary?.trim() || r.notes?.trim() || (r.categories?.length ? r.categories.join(", ") : "") || "Creative reference on The Creatives Room.";
-    return `${lead}${tail}`.slice(0, 200);
+    const desc = [
+      "A creative reference",
+      r.brand ? `of ${r.brand}` : null,
+      r.title ? `'s ${r.title}` : null,
+      r.agency ? `by ${r.agency}` : null,
+    ].filter(Boolean).join(" ");
+    const typePart = r.type ? r.type.charAt(0).toUpperCase() + r.type.slice(1) : "";
+    const yearPart = r.year ? ` from ${r.year}` : "";
+    return `${desc}. ${typePart} work${yearPart}. Save to your collection on The Creatives Room.`.slice(0, 160);
+  }, [r]);
+
+  const pageTitle = useMemo(() => {
+    if (!r) return "The Creatives Room";
+    return [r.title, r.agency, r.year ? String(r.year) : null].filter(Boolean).join(" - ") + " | The Creatives Room";
+  }, [r]);
+
+  const srOnlyDescription = useMemo(() => {
+    if (!r) return "";
+    const parts: string[] = [];
+    parts.push(`${r.title} is a creative advertising reference`);
+    if (r.brand) parts.push(`from ${r.brand}`);
+    if (r.agency) parts.push(`by ${r.agency}`);
+    if (r.year) parts.push(`created in ${r.year}`);
+    parts.push(".");
+    if (r.categories?.length) parts.push(`Categorised as ${r.categories.join(", ")}.`);
+    if (r.tags?.length) parts.push(`Themes and topics include ${r.tags.slice(0, 8).join(", ")}.`);
+    const note = r.visual_summary || r.notes;
+    if (note) parts.push(note.trim().slice(0, 260));
+    parts.push("Archived in The Creatives Room, a curated library of creative advertising references for designers, copywriters, and creative directors.");
+    return parts.join(" ").replace(/\s+/g, " ").trim();
   }, [r]);
 
   const similarityOrdered = useMemo(() => {
@@ -473,12 +500,37 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
   return (
     <Dialog open onOpenChange={(o) => !o && returnToOpener()}>
       {r && (
-        <PageMeta
-          title={`${r.title} - The Creatives Room`}
-          description={metaDescription}
-          path={refPath(r.id, r.title)}
-          ogImage={r.thumbnail_url || (r.source_url ? deriveThumbnail(r.source_url) : undefined) || r.media_url || undefined}
-        />
+        <>
+          <PageMeta
+            title={pageTitle}
+            description={metaDescription}
+            path={refPath(r.id, r.title)}
+            ogImage={r.thumbnail_url || (r.source_url ? deriveThumbnail(r.source_url) : undefined) || r.media_url || undefined}
+            ogType="article"
+            jsonLd={jsonLd ?? undefined}
+          />
+          <div
+            style={{
+              position: "absolute",
+              width: "1px",
+              height: "1px",
+              padding: 0,
+              margin: "-1px",
+              overflow: "hidden",
+              clip: "rect(0,0,0,0)",
+              whiteSpace: "nowrap",
+              border: 0,
+            }}
+          >
+            <h1>
+              {r.title}
+              {r.brand ? ` - ${r.brand}` : ""}
+              {r.agency ? ` by ${r.agency}` : ""}
+              {r.year ? `, ${r.year}` : ""}
+            </h1>
+            <p>{srOnlyDescription}</p>
+          </div>
+        </>
       )}
       <DialogContent
         className="max-w-[1600px] w-[96vw] max-h-[95vh] overflow-x-hidden overflow-y-auto p-0 bg-background grain"
