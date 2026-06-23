@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS idx_references_published_approved_at ON public."references" (published, approved_at DESC NULLS LAST, created_at DESC) WHERE published = true;
+CREATE INDEX IF NOT EXISTS idx_references_published_created_at ON public."references" (published, created_at DESC) WHERE published = true;
