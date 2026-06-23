@@ -281,25 +281,26 @@ const Index = () => {
   }, []);
 
   const fetchPage = async (from: number) => {
-    const { data, count, error } = await supabase
+    // Note: no `count: "exact"` — exact counts force a full table scan on every
+    // page request. We infer hasMore from whether we got a full page back.
+    const { data, error } = await supabase
       .from("references")
       .select(
-        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,approved_at,media_items,categories,published,source",
-        { count: "exact" }
+        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,approved_at,media_items,categories,published,source"
       )
       .eq("published", true)
       .order("approved_at", { ascending: false, nullsFirst: false })
       .range(from, from + PAGE_SIZE - 1);
-    if (error) return { list: [] as Reference[], total: 0 };
-    return { list: (data as unknown as Reference[]) || [], total: count ?? 0 };
+    if (error) return { list: [] as Reference[] };
+    return { list: (data as unknown as Reference[]) || [] };
   };
 
   useEffect(() => {
     (async () => {
-      const { list, total } = await fetchPage(0);
+      const { list } = await fetchPage(0);
       setRefs(shuffle(list));
-      setTotalCount(total);
-      setHasMore(list.length < total);
+      setTotalCount(null);
+      setHasMore(list.length === PAGE_SIZE);
       setLoading(false);
     })();
   }, []);
@@ -309,14 +310,13 @@ const Index = () => {
     loadingMoreRef.current = true;
     setLoadingMore(true);
     const from = refs.length; // capture before async gap — refs.length in closure is stale after await
-    const { list, total } = await fetchPage(from);
+    const { list } = await fetchPage(from);
     setRefs((prev) => {
       const seen = new Set(prev.map((r) => r.id));
       const fresh = list.filter((r) => !seen.has(r.id));
       return [...prev, ...shuffle(fresh)];
     });
-    setTotalCount(total);
-    setHasMore(from + list.length < total);
+    setHasMore(list.length === PAGE_SIZE);
     loadingMoreRef.current = false;
     setLoadingMore(false);
   };
