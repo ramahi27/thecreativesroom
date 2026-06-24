@@ -165,7 +165,7 @@ export default {
   <meta name="twitter:description" content="${desc}" />
   <meta name="twitter:image" content="${img}" />
 
-  <script type="application/ld+json">${jsonLd}</script>
+  <script type="application/ld+json">${jsonLd.replace(/<\/script/gi, '<\\/script')}</script>
   <meta http-equiv="refresh" content="0; url=${canon}" />
   <script>window.location.replace(${JSON.stringify(canonicalUrl)});</script>
 </head>
