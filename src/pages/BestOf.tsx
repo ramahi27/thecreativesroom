@@ -85,12 +85,59 @@ function coverFor(r: MinimalRef): string | null {
   return raw ? upgradeYouTubeThumb(raw) : null;
 }
 
+const isYouTubeThumb = (url: string) => url.includes("i.ytimg.com");
+
+// Inspect an image for black letterbox/pillarbox bars. Returns "bars" if the
+// top+bottom (or left+right) edges are near-black while the centre is much
+// brighter, "clean" if not, and "unknown" if the pixels can't be read (the
+// host doesn't allow cross-origin canvas access).
+function detectBars(url: string): Promise<"bars" | "clean" | "unknown"> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        if (!img.naturalWidth || !img.naturalHeight) return resolve("unknown");
+        const w = 32;
+        const h = Math.max(8, Math.round((32 * img.naturalHeight) / img.naturalWidth));
+        const cv = document.createElement("canvas");
+        cv.width = w;
+        cv.height = h;
+        const ctx = cv.getContext("2d", { willReadFrequently: true });
+        if (!ctx) return resolve("unknown");
+        ctx.drawImage(img, 0, 0, w, h);
+        const data = ctx.getImageData(0, 0, w, h).data; // throws if tainted
+        const lum = (x: number, y: number) => {
+          const i = (y * w + x) * 4;
+          return 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        };
+        const rowLum = (y: number) => { let s = 0; for (let x = 0; x < w; x++) s += lum(x, y); return s / w; };
+        const colLum = (x: number) => { let s = 0; for (let y = 0; y < h; y++) s += lum(x, y); return s / h; };
+        const DARK = 16, BRIGHT = 40;
+        const top = Math.min(rowLum(0), rowLum(1));
+        const bottom = Math.min(rowLum(h - 1), rowLum(h - 2));
+        const midRow = rowLum(h >> 1);
+        const left = Math.min(colLum(0), colLum(1));
+        const right = Math.min(colLum(w - 1), colLum(w - 2));
+        const midCol = colLum(w >> 1);
+        const letterbox = top < DARK && bottom < DARK && midRow > BRIGHT;
+        const pillarbox = left < DARK && right < DARK && midCol > BRIGHT;
+        resolve(letterbox || pillarbox ? "bars" : "clean");
+      } catch {
+        resolve("unknown");
+      }
+    };
+    img.onerror = () => resolve("unknown");
+    img.src = url;
+  });
+}
+
 // ──────────────────────────────────────────────────
 
 interface CardProps {
   c: (typeof collections)[number];
   index: number;
-  cover?: string;
+  candidates: string[];
   isAdmin: boolean;
   isHidden: boolean;
   refCount: number | undefined;
@@ -98,11 +145,35 @@ interface CardProps {
   onRestore: (slug: string) => void;
 }
 
-function CollectionCard({ c, index, cover, isAdmin, isHidden, refCount, onHide, onRestore }: CardProps) {
-  const [src, setSrc] = useState<string | undefined>(cover);
+function CollectionCard({ c, index, candidates, isAdmin, isHidden, refCount, onHide, onRestore }: CardProps) {
+  const [src, setSrc] = useState<string | undefined>(undefined);
   const [imgErr, setImgErr] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  useEffect(() => { setSrc(cover); setImgErr(false); setImgLoaded(false); }, [cover]);
+
+  // Pick the first candidate cover that isn't letterboxed. YouTube thumbnails
+  // are already guaranteed 16:9 (no bars) by URL, so they skip the pixel check.
+  const candKey = candidates.join("|");
+  useEffect(() => {
+    let cancelled = false;
+    setImgErr(false);
+    setImgLoaded(false);
+    (async () => {
+      for (const cand of candidates) {
+        if (isYouTubeThumb(cand)) {
+          if (!cancelled) setSrc(cand);
+          return;
+        }
+        const verdict = await detectBars(cand);
+        if (cancelled) return;
+        if (verdict !== "bars") {
+          setSrc(cand);
+          return;
+        }
+      }
+      if (!cancelled) setSrc(undefined); // none usable → typographic placeholder
+    })();
+    return () => { cancelled = true; };
+  }, [candKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tooFew = refCount !== undefined && refCount < MIN_COLLECTION_REFS;
   const dimmed = (isHidden || tooFew) && isAdmin;
@@ -209,7 +280,7 @@ function CollectionCard({ c, index, cover, isAdmin, isHidden, refCount, onHide, 
 const BestOf = () => {
   const { isAdmin } = useAuth();
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [covers, setCovers] = useState<Record<string, string>>({});
+  const [candidates, setCandidates] = useState<Record<string, string[]>>({});
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
@@ -222,25 +293,30 @@ const BestOf = () => {
         loadHiddenSlugs(),
       ]);
       const nextCounts: Record<string, number> = {};
-      const nextCovers: Record<string, string> = {};
+      const nextCandidates: Record<string, string[]> = {};
       for (const c of collections) {
         const excl = collectionExcludesScenes(c);
         let count = 0;
-        let cover: string | null = null;
+        // Rank covers: full-bleed images first (posters/illustrations, never
+        // letterboxed), then guaranteed-16:9 YouTube, then anything else.
+        const imageC: string[] = [];
+        const ytC: string[] = [];
+        const otherC: string[] = [];
         for (const r of refs) {
           if (!refMatchesFilter(r, c.filter)) continue;
           if (excl && isSceneRef(r)) continue;
           count++;
-          if (!cover) {
-            const cv = coverFor(r);
-            if (cv) cover = cv;
-          }
+          const cv = coverFor(r);
+          if (!cv) continue;
+          if (isYouTubeThumb(cv)) ytC.push(cv);
+          else if (r.type === "image") imageC.push(cv);
+          else otherC.push(cv);
         }
         nextCounts[c.slug] = count;
-        if (cover) nextCovers[c.slug] = cover;
+        nextCandidates[c.slug] = Array.from(new Set([...imageC, ...ytC, ...otherC])).slice(0, 6);
       }
       setCounts(nextCounts);
-      setCovers(nextCovers);
+      setCandidates(nextCandidates);
       setHidden(hiddenSlugs);
       setReady(true);
     })();
@@ -300,7 +376,7 @@ const BestOf = () => {
           key={c.slug}
           c={c}
           index={i}
-          cover={covers[c.slug]}
+          candidates={candidates[c.slug] ?? []}
           isAdmin={isAdmin}
           isHidden={hidden.has(c.slug)}
           refCount={ready ? counts[c.slug] : undefined}
