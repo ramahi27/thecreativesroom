@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { PageMeta } from "@/components/PageMeta";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { type Reference } from "@/lib/references";
-import { findCollection, collections } from "@/lib/collections";
+import { findCollection, collections, MIN_COLLECTION_REFS } from "@/lib/collections";
 import NotFound from "@/pages/NotFound";
 
 function SkeletonCard() {
@@ -25,11 +27,14 @@ function SkeletonCard() {
 const CollectionPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const { pathname } = useLocation();
+  const { isAdmin } = useAuth();
   const section = pathname.startsWith("/agencies/") ? "agencies" : "best-of";
   const collection = slug ? findCollection(section, slug) : undefined;
 
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
+  // null while we don't know yet; true/false once the hidden list is loaded
+  const [hidden, setHidden] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!collection) return;
@@ -75,7 +80,62 @@ const CollectionPage = () => {
     })();
   }, [collection]);
 
+  // Has this page been hidden (admin-deleted)?
+  useEffect(() => {
+    if (!collection) return;
+    setHidden(null);
+    (async () => {
+      const { data, error } = await (supabase as any)
+        .from("hidden_collections")
+        .select("slug")
+        .eq("slug", collection.slug)
+        .maybeSingle();
+      // If the table is missing or the query fails, treat as not hidden.
+      setHidden(!error && !!data);
+    })();
+  }, [collection]);
+
+  const deletePage = async () => {
+    if (!collection) return;
+    if (!window.confirm(`Delete "${collection.title}"? It will be hidden from the public.`)) return;
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await (supabase as any)
+      .from("hidden_collections")
+      .insert({ slug: collection.slug, hidden_by: userData.user?.id ?? null });
+    if (error) {
+      toast.error("Could not delete page.");
+      return;
+    }
+    setHidden(true);
+    toast.success("Page hidden from the public.");
+  };
+
+  const restorePage = async () => {
+    if (!collection) return;
+    const { error } = await (supabase as any)
+      .from("hidden_collections")
+      .delete()
+      .eq("slug", collection.slug);
+    if (error) {
+      toast.error("Could not restore page.");
+      return;
+    }
+    setHidden(false);
+    toast.success("Page restored.");
+  };
+
   if (!collection) return <NotFound />;
+
+  const tooFew = !loading && refs.length < MIN_COLLECTION_REFS;
+  const isHidden = hidden === true;
+
+  // Still resolving whether the page should be shown — render the skeleton.
+  const stillResolving = loading || hidden === null;
+
+  // For the public, a hidden or low-content page does not exist.
+  if (!stillResolving && (isHidden || tooFew) && !isAdmin) {
+    return <NotFound />;
+  }
 
   const orderedIds = refs.map((r) => r.id);
 
@@ -88,10 +148,42 @@ const CollectionPage = () => {
       />
       <SiteHeader />
 
+      {isAdmin && !stillResolving && (
+        <div className="border-b hairline bg-secondary/30">
+          <div className="container py-3 flex items-center justify-between gap-3 flex-wrap">
+            <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+              Admin
+              {isHidden
+                ? " · hidden from public"
+                : tooFew
+                ? ` · only ${refs.length} reference${refs.length === 1 ? "" : "s"} — hidden from public`
+                : ""}
+            </span>
+            {isHidden ? (
+              <button
+                type="button"
+                onClick={restorePage}
+                className="font-mono text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full border hairline hover:border-foreground/40 transition-colors"
+              >
+                Restore page
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={deletePage}
+                className="font-mono text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                Delete page
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <section className="relative overflow-hidden border-b hairline">
         <div className="container pt-20 md:pt-32 pb-10 md:pb-14 relative">
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-2">
-            ⏵ {collection.section === "agencies" ? "Agencies" : "Best Of"}
+            ⏵ {collection.section === "agencies" ? "Agencies" : "Best Of The Best"}
           </p>
           <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] mt-4 max-w-4xl">
             {collection.title}

@@ -62,7 +62,7 @@ export function SiteHeader() {
             </Link>
           )}
           <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
-            <Link to="/best-of">Best Of</Link>
+            <Link to="/best-of">Best Of The Best</Link>
           </Button>
           {user && profile?.username && (
             <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
@@ -272,7 +272,7 @@ export function SiteHeader() {
               to="/best-of"
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-mono text-[11px] uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
             >
-              Best Of
+              Best Of The Best
             </Link>
             {user && profile?.username && (
               <Link

@@ -1,6 +1,6 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -35,12 +35,28 @@ const BestOf = lazy(() => import("./pages/BestOf.tsx"));
 
 const queryClient = new QueryClient();
 
+// Scroll to the top of the page on navigation. Skips transitions that open or
+// close the reference modal (an overlay on the Index page) so the user keeps
+// their place in the archive when browsing references.
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  const prev = useRef(pathname);
+  useEffect(() => {
+    const from = prev.current;
+    prev.current = pathname;
+    if (pathname.startsWith("/ref/") || from.startsWith("/ref/")) return;
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ScrollToTop />
         <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<Index />} />

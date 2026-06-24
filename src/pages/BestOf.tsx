@@ -1,11 +1,11 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { PageMeta } from "@/components/PageMeta";
-import { collections } from "@/lib/collections";
-
-const bestOf = collections.filter((c) => c.section === "best-of");
-const agencies = collections.filter((c) => c.section === "agencies");
+import { collections, refMatchesFilter, MIN_COLLECTION_REFS } from "@/lib/collections";
 
 function CollectionRow({ c, index }: { c: (typeof collections)[number]; index: number }) {
   return (
@@ -31,49 +31,109 @@ function CollectionRow({ c, index }: { c: (typeof collections)[number]; index: n
   );
 }
 
-const BestOf = () => (
-  <div className="min-h-screen grain">
-    <PageMeta
-      title="Best Of & Agencies - The Creatives Room"
-      description="Curated collections of the best advertising campaigns by theme and agency — from Cannes Grand Prix winners to Nike, Ogilvy, and Wieden+Kennedy."
-      path="/best-of"
-    />
-    <SiteHeader />
+// Pull every published reference (minimal columns) so we can count how many
+// match each collection's filter client-side. Paginates past Supabase's
+// per-request row cap.
+async function fetchAllRefsMinimal() {
+  const all: Array<{
+    tags: string[] | null;
+    categories: string[] | null;
+    agency: string | null;
+    brand: string | null;
+    type: string | null;
+    year: number | null;
+  }> = [];
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("references")
+      .select("tags,categories,agency,brand,type,year")
+      .eq("published", true)
+      .range(from, from + PAGE - 1);
+    if (error || !data || data.length === 0) break;
+    all.push(...(data as any));
+    if (data.length < PAGE) break;
+  }
+  return all;
+}
 
-    <section className="border-b hairline">
-      <div className="container pt-20 md:pt-32 pb-10 md:pb-14">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-2">⏵ Collections</p>
-        <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] mt-4 max-w-3xl">
-          Best Of ...
-        </h1>
-        <p className="font-body text-base text-muted-foreground max-w-xl mt-6">
-          Curated archives of the most celebrated advertising, organized by theme, moment, and the agencies behind the work.
-        </p>
-      </div>
-    </section>
+const BestOf = () => {
+  const { isAdmin } = useAuth();
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [ready, setReady] = useState(false);
 
-    <main className="container py-10">
-      <div className="mb-14">
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-2 pt-6">
-          Best Of
-        </p>
-        <div>
-          {bestOf.map((c, i) => <CollectionRow key={c.slug} c={c} index={i} />)}
+  useEffect(() => {
+    (async () => {
+      const [refs, hiddenRes] = await Promise.all([
+        fetchAllRefsMinimal(),
+        (supabase as any).from("hidden_collections").select("slug"),
+      ]);
+      const next: Record<string, number> = {};
+      for (const c of collections) {
+        next[c.slug] = refs.filter((r) => refMatchesFilter(r, c.filter)).length;
+      }
+      setCounts(next);
+      setHidden(new Set(((hiddenRes.data as { slug: string }[] | null) || []).map((h) => h.slug)));
+      setReady(true);
+    })();
+  }, []);
+
+  // Admins see everything (so they can manage pages). The public only sees
+  // collections that are not hidden and have enough references.
+  const isVisible = (slug: string) =>
+    isAdmin || (!hidden.has(slug) && (counts[slug] ?? Infinity) >= MIN_COLLECTION_REFS);
+
+  // Before counts load, show all (avoids hiding everything on first paint);
+  // after they load, apply the public filter.
+  const list = ready ? collections.filter((c) => isVisible(c.slug)) : collections;
+  const bestOf = list.filter((c) => c.section === "best-of");
+  const agencies = list.filter((c) => c.section === "agencies");
+
+  return (
+    <div className="min-h-screen grain">
+      <PageMeta
+        title="Best Of The Best & Agencies - The Creatives Room"
+        description="Curated collections of the best advertising campaigns by theme and agency — from Cannes Grand Prix winners to Nike, Ogilvy, and Wieden+Kennedy."
+        path="/best-of"
+      />
+      <SiteHeader />
+
+      <section className="border-b hairline">
+        <div className="container pt-20 md:pt-32 pb-10 md:pb-14">
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-2">⏵ Collections</p>
+          <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] mt-4 max-w-3xl">
+            Best Of The Best
+          </h1>
+          <p className="font-body text-base text-muted-foreground max-w-xl mt-6">
+            Curated archives of the most celebrated advertising, organized by theme, moment, and the agencies behind the work.
+          </p>
         </div>
-      </div>
+      </section>
 
-      <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-2 pt-6">
-          Agencies
-        </p>
-        <div>
-          {agencies.map((c, i) => <CollectionRow key={c.slug} c={c} index={i} />)}
+      <main className="container py-10">
+        <div className="mb-14">
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-2 pt-6">
+            Best Of The Best
+          </p>
+          <div>
+            {bestOf.map((c, i) => <CollectionRow key={c.slug} c={c} index={i} />)}
+          </div>
         </div>
-      </div>
-    </main>
 
-    <SiteFooter />
-  </div>
-);
+        <div>
+          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-2 pt-6">
+            Agencies
+          </p>
+          <div>
+            {agencies.map((c, i) => <CollectionRow key={c.slug} c={c} index={i} />)}
+          </div>
+        </div>
+      </main>
+
+      <SiteFooter />
+    </div>
+  );
+};
 
 export default BestOf;

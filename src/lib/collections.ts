@@ -1372,3 +1372,47 @@ export const collections: Collection[] = [
 export function findCollection(section: string, slug: string): Collection | undefined {
   return collections.find((c) => c.section === section && c.slug === slug);
 }
+
+// A collection page must have at least this many matching references to be
+// shown publicly. Pages below the threshold are treated as "deleted" (404).
+export const MIN_COLLECTION_REFS = 8;
+
+type RefLike = {
+  tags?: string[] | null;
+  categories?: string[] | null;
+  agency?: string | null;
+  brand?: string | null;
+  type?: string | null;
+  year?: number | null;
+};
+
+// Mirrors the Supabase query in CollectionPage so ref counts can be computed
+// client-side (e.g. to hide low-content collections from the Best Of listing).
+// tags/categories use exact array overlap (matching Postgres `&&`), while
+// agency/brand use case-insensitive substring matching (matching `ilike`).
+export function refMatchesFilter(r: RefLike, filter: CollectionFilter): boolean {
+  if (filter.tags && filter.tags.length > 0) {
+    const set = new Set(r.tags || []);
+    if (!filter.tags.some((t) => set.has(t))) return false;
+  }
+  if (filter.categories && filter.categories.length > 0) {
+    const set = new Set(r.categories || []);
+    if (!filter.categories.some((c) => set.has(c))) return false;
+  }
+  if (filter.agency) {
+    if (!(r.agency || "").toLowerCase().includes(filter.agency.toLowerCase())) return false;
+  }
+  if (filter.brand) {
+    if (!(r.brand || "").toLowerCase().includes(filter.brand.toLowerCase())) return false;
+  }
+  if (filter.type) {
+    if (r.type !== filter.type) return false;
+  }
+  if (filter.yearMin !== undefined) {
+    if (!r.year || r.year < filter.yearMin) return false;
+  }
+  if (filter.yearMax !== undefined) {
+    if (!r.year || r.year > filter.yearMax) return false;
+  }
+  return true;
+}

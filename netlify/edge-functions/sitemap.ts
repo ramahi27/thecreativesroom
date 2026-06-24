@@ -158,6 +158,19 @@ export default async (_request: Request, _context: Context) => {
     if (res.ok) refs = await res.json();
   } catch { /* fall through with empty refs */ }
 
+  // Admin-hidden collection pages should not appear in the sitemap.
+  let hiddenSlugs = new Set<string>();
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/hidden_collections?select=slug`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
+    );
+    if (res.ok) {
+      const rows: { slug: string }[] = await res.json();
+      hiddenSlugs = new Set(rows.map((r) => r.slug));
+    }
+  } catch { /* table may not exist yet — keep all collections */ }
+
   const today = new Date().toISOString().slice(0, 10);
   const urlTags: string[] = [];
 
@@ -168,6 +181,7 @@ export default async (_request: Request, _context: Context) => {
   }
 
   for (const c of COLLECTIONS) {
+    if (hiddenSlugs.has(c.slug)) continue;
     urlTags.push(
       `  <url><loc>${SITE}/${c.section}/${c.slug}</loc><changefreq>monthly</changefreq><priority>0.9</priority><lastmod>${today}</lastmod></url>`
     );
