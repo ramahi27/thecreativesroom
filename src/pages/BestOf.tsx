@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { PageMeta } from "@/components/PageMeta";
-import { collections, refMatchesFilter, MIN_COLLECTION_REFS } from "@/lib/collections";
+import { collections, refMatchesFilter, MIN_COLLECTION_REFS, isSceneRef, collectionExcludesScenes } from "@/lib/collections";
 
 // ──────────────────────────────────────────────────
 // Hidden-collection state is stored in app_settings
@@ -131,6 +131,8 @@ const BestOf = () => {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [ready, setReady] = useState(false);
+  const [query, setQuery] = useState("");
+  const [sectionFilter, setSectionFilter] = useState<"all" | "best-of" | "agencies">("all");
 
   useEffect(() => {
     (async () => {
@@ -140,7 +142,10 @@ const BestOf = () => {
       ]);
       const next: Record<string, number> = {};
       for (const c of collections) {
-        next[c.slug] = refs.filter((r) => refMatchesFilter(r, c.filter)).length;
+        const excl = collectionExcludesScenes(c);
+        next[c.slug] = refs.filter(
+          (r) => refMatchesFilter(r, c.filter) && !(excl && isSceneRef(r))
+        ).length;
       }
       setCounts(next);
       setHidden(hiddenSlugs);
@@ -173,9 +178,27 @@ const BestOf = () => {
 
   // Before counts load, show all (avoids collapsing the list on first paint);
   // once ready, filter for visitors.
-  const list = ready ? collections.filter((c) => isVisible(c.slug)) : collections;
+  const visibleList = ready ? collections.filter((c) => isVisible(c.slug)) : collections;
+
+  // Apply the on-page search + section filter.
+  const q = query.trim().toLowerCase();
+  const list = visibleList.filter((c) => {
+    if (sectionFilter !== "all" && c.section !== sectionFilter) return false;
+    if (!q) return true;
+    return (
+      c.title.toLowerCase().includes(q) ||
+      c.seoDescription.toLowerCase().includes(q) ||
+      c.headline.toLowerCase().includes(q)
+    );
+  });
   const bestOf = list.filter((c) => c.section === "best-of");
   const agencies = list.filter((c) => c.section === "agencies");
+
+  const sectionChips: Array<{ key: "all" | "best-of" | "agencies"; label: string }> = [
+    { key: "all", label: "All" },
+    { key: "best-of", label: "Best Of The Best" },
+    { key: "agencies", label: "Agencies" },
+  ];
 
   return (
     <div className="min-h-screen grain">
@@ -199,45 +222,84 @@ const BestOf = () => {
       </section>
 
       <main className="container py-10">
-        <div className="mb-14">
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-2 pt-6">
-            Best Of The Best
-          </p>
-          <div>
-            {bestOf.map((c, i) => (
-              <CollectionRow
-                key={c.slug}
-                c={c}
-                index={i}
-                isAdmin={isAdmin}
-                isHidden={hidden.has(c.slug)}
-                refCount={ready ? counts[c.slug] : undefined}
-                onHide={hide}
-                onRestore={restore}
-              />
+        {/* Filter toolbar */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-10 pt-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Filter collections…"
+            className="w-full sm:max-w-xs rounded-xl bg-secondary/60 border border-border px-4 py-2.5 font-mono text-xs uppercase tracking-widest placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 transition-colors"
+          />
+          <div className="flex items-center gap-2">
+            {sectionChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => setSectionFilter(chip.key)}
+                className={`font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border transition-colors whitespace-nowrap ${
+                  sectionFilter === chip.key
+                    ? "border-primary/60 text-primary bg-primary/10"
+                    : "hairline text-muted-foreground hover:text-foreground hover:border-foreground/30"
+                }`}
+              >
+                {chip.label}
+              </button>
             ))}
           </div>
         </div>
 
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-2 pt-6">
-            Agencies
-          </p>
-          <div>
-            {agencies.map((c, i) => (
-              <CollectionRow
-                key={c.slug}
-                c={c}
-                index={i}
-                isAdmin={isAdmin}
-                isHidden={hidden.has(c.slug)}
-                refCount={ready ? counts[c.slug] : undefined}
-                onHide={hide}
-                onRestore={restore}
-              />
-            ))}
+        {list.length === 0 ? (
+          <div className="py-20 text-center">
+            <p className="font-display text-3xl text-muted-foreground italic">No collections match.</p>
           </div>
-        </div>
+        ) : (
+          <>
+            {(sectionFilter === "all" || sectionFilter === "best-of") && bestOf.length > 0 && (
+              <div className="mb-14">
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-2 pt-6">
+                  Best Of The Best
+                </p>
+                <div>
+                  {bestOf.map((c, i) => (
+                    <CollectionRow
+                      key={c.slug}
+                      c={c}
+                      index={i}
+                      isAdmin={isAdmin}
+                      isHidden={hidden.has(c.slug)}
+                      refCount={ready ? counts[c.slug] : undefined}
+                      onHide={hide}
+                      onRestore={restore}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {(sectionFilter === "all" || sectionFilter === "agencies") && agencies.length > 0 && (
+              <div>
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-2 pt-6">
+                  Agencies
+                </p>
+                <div>
+                  {agencies.map((c, i) => (
+                    <CollectionRow
+                      key={c.slug}
+                      c={c}
+                      index={i}
+                      isAdmin={isAdmin}
+                      isHidden={hidden.has(c.slug)}
+                      refCount={ready ? counts[c.slug] : undefined}
+                      onHide={hide}
+                      onRestore={restore}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </main>
 
       <SiteFooter />

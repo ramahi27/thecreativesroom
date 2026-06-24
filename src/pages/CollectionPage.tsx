@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { PageMeta } from "@/components/PageMeta";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { type Reference } from "@/lib/references";
-import { findCollection, collections, MIN_COLLECTION_REFS } from "@/lib/collections";
+import { findCollection, collections, MIN_COLLECTION_REFS, isSceneRef, collectionExcludesScenes } from "@/lib/collections";
 import NotFound from "@/pages/NotFound";
 
 function SkeletonCard() {
@@ -46,7 +46,9 @@ const CollectionPage = () => {
         )
         .eq("published", true)
         .order("created_at", { ascending: false })
-        .limit(60);
+        // Fetch extra headroom because film/TV scenes are filtered out below
+        // for ad/commercial collections.
+        .limit(80);
 
       if (filter.tags && filter.tags.length > 0) {
         query = query.overlaps("tags", filter.tags);
@@ -71,7 +73,12 @@ const CollectionPage = () => {
       }
 
       const { data } = await query;
-      setRefs((data as unknown as Reference[]) || []);
+      let list = (data as unknown as Reference[]) || [];
+      // Strip film/TV scenes from ad/commercial collections, then cap at 60.
+      if (collectionExcludesScenes(collection)) {
+        list = list.filter((r) => !isSceneRef(r));
+      }
+      setRefs(list.slice(0, 60));
       setLoading(false);
     })();
   }, [collection]);
