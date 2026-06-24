@@ -1372,7 +1372,3 @@ export const collections: Collection[] = [
 export function findCollection(section: string, slug: string): Collection | undefined {
   return collections.find((c) => c.section === section && c.slug === slug);
 }
-
-export function findCollection(section: string, slug: string): Collection | undefined {
-  return collections.find((c) => c.section === section && c.slug === slug);
-}
