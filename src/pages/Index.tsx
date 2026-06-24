@@ -63,6 +63,8 @@ const Index = () => {
   const loadingMoreRef = useRef(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState<number | null>(null);
+  // Tracks the next DB row offset to fetch (starts at a random position each session)
+  const nextOffsetRef = useRef(0);
 
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -296,10 +298,23 @@ const Index = () => {
 
   useEffect(() => {
     (async () => {
-      const { list, total } = await fetchPage(0);
+      // Get total count first so we can pick a random starting position
+      const { count: total } = await supabase
+        .from("references")
+        .select("id", { count: "exact", head: true })
+        .eq("published", true);
+      const totalRows = total ?? 0;
+      setTotalCount(totalRows);
+
+      // Start from a random offset so every session shows a different slice of the archive
+      const startOffset = totalRows > PAGE_SIZE
+        ? Math.floor(Math.random() * (totalRows - PAGE_SIZE + 1))
+        : 0;
+      nextOffsetRef.current = startOffset + PAGE_SIZE;
+
+      const { list } = await fetchPage(startOffset);
       setRefs(shuffle(list));
-      setTotalCount(total);
-      setHasMore(list.length < total);
+      setHasMore(nextOffsetRef.current < totalRows);
       setLoading(false);
     })();
   }, []);
@@ -308,15 +323,16 @@ const Index = () => {
     if (loadingMoreRef.current || !hasMore) return;
     loadingMoreRef.current = true;
     setLoadingMore(true);
-    const from = refs.length; // capture before async gap — refs.length in closure is stale after await
+    const from = nextOffsetRef.current;
     const { list, total } = await fetchPage(from);
+    nextOffsetRef.current = from + PAGE_SIZE;
     setRefs((prev) => {
       const seen = new Set(prev.map((r) => r.id));
       const fresh = list.filter((r) => !seen.has(r.id));
       return [...prev, ...shuffle(fresh)];
     });
     setTotalCount(total);
-    setHasMore(from + list.length < total);
+    setHasMore(nextOffsetRef.current < total);
     loadingMoreRef.current = false;
     setLoadingMore(false);
   };
