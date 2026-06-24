@@ -1,12 +1,10 @@
-I’ll fix the scrape/import issue by making the edge function return clear, handled errors instead of failing as a generic 500.
+## Fix duplicate `findCollection` export blocking the build
 
-Plan:
-1. Inspect the current `scrape-link` function and the admin/import UI call path.
-2. Harden the likely failure points:
-   - YouTube/oEmbed metadata fetches
-   - AI metadata inference fallback
-   - database insert/update errors
-   - response handling/CORS for all error paths
-3. Keep the import usable even if optional metadata extraction fails, so a valid URL can still be saved with basic title/source data.
-4. Add focused logging that identifies the failing stage without exposing secrets or sensitive user data.
-5. Verify the flow by invoking the function with a representative YouTube URL and checking the returned status/body.
+`src/lib/collections.ts` defines `findCollection` twice (lines 1372–1374 and 1376–1378), which fails the build with "Multiple exports with the same name". This is why the GitHub sync is showing a red banner — Lovable won't push a broken build.
+
+### Change
+- Delete the duplicate copy at lines 1376–1378 of `src/lib/collections.ts`.
+
+### Verify
+- Run `bun run build:dev` and confirm it succeeds.
+- GitHub sync should then push cleanly on the next change.
