@@ -63,8 +63,6 @@ const Index = () => {
   const loadingMoreRef = useRef(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState<number | null>(null);
-  // Tracks the next DB row offset to fetch (starts at a random position each session)
-  const nextOffsetRef = useRef(0);
 
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -283,38 +281,26 @@ const Index = () => {
   }, []);
 
   const fetchPage = async (from: number) => {
-    const { data, count, error } = await supabase
+    // Note: no `count: "exact"` — exact counts force a full table scan on every
+    // page request. We infer hasMore from whether we got a full page back.
+    const { data, error } = await supabase
       .from("references")
       .select(
-        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,approved_at,media_items,categories,published,source",
-        { count: "exact" }
+        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,approved_at,media_items,categories,published,source"
       )
       .eq("published", true)
       .order("approved_at", { ascending: false, nullsFirst: false })
       .range(from, from + PAGE_SIZE - 1);
-    if (error) return { list: [] as Reference[], total: 0 };
-    return { list: (data as unknown as Reference[]) || [], total: count ?? 0 };
+    if (error) return { list: [] as Reference[] };
+    return { list: (data as unknown as Reference[]) || [] };
   };
 
   useEffect(() => {
     (async () => {
-      // Get total count first so we can pick a random starting position
-      const { count: total } = await supabase
-        .from("references")
-        .select("id", { count: "exact", head: true })
-        .eq("published", true);
-      const totalRows = total ?? 0;
-      setTotalCount(totalRows);
-
-      // Start from a random offset so every session shows a different slice of the archive
-      const startOffset = totalRows > PAGE_SIZE
-        ? Math.floor(Math.random() * (totalRows - PAGE_SIZE + 1))
-        : 0;
-      nextOffsetRef.current = startOffset + PAGE_SIZE;
-
-      const { list } = await fetchPage(startOffset);
+      const { list } = await fetchPage(0);
       setRefs(shuffle(list));
-      setHasMore(nextOffsetRef.current < totalRows);
+      setTotalCount(null);
+      setHasMore(list.length === PAGE_SIZE);
       setLoading(false);
     })();
   }, []);
@@ -323,16 +309,14 @@ const Index = () => {
     if (loadingMoreRef.current || !hasMore) return;
     loadingMoreRef.current = true;
     setLoadingMore(true);
-    const from = nextOffsetRef.current;
-    const { list, total } = await fetchPage(from);
-    nextOffsetRef.current = from + PAGE_SIZE;
+    const from = refs.length; // capture before async gap — refs.length in closure is stale after await
+    const { list } = await fetchPage(from);
     setRefs((prev) => {
       const seen = new Set(prev.map((r) => r.id));
       const fresh = list.filter((r) => !seen.has(r.id));
       return [...prev, ...shuffle(fresh)];
     });
-    setTotalCount(total);
-    setHasMore(nextOffsetRef.current < total);
+    setHasMore(list.length === PAGE_SIZE);
     loadingMoreRef.current = false;
     setLoadingMore(false);
   };
