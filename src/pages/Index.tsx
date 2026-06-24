@@ -39,6 +39,57 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+// Primary grouping key for diversity logic
+function refCategory(r: Reference): string {
+  return (r.categories && r.categories.length > 0) ? r.categories[0] : r.type;
+}
+
+// Pick up to `n` refs each from a different category (for the hero row).
+// Input should already be shuffled so selection feels random.
+function pickLeaders(items: Reference[], n: number): { leaders: Reference[]; rest: Reference[] } {
+  const usedCats = new Set<string>();
+  const leaders: Reference[] = [];
+  const rest: Reference[] = [];
+  for (const item of items) {
+    const cat = refCategory(item);
+    if (leaders.length < n && !usedCats.has(cat)) {
+      usedCats.add(cat);
+      leaders.push(item);
+    } else {
+      rest.push(item);
+    }
+  }
+  // Fill remaining slots if there weren't enough unique categories
+  while (leaders.length < n && rest.length > 0) leaders.push(rest.shift()!);
+  return { leaders, rest };
+}
+
+// Reorder items so no two consecutive items share a category.
+// Picks randomly among valid candidates each step so the result still feels shuffled.
+function spreadByCategory(items: Reference[]): Reference[] {
+  const result: Reference[] = [];
+  const pool = [...items];
+  let lastCat = "";
+  while (pool.length > 0) {
+    const candidateIdxs: number[] = [];
+    for (let i = 0; i < pool.length; i++) {
+      if (refCategory(pool[i]) !== lastCat) candidateIdxs.push(i);
+    }
+    const idxs = candidateIdxs.length > 0 ? candidateIdxs : pool.map((_, i) => i);
+    const pick = idxs[Math.floor(Math.random() * idxs.length)];
+    result.push(pool[pick]);
+    lastCat = refCategory(pool[pick]);
+    pool.splice(pick, 1);
+  }
+  return result;
+}
+
+// Full arrangement: 8 diverse leaders then spread remainder
+function arrangeRefs(shuffled: Reference[]): Reference[] {
+  const { leaders, rest } = pickLeaders(shuffled, 8);
+  return [...leaders, ...spreadByCategory(rest)];
+}
+
 function SkeletonCard() {
   return (
     <div className="rounded-2xl overflow-hidden bg-card border hairline flex flex-col animate-pulse">
@@ -315,7 +366,7 @@ const Index = () => {
       nextOffsetRef.current = startOffset + PAGE_SIZE;
 
       const { list } = await fetchPage(startOffset);
-      setRefs(shuffle(list));
+      setRefs(arrangeRefs(shuffle(list)));
       setHasMore(nextOffsetRef.current < total);
       setLoading(false);
     })();
@@ -331,7 +382,7 @@ const Index = () => {
     setRefs((prev) => {
       const seen = new Set(prev.map((r) => r.id));
       const fresh = list.filter((r) => !seen.has(r.id));
-      return [...prev, ...shuffle(fresh)];
+      return [...prev, ...spreadByCategory(shuffle(fresh))];
     });
     setHasMore(list.length === PAGE_SIZE);
     loadingMoreRef.current = false;
