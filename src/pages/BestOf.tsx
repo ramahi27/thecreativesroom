@@ -65,12 +65,24 @@ async function fetchAllRefs(): Promise<MinimalRef[]> {
   return all;
 }
 
+// YouTube's hqdefault/sddefault thumbnails are 4:3 and letterbox 16:9 videos
+// with black bars. maxresdefault and mqdefault are true 16:9 (no bars). Prefer
+// maxres for sharpness; the card downgrades to mqdefault if maxres is missing.
+function upgradeYouTubeThumb(url: string): string {
+  if (/i\.ytimg\.com\/vi(?:_webp)?\//.test(url)) {
+    return url.replace(/\/(?:maxres|hq|sd|mq)?default\.jpg.*$/, "/maxresdefault.jpg");
+  }
+  return url;
+}
+
 // Best available cover image for a reference.
 function coverFor(r: MinimalRef): string | null {
   const items = Array.isArray(r.media_items) ? r.media_items : [];
   const firstImg = items.find((it) => it?.kind === "image" && it.url)?.url ?? null;
-  if (r.type === "image") return firstImg || r.thumbnail_url || r.media_url || null;
-  return r.thumbnail_url || (r.source_url ? deriveThumbnail(r.source_url) : null) || firstImg || null;
+  const raw = r.type === "image"
+    ? (firstImg || r.thumbnail_url || r.media_url || null)
+    : (r.thumbnail_url || (r.source_url ? deriveThumbnail(r.source_url) : null) || firstImg || null);
+  return raw ? upgradeYouTubeThumb(raw) : null;
 }
 
 // ──────────────────────────────────────────────────
@@ -87,11 +99,14 @@ interface CardProps {
 }
 
 function CollectionCard({ c, index, cover, isAdmin, isHidden, refCount, onHide, onRestore }: CardProps) {
+  const [src, setSrc] = useState<string | undefined>(cover);
   const [imgErr, setImgErr] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  useEffect(() => { setSrc(cover); setImgErr(false); setImgLoaded(false); }, [cover]);
+
   const tooFew = refCount !== undefined && refCount < MIN_COLLECTION_REFS;
   const dimmed = (isHidden || tooFew) && isAdmin;
-  const showImg = cover && !imgErr;
+  const showImg = src && !imgErr;
 
   return (
     <Link
@@ -102,11 +117,26 @@ function CollectionCard({ c, index, cover, isAdmin, isHidden, refCount, onHide, 
       {/* Cover */}
       {showImg ? (
         <img
-          src={cover}
+          src={src}
           alt={c.title}
           loading="lazy"
-          onLoad={() => setImgLoaded(true)}
-          onError={() => setImgErr(true)}
+          onLoad={(e) => {
+            // maxresdefault returns a ~120px gray placeholder when it doesn't
+            // exist — downgrade to the always-present 16:9 mqdefault.
+            const img = e.currentTarget;
+            if (img.naturalWidth <= 121 && src && src.includes("maxresdefault")) {
+              setSrc(src.replace("maxresdefault", "mqdefault"));
+              return;
+            }
+            setImgLoaded(true);
+          }}
+          onError={() => {
+            if (src && src.includes("maxresdefault")) {
+              setSrc(src.replace("maxresdefault", "mqdefault"));
+              return;
+            }
+            setImgErr(true);
+          }}
           className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
         />
       ) : (
