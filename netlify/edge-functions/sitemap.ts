@@ -159,17 +159,18 @@ export default async (_request: Request, _context: Context) => {
   } catch { /* fall through with empty refs */ }
 
   // Admin-hidden collection pages should not appear in the sitemap.
+  // Slugs are stored in app_settings under key "hidden_collections" (jsonb array).
   let hiddenSlugs = new Set<string>();
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/hidden_collections?select=slug`,
+      `${SUPABASE_URL}/rest/v1/app_settings?key=eq.hidden_collections&select=value&limit=1`,
       { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
     );
     if (res.ok) {
-      const rows: { slug: string }[] = await res.json();
-      hiddenSlugs = new Set(rows.map((r) => r.slug));
+      const rows: { value: string[] }[] = await res.json();
+      if (rows[0]?.value) hiddenSlugs = new Set(rows[0].value);
     }
-  } catch { /* table may not exist yet — keep all collections */ }
+  } catch { /* fall through with no hidden slugs */ }
 
   const today = new Date().toISOString().slice(0, 10);
   const urlTags: string[] = [];

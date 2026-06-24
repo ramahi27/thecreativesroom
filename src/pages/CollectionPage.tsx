@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { PageMeta } from "@/components/PageMeta";
@@ -27,13 +25,11 @@ function SkeletonCard() {
 const CollectionPage = () => {
   const { slug } = useParams<{ slug: string }>();
   const { pathname } = useLocation();
-  const { isAdmin } = useAuth();
   const section = pathname.startsWith("/agencies/") ? "agencies" : "best-of";
   const collection = slug ? findCollection(section, slug) : undefined;
 
   const [refs, setRefs] = useState<Reference[]>([]);
   const [loading, setLoading] = useState(true);
-  // null while we don't know yet; true/false once the hidden list is loaded
   const [hidden, setHidden] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -80,60 +76,29 @@ const CollectionPage = () => {
     })();
   }, [collection]);
 
-  // Has this page been hidden (admin-deleted)?
+  // Check if this collection was hidden by an admin via app_settings
   useEffect(() => {
     if (!collection) return;
     setHidden(null);
     (async () => {
-      const { data, error } = await (supabase as any)
-        .from("hidden_collections")
-        .select("slug")
-        .eq("slug", collection.slug)
+      const { data } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "hidden_collections")
         .maybeSingle();
-      // If the table is missing or the query fails, treat as not hidden.
-      setHidden(!error && !!data);
+      const arr = (data?.value as string[] | null) ?? [];
+      setHidden(arr.includes(collection.slug));
     })();
   }, [collection]);
 
-  const deletePage = async () => {
-    if (!collection) return;
-    if (!window.confirm(`Delete "${collection.title}"? It will be hidden from the public.`)) return;
-    const { data: userData } = await supabase.auth.getUser();
-    const { error } = await (supabase as any)
-      .from("hidden_collections")
-      .insert({ slug: collection.slug, hidden_by: userData.user?.id ?? null });
-    if (error) {
-      toast.error("Could not delete page.");
-      return;
-    }
-    setHidden(true);
-    toast.success("Page hidden from the public.");
-  };
-
-  const restorePage = async () => {
-    if (!collection) return;
-    const { error } = await (supabase as any)
-      .from("hidden_collections")
-      .delete()
-      .eq("slug", collection.slug);
-    if (error) {
-      toast.error("Could not restore page.");
-      return;
-    }
-    setHidden(false);
-    toast.success("Page restored.");
-  };
-
   if (!collection) return <NotFound />;
 
+  const stillResolving = loading || hidden === null;
   const tooFew = !loading && refs.length < MIN_COLLECTION_REFS;
   const isHidden = hidden === true;
 
-  // Still resolving whether the page should be shown — render the skeleton.
-  const stillResolving = loading || hidden === null;
-
-  // For the public, a hidden or low-content page does not exist.
-  if (!stillResolving && (isHidden || tooFew) && !isAdmin) {
+  // Non-admins get 404 for hidden or low-content pages
+  if (!stillResolving && (isHidden || tooFew)) {
     return <NotFound />;
   }
 
@@ -147,38 +112,6 @@ const CollectionPage = () => {
         path={`/${collection.section}/${collection.slug}`}
       />
       <SiteHeader />
-
-      {isAdmin && !stillResolving && (
-        <div className="border-b hairline bg-secondary/30">
-          <div className="container py-3 flex items-center justify-between gap-3 flex-wrap">
-            <span className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-              Admin
-              {isHidden
-                ? " · hidden from public"
-                : tooFew
-                ? ` · only ${refs.length} reference${refs.length === 1 ? "" : "s"} — hidden from public`
-                : ""}
-            </span>
-            {isHidden ? (
-              <button
-                type="button"
-                onClick={restorePage}
-                className="font-mono text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full border hairline hover:border-foreground/40 transition-colors"
-              >
-                Restore page
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={deletePage}
-                className="font-mono text-[11px] uppercase tracking-widest px-3 py-1.5 rounded-full border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                Delete page
-              </button>
-            )}
-          </div>
-        </div>
-      )}
 
       <section className="relative overflow-hidden border-b hairline">
         <div className="container pt-20 md:pt-32 pb-10 md:pb-14 relative">
