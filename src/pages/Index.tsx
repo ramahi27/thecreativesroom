@@ -144,6 +144,23 @@ const Index = () => {
     try { localStorage.setItem("archive:view", viewMode); } catch {}
   }, [viewMode]);
 
+  // Responsive column count for board (masonry) view. We distribute cards into
+  // fixed columns by index rather than using CSS `columns`, which rebalances
+  // and makes cards jump between columns as images load while scrolling.
+  const [masonryCols, setMasonryCols] = useState(() => {
+    if (typeof window === "undefined") return 4;
+    const w = window.innerWidth;
+    return w < 640 ? 1 : w < 1024 ? 2 : w < 1280 ? 3 : 4;
+  });
+  useEffect(() => {
+    const onResize = () => {
+      const w = window.innerWidth;
+      setMasonryCols(w < 640 ? 1 : w < 1024 ? 2 : w < 1280 ? 3 : 4);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   // Keyboard grid navigation
   const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
   const focusedIdxRef = useRef<number | null>(null);
@@ -982,38 +999,50 @@ const Index = () => {
           </div>
         ) : (
           <>
-            <div
-              ref={gridRef}
-              className={
-                viewMode === "masonry"
-                  ? "columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-5"
-                  : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
-              }
-            >
-              {(() => {
-                const order = filtered.map((x) => x.id);
-                if (viewMode === "masonry") {
+            {viewMode === "masonry" ? (
+              <div ref={gridRef} className="flex items-start gap-5">
+                {(() => {
+                  const order = filtered.map((x) => x.id);
+                  // Distribute by index into fixed columns — cards never jump
+                  // between columns as images load, so no flicker on scroll.
+                  const cols: Array<Array<{ r: Reference; i: number }>> = Array.from(
+                    { length: masonryCols },
+                    () => []
+                  );
+                  filtered.forEach((r, i) => cols[i % masonryCols].push({ r, i }));
+                  return cols.map((col, ci) => (
+                    <div key={ci} className="flex-1 min-w-0 flex flex-col gap-5">
+                      {col.map(({ r, i }) => (
+                        <div
+                          key={r.id}
+                          style={{ animation: "cardIn 0.4s ease both", animationDelay: `${Math.min(i * 40, 500)}ms` }}
+                        >
+                          <ReferenceCard reference={r} orderedIds={order} priority={i < 4} masonry />
+                        </div>
+                      ))}
+                    </div>
+                  ));
+                })()}
+              </div>
+            ) : (
+              <div
+                ref={gridRef}
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+              >
+                {(() => {
+                  const order = filtered.map((x) => x.id);
                   return filtered.map((r, i) => (
                     <div
                       key={r.id}
-                      className="break-inside-avoid mb-5"
+                      className={focusedIdx === i ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}
                       style={{ animation: "cardIn 0.4s ease both", animationDelay: `${Math.min(i * 40, 500)}ms` }}
                     >
-                      <ReferenceCard reference={r} orderedIds={order} priority={i < 4} masonry />
+                      <ReferenceCard reference={r} orderedIds={order} priority={i < 4} />
                     </div>
                   ));
-                }
-                return filtered.map((r, i) => (
-                  <div
-                    key={r.id}
-                    className={focusedIdx === i ? "ring-2 ring-foreground ring-offset-2 ring-offset-background" : ""}
-                    style={{ animation: "cardIn 0.4s ease both", animationDelay: `${Math.min(i * 40, 500)}ms` }}
-                  >
-                    <ReferenceCard reference={r} orderedIds={order} priority={i < 4} />
-                  </div>
-                ));
-              })()}
-            </div>
+                })()}
+              </div>
+            )}
             {hasMore && (
               <div className="mt-12 flex flex-col items-center gap-3">
                 <Button
