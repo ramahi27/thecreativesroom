@@ -44,22 +44,31 @@ function refCategory(r: Reference): string {
   return (r.categories && r.categories.length > 0) ? r.categories[0] : r.type;
 }
 
-// Pick up to `n` refs each from a different category (for the hero row).
-// Input should already be shuffled so selection feels random.
+// Pick up to `n` leaders: always prefer 2026 refs, with category diversity as a
+// secondary constraint. Falls back to any ref if fewer than n 2026 refs exist.
 function pickLeaders(items: Reference[], n: number): { leaders: Reference[]; rest: Reference[] } {
+  const currentYear = new Date().getFullYear();
+  const thisYear = shuffle(items.filter((r) => r.year === currentYear));
+  const others = items.filter((r) => r.year !== currentYear);
+
+  // Fill leaders from 2026 refs, preferring different categories
   const usedCats = new Set<string>();
   const leaders: Reference[] = [];
-  const rest: Reference[] = [];
-  for (const item of items) {
+  const spillover: Reference[] = [];
+  for (const item of thisYear) {
     const cat = refCategory(item);
     if (leaders.length < n && !usedCats.has(cat)) {
       usedCats.add(cat);
       leaders.push(item);
     } else {
-      rest.push(item);
+      spillover.push(item);
     }
   }
-  // Fill remaining slots if there weren't enough unique categories
+  // If we still need slots after category-diverse pass, fill with remaining 2026 refs
+  while (leaders.length < n && spillover.length > 0) leaders.push(spillover.shift()!);
+
+  const rest = [...spillover, ...others];
+  // Final fallback: not enough 2026 refs — fill from the rest
   while (leaders.length < n && rest.length > 0) leaders.push(rest.shift()!);
   return { leaders, rest };
 }
@@ -350,23 +359,33 @@ const Index = () => {
 
   useEffect(() => {
     (async () => {
-      // One-time count so we can pick a random starting position in the archive.
-      // Done only on mount (not on each page load) so the table scan cost is acceptable.
-      const { count } = await supabase
-        .from("references")
-        .select("id", { count: "exact", head: true })
-        .eq("published", true);
+      const currentYear = new Date().getFullYear();
+      const REF_SELECT =
+        "id,title,type,media_url,source_url,thumbnail_url,brand,agency,year,tags,tag_synonyms,notes,created_at,updated_at,approved_at,media_items,categories,published,source";
+
+      // Fetch total count (once on mount) + current-year refs in parallel
+      const [{ count }, { data: yearData }] = await Promise.all([
+        supabase.from("references").select("id", { count: "exact", head: true }).eq("published", true),
+        supabase.from("references").select(REF_SELECT).eq("published", true).eq("year", currentYear)
+          .order("approved_at", { ascending: false, nullsFirst: false }).limit(50),
+      ]);
       const total = count ?? 0;
       setTotalCount(total);
 
-      // Pick a random starting row so each session surfaces a different slice
+      const currentYearRefs = (yearData as unknown as Reference[]) || [];
+
+      // Random batch from anywhere in the archive
       const startOffset = total > PAGE_SIZE
         ? Math.floor(Math.random() * (total - PAGE_SIZE + 1))
         : 0;
       nextOffsetRef.current = startOffset + PAGE_SIZE;
+      const { list: randomBatch } = await fetchPage(startOffset);
 
-      const { list } = await fetchPage(startOffset);
-      setRefs(arrangeRefs(shuffle(list)));
+      // Merge: 2026 refs first, then deduplicated random batch
+      const seenIds = new Set(currentYearRefs.map((r) => r.id));
+      const merged = [...currentYearRefs, ...randomBatch.filter((r) => !seenIds.has(r.id))];
+
+      setRefs(arrangeRefs(merged));
       setHasMore(nextOffsetRef.current < total);
       setLoading(false);
     })();
