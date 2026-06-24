@@ -111,98 +111,95 @@ function CollectionCard({ c, index, cover, isAdmin, isHidden, refCount, onHide, 
   return (
     <Link
       to={`/${c.section}/${c.slug}`}
-      className={`reveal-card group relative block aspect-[4/5] rounded-2xl overflow-hidden border hairline bg-card ${dimmed ? "opacity-50" : ""}`}
+      className={`reveal-card group relative flex flex-col rounded-2xl overflow-hidden border hairline bg-card ${dimmed ? "opacity-50" : ""}`}
       style={{ animation: "cardIn 0.4s ease both", animationDelay: `${Math.min(index * 35, 450)}ms` }}
     >
-      {/* Cover */}
-      {showImg ? (
-        <img
-          src={src}
-          alt={c.title}
-          loading="lazy"
-          onLoad={(e) => {
-            // maxresdefault returns a ~120px gray placeholder when it doesn't
-            // exist — downgrade to the always-present 16:9 mqdefault.
-            const img = e.currentTarget;
-            if (img.naturalWidth <= 121 && src && src.includes("maxresdefault")) {
-              setSrc(src.replace("maxresdefault", "mqdefault"));
-              return;
-            }
-            setImgLoaded(true);
-          }}
-          onError={() => {
-            if (src && src.includes("maxresdefault")) {
-              setSrc(src.replace("maxresdefault", "mqdefault"));
-              return;
-            }
-            setImgErr(true);
-          }}
-          className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
-        />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary via-card to-background">
-          <span className="font-display text-7xl font-black text-foreground/[0.06] select-none">
-            {c.title.slice(0, 2).toUpperCase()}
-          </span>
-        </div>
-      )}
+      {/* Cover — native 16:9 so the subject (which YouTube centers) is never cropped out */}
+      <div className="relative aspect-video overflow-hidden bg-muted">
+        {showImg ? (
+          <img
+            src={src}
+            alt={c.title}
+            loading="lazy"
+            onLoad={(e) => {
+              // maxresdefault returns a ~120px gray placeholder when it doesn't
+              // exist — downgrade to the always-present 16:9 mqdefault.
+              const img = e.currentTarget;
+              if (img.naturalWidth <= 121 && src && src.includes("maxresdefault")) {
+                setSrc(src.replace("maxresdefault", "mqdefault"));
+                return;
+              }
+              setImgLoaded(true);
+            }}
+            onError={() => {
+              if (src && src.includes("maxresdefault")) {
+                setSrc(src.replace("maxresdefault", "mqdefault"));
+                return;
+              }
+              setImgErr(true);
+            }}
+            className={`absolute inset-0 h-full w-full object-cover object-center transition-all duration-700 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary via-card to-background">
+            <span className="font-display text-6xl font-black text-foreground/[0.07] select-none">
+              {c.title.slice(0, 2).toUpperCase()}
+            </span>
+          </div>
+        )}
 
-      {/* Readability gradient */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/10" />
+        {/* Top gradient for badge legibility */}
+        <div className="absolute inset-x-0 top-0 h-14 bg-gradient-to-b from-black/55 to-transparent" />
 
-      {/* Index number */}
-      <span className="absolute top-3 left-3.5 font-mono text-[10px] text-white/50 tabular-nums">
-        {String(index + 1).padStart(2, "0")}
-      </span>
+        {/* Index number */}
+        <span className="absolute top-2.5 left-3 font-mono text-[10px] text-white/70 tabular-nums drop-shadow">
+          {String(index + 1).padStart(2, "0")}
+        </span>
 
-      {/* Section tag */}
-      <span className="absolute top-3 right-3.5 font-mono text-[9px] uppercase tracking-widest text-white/45">
-        {c.section === "agencies" ? "Agency" : "Best Of"}
-      </span>
+        {/* Admin controls */}
+        {isAdmin && (
+          <div className="absolute top-2.5 right-2.5 z-10">
+            {isHidden ? (
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); onRestore(c.slug); }}
+                className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/60 border border-white/25 text-white/85 hover:border-white/50 transition-colors backdrop-blur-sm"
+              >
+                Restore
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); onHide(c.slug); }}
+                className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/60 border border-destructive/50 text-destructive hover:bg-destructive/20 transition-colors backdrop-blur-sm"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
-      {/* Bottom content */}
-      <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
-        <div className="flex items-center gap-2 mb-2">
+      {/* Body */}
+      <div className="p-4 flex flex-col gap-1.5 flex-1">
+        <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] uppercase tracking-widest text-primary">
             {refCount !== undefined ? `${refCount} refs` : "—"}
           </span>
           {isAdmin && isHidden && (
-            <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">· hidden</span>
+            <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">· hidden</span>
           )}
           {isAdmin && !isHidden && tooFew && (
-            <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">· auto-hidden</span>
+            <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">· auto-hidden</span>
           )}
         </div>
-        <h2 className="font-display text-xl md:text-2xl font-black tracking-tight leading-[1.05] text-white line-clamp-2 group-hover:text-primary transition-colors">
+        <h2 className="font-display text-lg md:text-xl font-black tracking-tight leading-[1.1] line-clamp-2 group-hover:text-primary transition-colors">
           {c.title}
         </h2>
-        <p className="font-body text-[13px] text-white/55 mt-1.5 line-clamp-2 leading-snug">
+        <p className="font-body text-[13px] text-muted-foreground line-clamp-2 leading-snug">
           {c.seoDescription}
         </p>
       </div>
-
-      {/* Admin controls */}
-      {isAdmin && (
-        <div className="absolute top-9 right-3 z-10">
-          {isHidden ? (
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); onRestore(c.slug); }}
-              className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/60 border border-white/20 text-white/80 hover:border-white/50 transition-colors backdrop-blur-sm"
-            >
-              Restore
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); onHide(c.slug); }}
-              className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/60 border border-destructive/50 text-destructive hover:bg-destructive/20 transition-colors backdrop-blur-sm"
-            >
-              Delete
-            </button>
-          )}
-        </div>
-      )}
     </Link>
   );
 }
