@@ -125,6 +125,9 @@ const Index = () => {
   const [totalCount, setTotalCount] = useState<number | null>(null);
   // Tracks next DB row offset — starts at a random position each session for variety
   const nextOffsetRef = useRef(0);
+  // Stores the initial random start offset so we know if refs 0..N are missing
+  const initialOffsetRef = useRef(0);
+  const totalCountRef = useRef(0);
 
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -371,6 +374,7 @@ const Index = () => {
       ]);
       const total = count ?? 0;
       setTotalCount(total);
+      totalCountRef.current = total;
 
       const currentYearRefs = (yearData as unknown as Reference[]) || [];
 
@@ -378,6 +382,7 @@ const Index = () => {
       const startOffset = total > PAGE_SIZE
         ? Math.floor(Math.random() * (total - PAGE_SIZE + 1))
         : 0;
+      initialOffsetRef.current = startOffset;
       nextOffsetRef.current = startOffset + PAGE_SIZE;
       const { list: randomBatch } = await fetchPage(startOffset);
 
@@ -407,6 +412,23 @@ const Index = () => {
     loadingMoreRef.current = false;
     setLoadingMore(false);
   };
+
+  // When the user activates any sort and the initial load started at a random non-zero offset,
+  // refs 0..initialOffset are missing. Reload from 0 so all refs are available for sorting.
+  useEffect(() => {
+    if (sortBy === "default" || loading || initialOffsetRef.current === 0) return;
+    initialOffsetRef.current = 0; // mark done — prevents repeated reloads
+    nextOffsetRef.current = 0;
+    setLoading(true);
+    fetchPage(0).then(({ list }) => {
+      nextOffsetRef.current = PAGE_SIZE;
+      setRefs(list);
+      setHasMore(nextOffsetRef.current < totalCountRef.current);
+      setLoading(false);
+    });
+  // fetchPage is stable; only re-run when sortBy changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortBy]);
 
   // When a filter or sort is active, ensure all references are loaded so results are complete
   useEffect(() => {
