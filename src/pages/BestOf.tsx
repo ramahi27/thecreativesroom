@@ -132,12 +132,32 @@ function detectBars(url: string): Promise<"bars" | "clean" | "unknown"> {
   });
 }
 
+// Identity of a cover image for de-duplication. maxres/mq variants of the same
+// YouTube video collapse to one key so they count as the same image.
+function coverKey(url: string): string {
+  const m = url.match(/i\.ytimg\.com\/vi(?:_webp)?\/([^/]+)\//);
+  if (m) return "yt:" + m[1];
+  return url.split("?")[0];
+}
+
+// Run async work over items with a concurrency cap.
+async function mapLimit<T>(items: T[], limit: number, fn: (t: T) => Promise<void>) {
+  let i = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (i < items.length) {
+      const idx = i++;
+      await fn(items[idx]);
+    }
+  });
+  await Promise.all(workers);
+}
+
 // ──────────────────────────────────────────────────
 
 interface CardProps {
   c: (typeof collections)[number];
   index: number;
-  candidates: string[];
+  cover?: string;
   isAdmin: boolean;
   isHidden: boolean;
   refCount: number | undefined;
@@ -145,35 +165,11 @@ interface CardProps {
   onRestore: (slug: string) => void;
 }
 
-function CollectionCard({ c, index, candidates, isAdmin, isHidden, refCount, onHide, onRestore }: CardProps) {
-  const [src, setSrc] = useState<string | undefined>(undefined);
+function CollectionCard({ c, index, cover, isAdmin, isHidden, refCount, onHide, onRestore }: CardProps) {
+  const [src, setSrc] = useState<string | undefined>(cover);
   const [imgErr, setImgErr] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-
-  // Pick the first candidate cover that isn't letterboxed. YouTube thumbnails
-  // are already guaranteed 16:9 (no bars) by URL, so they skip the pixel check.
-  const candKey = candidates.join("|");
-  useEffect(() => {
-    let cancelled = false;
-    setImgErr(false);
-    setImgLoaded(false);
-    (async () => {
-      for (const cand of candidates) {
-        if (isYouTubeThumb(cand)) {
-          if (!cancelled) setSrc(cand);
-          return;
-        }
-        const verdict = await detectBars(cand);
-        if (cancelled) return;
-        if (verdict !== "bars") {
-          setSrc(cand);
-          return;
-        }
-      }
-      if (!cancelled) setSrc(undefined); // none usable → typographic placeholder
-    })();
-    return () => { cancelled = true; };
-  }, [candKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setSrc(cover); setImgErr(false); setImgLoaded(false); }, [cover]);
 
   const tooFew = refCount !== undefined && refCount < MIN_COLLECTION_REFS;
   const dimmed = (isHidden || tooFew) && isAdmin;
@@ -280,20 +276,21 @@ function CollectionCard({ c, index, candidates, isAdmin, isHidden, refCount, onH
 const BestOf = () => {
   const { isAdmin } = useAuth();
   const [counts, setCounts] = useState<Record<string, number>>({});
-  const [candidates, setCandidates] = useState<Record<string, string[]>>({});
+  const [covers, setCovers] = useState<Record<string, string>>({});
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
   const [sectionFilter, setSectionFilter] = useState<"all" | "best-of" | "agencies">("all");
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       const [refs, hiddenSlugs] = await Promise.all([
         fetchAllRefs(),
         loadHiddenSlugs(),
       ]);
       const nextCounts: Record<string, number> = {};
-      const nextCandidates: Record<string, string[]> = {};
+      const candBySlug: Record<string, string[]> = {};
       for (const c of collections) {
         const excl = collectionExcludesScenes(c);
         let count = 0;
@@ -313,13 +310,45 @@ const BestOf = () => {
           else otherC.push(cv);
         }
         nextCounts[c.slug] = count;
-        nextCandidates[c.slug] = Array.from(new Set([...imageC, ...ytC, ...otherC])).slice(0, 6);
+        candBySlug[c.slug] = Array.from(new Set([...imageC, ...ytC, ...otherC])).slice(0, 8);
       }
+      if (cancelled) return;
       setCounts(nextCounts);
-      setCandidates(nextCandidates);
       setHidden(hiddenSlugs);
       setReady(true);
+
+      // ── Resolve a UNIQUE, bar-free cover per collection ──
+      // 1. Bar-check every distinct non-YouTube candidate once (parallel).
+      const verdicts = new Map<string, "bars" | "clean" | "unknown">();
+      const toCheck = Array.from(
+        new Set(Object.values(candBySlug).flat().filter((u) => !isYouTubeThumb(u)))
+      );
+      await mapLimit(toCheck, 8, async (url) => {
+        verdicts.set(url, await detectBars(url));
+      });
+      if (cancelled) return;
+
+      // 2. Greedily assign covers so no image is used twice. Collections that
+      //    will actually be shown to the public get first pick.
+      const priority = (slug: string) =>
+        !hiddenSlugs.has(slug) && (nextCounts[slug] ?? 0) >= MIN_COLLECTION_REFS ? 0 : 1;
+      const ordered = [...collections].sort((a, b) => priority(a.slug) - priority(b.slug));
+
+      const usedKeys = new Set<string>();
+      const nextCovers: Record<string, string> = {};
+      for (const c of ordered) {
+        for (const cand of candBySlug[c.slug] || []) {
+          const key = coverKey(cand);
+          if (usedKeys.has(key)) continue;
+          if (!isYouTubeThumb(cand) && verdicts.get(cand) === "bars") continue;
+          usedKeys.add(key);
+          nextCovers[c.slug] = cand;
+          break;
+        }
+      }
+      if (!cancelled) setCovers(nextCovers);
     })();
+    return () => { cancelled = true; };
   }, []);
 
   const hide = async (slug: string) => {
@@ -376,7 +405,7 @@ const BestOf = () => {
           key={c.slug}
           c={c}
           index={i}
-          candidates={candidates[c.slug] ?? []}
+          cover={covers[c.slug]}
           isAdmin={isAdmin}
           isHidden={hidden.has(c.slug)}
           refCount={ready ? counts[c.slug] : undefined}
