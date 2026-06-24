@@ -63,6 +63,8 @@ const Index = () => {
   const loadingMoreRef = useRef(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState<number | null>(null);
+  // Tracks next DB row offset — starts at a random position each session for variety
+  const nextOffsetRef = useRef(0);
 
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
@@ -297,10 +299,24 @@ const Index = () => {
 
   useEffect(() => {
     (async () => {
-      const { list } = await fetchPage(0);
+      // One-time count so we can pick a random starting position in the archive.
+      // Done only on mount (not on each page load) so the table scan cost is acceptable.
+      const { count } = await supabase
+        .from("references")
+        .select("id", { count: "exact", head: true })
+        .eq("published", true);
+      const total = count ?? 0;
+      setTotalCount(total);
+
+      // Pick a random starting row so each session surfaces a different slice
+      const startOffset = total > PAGE_SIZE
+        ? Math.floor(Math.random() * (total - PAGE_SIZE + 1))
+        : 0;
+      nextOffsetRef.current = startOffset + PAGE_SIZE;
+
+      const { list } = await fetchPage(startOffset);
       setRefs(shuffle(list));
-      setTotalCount(null);
-      setHasMore(list.length === PAGE_SIZE);
+      setHasMore(nextOffsetRef.current < total);
       setLoading(false);
     })();
   }, []);
@@ -309,8 +325,9 @@ const Index = () => {
     if (loadingMoreRef.current || !hasMore) return;
     loadingMoreRef.current = true;
     setLoadingMore(true);
-    const from = refs.length; // capture before async gap — refs.length in closure is stale after await
+    const from = nextOffsetRef.current;
     const { list } = await fetchPage(from);
+    nextOffsetRef.current = from + PAGE_SIZE;
     setRefs((prev) => {
       const seen = new Set(prev.map((r) => r.id));
       const fresh = list.filter((r) => !seen.has(r.id));
