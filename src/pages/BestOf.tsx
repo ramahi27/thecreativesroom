@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { PageMeta } from "@/components/PageMeta";
+import { deriveThumbnail } from "@/lib/references";
 import { collections, refMatchesFilter, MIN_COLLECTION_REFS, isSceneRef, collectionExcludesScenes } from "@/lib/collections";
 
 // ──────────────────────────────────────────────────
@@ -33,23 +34,28 @@ async function saveHiddenSlugs(slugs: Set<string>): Promise<boolean> {
   return !error;
 }
 
-// Pull every published reference (minimal columns) so we can count how many
-// match each collection's filter client-side. Paginates past Supabase's
-// per-request row cap.
-async function fetchAllRefsMinimal() {
-  const all: Array<{
-    tags: string[] | null;
-    categories: string[] | null;
-    agency: string | null;
-    brand: string | null;
-    type: string | null;
-    year: number | null;
-  }> = [];
+type MinimalRef = {
+  tags: string[] | null;
+  categories: string[] | null;
+  agency: string | null;
+  brand: string | null;
+  type: string | null;
+  year: number | null;
+  thumbnail_url: string | null;
+  source_url: string | null;
+  media_url: string | null;
+  media_items: Array<{ url?: string; kind?: string }> | null;
+};
+
+// Pull every published reference (lean columns) so we can both count matches
+// per collection and pick a representative cover image — all client-side.
+async function fetchAllRefs(): Promise<MinimalRef[]> {
+  const all: MinimalRef[] = [];
   const PAGE = 1000;
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from("references")
-      .select("tags,categories,agency,brand,type,year")
+      .select("tags,categories,agency,brand,type,year,thumbnail_url,source_url,media_url,media_items")
       .eq("published", true)
       .range(from, from + PAGE - 1);
     if (error || !data || data.length === 0) break;
@@ -59,11 +65,20 @@ async function fetchAllRefsMinimal() {
   return all;
 }
 
+// Best available cover image for a reference.
+function coverFor(r: MinimalRef): string | null {
+  const items = Array.isArray(r.media_items) ? r.media_items : [];
+  const firstImg = items.find((it) => it?.kind === "image" && it.url)?.url ?? null;
+  if (r.type === "image") return firstImg || r.thumbnail_url || r.media_url || null;
+  return r.thumbnail_url || (r.source_url ? deriveThumbnail(r.source_url) : null) || firstImg || null;
+}
+
 // ──────────────────────────────────────────────────
 
-interface RowProps {
+interface CardProps {
   c: (typeof collections)[number];
   index: number;
+  cover?: string;
   isAdmin: boolean;
   isHidden: boolean;
   refCount: number | undefined;
@@ -71,56 +86,94 @@ interface RowProps {
   onRestore: (slug: string) => void;
 }
 
-function CollectionRow({ c, index, isAdmin, isHidden, refCount, onHide, onRestore }: RowProps) {
+function CollectionCard({ c, index, cover, isAdmin, isHidden, refCount, onHide, onRestore }: CardProps) {
+  const [imgErr, setImgErr] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
   const tooFew = refCount !== undefined && refCount < MIN_COLLECTION_REFS;
+  const dimmed = (isHidden || tooFew) && isAdmin;
+  const showImg = cover && !imgErr;
+
   return (
-    <div className="group flex items-start gap-6 md:gap-10 py-7 md:py-9 border-b hairline -mx-4 md:-mx-8 px-4 md:px-8">
-      <span className="font-mono text-xs text-muted-foreground/40 pt-2 shrink-0 w-6 text-right">
+    <Link
+      to={`/${c.section}/${c.slug}`}
+      className={`reveal-card group relative block aspect-[4/5] rounded-2xl overflow-hidden border hairline bg-card ${dimmed ? "opacity-50" : ""}`}
+      style={{ animation: "cardIn 0.4s ease both", animationDelay: `${Math.min(index * 35, 450)}ms` }}
+    >
+      {/* Cover */}
+      {showImg ? (
+        <img
+          src={cover}
+          alt={c.title}
+          loading="lazy"
+          onLoad={() => setImgLoaded(true)}
+          onError={() => setImgErr(true)}
+          className={`absolute inset-0 h-full w-full object-cover transition-all duration-700 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary via-card to-background">
+          <span className="font-display text-7xl font-black text-foreground/[0.06] select-none">
+            {c.title.slice(0, 2).toUpperCase()}
+          </span>
+        </div>
+      )}
+
+      {/* Readability gradient */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-black/10" />
+
+      {/* Index number */}
+      <span className="absolute top-3 left-3.5 font-mono text-[10px] text-white/50 tabular-nums">
         {String(index + 1).padStart(2, "0")}
       </span>
-      <Link
-        to={`/${c.section}/${c.slug}`}
-        className="flex-1 min-w-0 hover:text-primary transition-colors"
-      >
-        <h2 className={`font-display text-2xl md:text-4xl font-black tracking-tight leading-tight ${(isHidden || tooFew) && isAdmin ? "opacity-40" : ""}`}>
+
+      {/* Section tag */}
+      <span className="absolute top-3 right-3.5 font-mono text-[9px] uppercase tracking-widest text-white/45">
+        {c.section === "agencies" ? "Agency" : "Best Of"}
+      </span>
+
+      {/* Bottom content */}
+      <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="font-mono text-[10px] uppercase tracking-widest text-primary">
+            {refCount !== undefined ? `${refCount} refs` : "—"}
+          </span>
+          {isAdmin && isHidden && (
+            <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">· hidden</span>
+          )}
+          {isAdmin && !isHidden && tooFew && (
+            <span className="font-mono text-[9px] uppercase tracking-widest text-white/40">· auto-hidden</span>
+          )}
+        </div>
+        <h2 className="font-display text-xl md:text-2xl font-black tracking-tight leading-[1.05] text-white line-clamp-2 group-hover:text-primary transition-colors">
           {c.title}
         </h2>
-        <p className="font-body text-sm text-muted-foreground mt-2 max-w-xl leading-relaxed">
+        <p className="font-body text-[13px] text-white/55 mt-1.5 line-clamp-2 leading-snug">
           {c.seoDescription}
         </p>
-        {isAdmin && (
-          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/40 mt-1.5">
-            {refCount !== undefined ? `${refCount} refs` : "…"}
-            {isHidden ? " · hidden" : tooFew ? " · auto-hidden (< 8)" : ""}
-          </p>
-        )}
-      </Link>
-      {isAdmin ? (
-        <div className="shrink-0 pt-2">
+      </div>
+
+      {/* Admin controls */}
+      {isAdmin && (
+        <div className="absolute top-9 right-3 z-10">
           {isHidden ? (
             <button
               type="button"
-              onClick={() => onRestore(c.slug)}
-              className="font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border hairline hover:border-foreground/40 transition-colors whitespace-nowrap"
+              onClick={(e) => { e.preventDefault(); onRestore(c.slug); }}
+              className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/60 border border-white/20 text-white/80 hover:border-white/50 transition-colors backdrop-blur-sm"
             >
               Restore
             </button>
           ) : (
             <button
               type="button"
-              onClick={() => onHide(c.slug)}
-              className="font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 rounded-full border border-destructive/40 text-destructive hover:bg-destructive/10 transition-colors whitespace-nowrap"
+              onClick={(e) => { e.preventDefault(); onHide(c.slug); }}
+              className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/60 border border-destructive/50 text-destructive hover:bg-destructive/20 transition-colors backdrop-blur-sm"
             >
               Delete
             </button>
           )}
         </div>
-      ) : (
-        <span className="font-mono text-xs text-muted-foreground/30 group-hover:text-primary group-hover:translate-x-1 transition-all pt-2 shrink-0 hidden sm:block">
-          →
-        </span>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -129,6 +182,7 @@ function CollectionRow({ c, index, isAdmin, isHidden, refCount, onHide, onRestor
 const BestOf = () => {
   const { isAdmin } = useAuth();
   const [counts, setCounts] = useState<Record<string, number>>({});
+  const [covers, setCovers] = useState<Record<string, string>>({});
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const [ready, setReady] = useState(false);
   const [query, setQuery] = useState("");
@@ -137,17 +191,29 @@ const BestOf = () => {
   useEffect(() => {
     (async () => {
       const [refs, hiddenSlugs] = await Promise.all([
-        fetchAllRefsMinimal(),
+        fetchAllRefs(),
         loadHiddenSlugs(),
       ]);
-      const next: Record<string, number> = {};
+      const nextCounts: Record<string, number> = {};
+      const nextCovers: Record<string, string> = {};
       for (const c of collections) {
         const excl = collectionExcludesScenes(c);
-        next[c.slug] = refs.filter(
-          (r) => refMatchesFilter(r, c.filter) && !(excl && isSceneRef(r))
-        ).length;
+        let count = 0;
+        let cover: string | null = null;
+        for (const r of refs) {
+          if (!refMatchesFilter(r, c.filter)) continue;
+          if (excl && isSceneRef(r)) continue;
+          count++;
+          if (!cover) {
+            const cv = coverFor(r);
+            if (cv) cover = cv;
+          }
+        }
+        nextCounts[c.slug] = count;
+        if (cover) nextCovers[c.slug] = cover;
       }
-      setCounts(next);
+      setCounts(nextCounts);
+      setCovers(nextCovers);
       setHidden(hiddenSlugs);
       setReady(true);
     })();
@@ -200,6 +266,24 @@ const BestOf = () => {
     { key: "agencies", label: "Agencies" },
   ];
 
+  const renderGrid = (items: typeof collections) => (
+    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+      {items.map((c, i) => (
+        <CollectionCard
+          key={c.slug}
+          c={c}
+          index={i}
+          cover={covers[c.slug]}
+          isAdmin={isAdmin}
+          isHidden={hidden.has(c.slug)}
+          refCount={ready ? counts[c.slug] : undefined}
+          onHide={hide}
+          onRestore={restore}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <div className="min-h-screen grain">
       <PageMeta
@@ -209,7 +293,12 @@ const BestOf = () => {
       />
       <SiteHeader />
 
-      <section className="border-b hairline">
+      <section className="relative overflow-hidden border-b hairline">
+        {/* Subtle backlight */}
+        <div
+          className="absolute inset-0 -z-10 pointer-events-none"
+          style={{ background: "radial-gradient(ellipse 60% 50% at 50% 0%, hsl(18 95% 58% / 0.08), transparent)" }}
+        />
         <div className="container pt-20 md:pt-32 pb-10 md:pb-14">
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-primary mb-2">⏵ Collections</p>
           <h1 className="font-display text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] mt-4 max-w-3xl">
@@ -223,7 +312,7 @@ const BestOf = () => {
 
       <main className="container py-10">
         {/* Filter toolbar */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-10 pt-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-10 pt-2 sticky top-16 z-30 bg-background/80 backdrop-blur-md -mx-4 px-4 py-3 rounded-b-xl">
           <input
             type="text"
             value={query}
@@ -231,7 +320,7 @@ const BestOf = () => {
             placeholder="Filter collections…"
             className="w-full sm:max-w-xs rounded-xl bg-secondary/60 border border-border px-4 py-2.5 font-mono text-xs uppercase tracking-widest placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 transition-colors"
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto">
             {sectionChips.map((chip) => (
               <button
                 key={chip.key}
@@ -246,6 +335,9 @@ const BestOf = () => {
                 {chip.label}
               </button>
             ))}
+            <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/40 ml-1 whitespace-nowrap">
+              {list.length} {list.length === 1 ? "collection" : "collections"}
+            </span>
           </div>
         </div>
 
@@ -256,46 +348,20 @@ const BestOf = () => {
         ) : (
           <>
             {(sectionFilter === "all" || sectionFilter === "best-of") && bestOf.length > 0 && (
-              <div className="mb-14">
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-2 pt-6">
+              <div className="mb-16">
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-5">
                   Best Of The Best
                 </p>
-                <div>
-                  {bestOf.map((c, i) => (
-                    <CollectionRow
-                      key={c.slug}
-                      c={c}
-                      index={i}
-                      isAdmin={isAdmin}
-                      isHidden={hidden.has(c.slug)}
-                      refCount={ready ? counts[c.slug] : undefined}
-                      onHide={hide}
-                      onRestore={restore}
-                    />
-                  ))}
-                </div>
+                {renderGrid(bestOf)}
               </div>
             )}
 
             {(sectionFilter === "all" || sectionFilter === "agencies") && agencies.length > 0 && (
               <div>
-                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-2 pt-6">
+                <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-muted-foreground/50 mb-5">
                   Agencies
                 </p>
-                <div>
-                  {agencies.map((c, i) => (
-                    <CollectionRow
-                      key={c.slug}
-                      c={c}
-                      index={i}
-                      isAdmin={isAdmin}
-                      isHidden={hidden.has(c.slug)}
-                      refCount={ready ? counts[c.slug] : undefined}
-                      onHide={hide}
-                      onRestore={restore}
-                    />
-                  ))}
-                </div>
+                {renderGrid(agencies)}
               </div>
             )}
           </>
