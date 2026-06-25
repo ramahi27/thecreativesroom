@@ -152,9 +152,11 @@ const Logs = () => {
   const [enrichStats, setEnrichStats] = useState<{ checked: number; fixed: number; total: number } | null>(null);
   const [expandedVisualId, setExpandedVisualId] = useState<string | null>(null);
 
-  // Concept summary generation
+  // Concept summary generation (web-grounded via enrich-concept edge fn)
   const [conceptRunning, setConceptRunning] = useState(false);
   const [conceptProgress, setConceptProgress] = useState<string>("");
+  const [conceptLog, setConceptLog] = useState<EnrichEntry[]>([]);
+  const [conceptStats, setConceptStats] = useState<{ checked: number; fixed: number; total: number } | null>(null);
   // Whether the concept_summary column exists in the DB (migration applied).
   // Detected at load time; gates all concept reads/writes so the rest of the
   // page keeps working before the migration is run.
@@ -493,11 +495,10 @@ const Logs = () => {
     if (!r.editing_style && r.type === "video" && typeof meta.editing_style === "string" && meta.editing_style.trim()) {
       update.editing_style = meta.editing_style.trim(); changes.push({ field: "editing_style", from: null, to: "(filled)" });
     }
-    if (conceptSupported && !r.concept_summary && typeof meta.concept_summary === "string" && meta.concept_summary.trim()) {
-      update.concept_summary = meta.concept_summary.trim();
-      update.concept_generated_at = new Date().toISOString();
-      changes.push({ field: "concept_summary", from: null, to: "(filled)" });
-    }
+    // NOTE: concept_summary is intentionally NOT filled here. It is populated
+    // exclusively by the web-grounded enrich-concept edge function (the Concept
+    // button) so we never stamp concept_generated_at with a weaker training-data
+    // guess that would then be skipped by the real research pass.
 
     const { error: upErr } = await supabase.from("references").update(update as any).eq("id", id);
     if (upErr) throw new Error(upErr.message);
@@ -715,70 +716,116 @@ const Logs = () => {
     setRows((prev) => prev.map((r) => (!r.visual_summary ? { ...r, visual_enriched_at: null } : r)));
   }
 
-  // ── Concept summary bulk generation ─────────────────────────────────────────
+  // ── Concept summary — web-grounded via enrich-concept edge function ──────────
+  // Streams NDJSON (progress | fix | skip | warn | done). The edge function
+  // scrapes the source URL + web-searches case studies, then asks Gemini Pro for
+  // the creative idea/strategy — same evidence pipeline as Enrich visual.
+  // We paginate batches of 50 until the whole library is covered. Skipped /
+  // errored refs stay NULL, so we advance the offset past them (listSize - fixed)
+  // to avoid re-pulling them forever.
   async function handleConceptSummary(force = false) {
     if (conceptRunning) return;
     if (!conceptSupported) {
       toast.error("Concept summary not available yet — run the database migration to add the concept_summary column.");
       return;
     }
+    if (force && !confirm("Re-research concept summaries for ALL entries (overwrite existing)?")) return;
     setConceptRunning(true);
-    setConceptProgress("Loading refs…");
+    setConceptProgress("Starting research…");
+    setConceptLog([]);
+    setConceptStats(null);
     try {
-      let query = (supabase as any)
-        .from("references")
-        .select("id,title,type,brand,agency,year,source_url,notes,concept_summary")
-        .eq("published", true)
-        .order("created_at", { ascending: false });
-      if (!force) query = query.is("concept_generated_at", null);
-      const { data: refs, error: fetchErr } = await query;
-      if (fetchErr) throw new Error(fetchErr.message);
-      const list: any[] = refs || [];
-      if (list.length === 0) {
-        setConceptProgress("Nothing to process — all refs already have a concept summary.");
-        toast.info("All entries already have concept summaries");
-        return;
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+
+      let offset = 0;          // start of the next batch within the NULL set
+      let totalChecked = 0;
+      let totalFixed = 0;
+      let grandTotal = 0;
+      const MAX_ITERS = 80;
+
+      for (let iter = 0; iter < MAX_ITERS; iter++) {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-concept`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ offset, limit: 50, force }),
+        });
+        if (!res.ok || !res.body) {
+          const txt = await res.text().catch(() => "");
+          throw new Error(`enrich-concept failed (${res.status})${txt ? `: ${txt.slice(0, 120)}` : ""}`);
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        let batchFixed = 0;
+        let batchChecked = 0;
+        let batchDone: any = null;
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            let msg: any;
+            try { msg = JSON.parse(line); } catch { continue; }
+            if (msg.type === "progress") { setConceptProgress(msg.message); }
+            else if (msg.type === "fix") {
+              batchFixed++;
+              const cs = msg.changes?.find((c: any) => c.field === "concept_summary")?.to ?? null;
+              setConceptProgress(`✓ ${msg.title}`);
+              setConceptLog((prev) => [...prev, { kind: "fix", title: msg.title ?? "?", strength: msg.strength ?? "none", visualSummary: cs } as EnrichEntry].slice(-100));
+              if (msg.refId && cs) {
+                const now = new Date().toISOString();
+                setRows((prev) => prev.map((r) => r.id === msg.refId ? { ...r, concept_summary: cs, concept_generated_at: now } : r));
+              }
+            }
+            else if (msg.type === "skip") {
+              setConceptLog((prev) => [...prev, { kind: "skip", title: msg.title ?? msg.message ?? "?" } as EnrichEntry].slice(-100));
+            }
+            else if (msg.type === "warn") {
+              setConceptLog((prev) => [...prev, { kind: "warn", message: msg.message } as EnrichEntry].slice(-100));
+            }
+            else if (msg.type === "error") { throw new Error(msg.message); }
+            else if (msg.type === "done") {
+              batchDone = msg;
+              batchChecked = msg.checked ?? 0;
+              setConceptProgress(msg.message);
+            }
+          }
+        }
+
+        totalFixed += batchFixed;
+        totalChecked += batchChecked;
+        grandTotal = batchDone?.total ?? grandTotal;
+        setConceptStats({ checked: totalChecked, fixed: totalFixed, total: grandTotal });
+
+        const listSize: number = batchDone?.listSize ?? 0;
+        if (listSize === 0) break; // no more rows to process
+
+        if (force) {
+          if (!batchDone?.hasMore) break;
+          offset = batchDone?.nextOffset ?? (offset + listSize);
+        } else {
+          // Fixed rows leave the NULL set; skipped/errored stay at the front of
+          // it. Advance the offset past everything that stayed NULL this batch
+          // (offset is unchanged when the whole batch was fixed). This converges
+          // because each batch either makes progress or pushes offset past the
+          // remaining un-fixable rows until listSize hits 0.
+          offset += listSize - batchFixed;
+        }
       }
-      setConceptProgress(`Generating concept summaries for ${list.length} refs…`);
-      let checked = 0;
-      let fixed = 0;
-      const CONCURRENCY = 4;
-      for (let i = 0; i < list.length; i += CONCURRENCY) {
-        const chunk = list.slice(i, i + CONCURRENCY);
-        await Promise.all(chunk.map(async (ref: any) => {
-          try {
-            const { data, error } = await supabase.functions.invoke("generate-metadata", {
-              body: {
-                title: ref.title, type: ref.type || null,
-                brand: ref.brand || null, agency: ref.agency || null,
-                year: ref.year || null, source_url: ref.source_url || null, notes: ref.notes || null,
-              },
-            });
-            checked++;
-            const meta = (data as any)?.metadata;
-            if (error || !meta) return;
-            const cs = typeof meta.concept_summary === "string" ? meta.concept_summary.trim() : null;
-            if (!cs) return;
-            const now = new Date().toISOString();
-            const { error: upErr } = await supabase
-              .from("references")
-              .update({ concept_summary: cs, concept_generated_at: now } as any)
-              .eq("id", ref.id);
-            if (upErr) return;
-            fixed++;
-            setConceptProgress(`✓ ${ref.title}`);
-            setRows((prev) => prev.map((r) =>
-              r.id === ref.id ? { ...r, concept_summary: cs, concept_generated_at: now } : r
-            ));
-          } catch { /* silently skip */ }
-        }));
-        setConceptProgress(`${checked}/${list.length} processed, ${fixed} generated…`);
-      }
-      setConceptProgress(`Done — ${fixed}/${checked} concept summaries generated.`);
-      if (fixed > 0) toast.success(`Generated ${fixed} concept summaries`);
-      else toast.info("No concept summaries could be generated");
+
+      setConceptProgress(`Done — ${totalFixed} concept summaries generated.`);
+      if (totalFixed > 0) toast.success(`Generated ${totalFixed} concept summaries from web research`);
+      else toast.info("No concept summaries generated — evidence too thin");
     } catch (err: any) {
       toast.error(err.message);
+      setConceptProgress(`Error: ${err.message}`);
     } finally {
       setConceptRunning(false);
     }
@@ -967,8 +1014,17 @@ const Logs = () => {
             title="Generate creative idea & strategy summaries for refs that are missing them"
           >
             <Lightbulb className="h-3.5 w-3.5 mr-2" />
-            {conceptRunning ? conceptProgress || "Generating…" : `Concept (${countMissingConcept})`}
+            {conceptRunning ? conceptProgress || "Researching…" : `Concept (${countMissingConcept})`}
           </Button>
+          <button
+            type="button"
+            onClick={() => handleConceptSummary(true)}
+            disabled={conceptRunning}
+            className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-40"
+            title="Re-research concept summaries for ALL entries (overwrite existing)"
+          >
+            Force re-research
+          </button>
           <button
             type="button"
             onClick={() => handleEnrichVisual(true)}
@@ -1058,6 +1114,57 @@ const Logs = () => {
                       <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
                       <span className="font-mono text-xs text-muted-foreground truncate">{e.title}</span>
                       <span className="font-mono text-[10px] text-muted-foreground/50 shrink-0 ml-auto">skipped</span>
+                    </div>
+                  ) : (
+                    <div key={i} className="px-3 py-2.5 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                          e.strength === "strong" ? "bg-green-500" :
+                          e.strength === "weak" ? "bg-yellow-500" : "bg-muted-foreground/40"
+                        }`} />
+                        <span className="font-mono text-xs text-foreground truncate">{e.title}</span>
+                        <span className={`font-mono text-[10px] shrink-0 ml-auto uppercase tracking-widest ${
+                          e.strength === "strong" ? "text-green-500/70" :
+                          e.strength === "weak" ? "text-yellow-500/70" : "text-muted-foreground/50"
+                        }`}>{e.strength}</span>
+                      </div>
+                      {e.visualSummary && (
+                        <p className="font-mono text-[10px] text-muted-foreground/70 leading-relaxed pl-3.5 line-clamp-2">
+                          {e.visualSummary}
+                        </p>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {(conceptRunning || conceptLog.length > 0) && (
+          <div className="container pb-3">
+            <div className="border hairline bg-secondary/40 max-h-80 overflow-auto">
+              <div className="sticky top-0 bg-secondary/90 backdrop-blur-sm px-3 py-2 flex items-center justify-between border-b hairline z-10">
+                <span className="font-mono text-xs text-primary">
+                  {conceptRunning ? conceptProgress || "Researching…" : "Concept research complete"}
+                </span>
+                {conceptStats && (
+                  <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                    {conceptStats.fixed} generated
+                  </span>
+                )}
+              </div>
+              <div className="divide-y divide-border/40">
+                {conceptLog.length === 0 && conceptRunning && (
+                  <p className="px-3 py-2 font-mono text-xs text-muted-foreground">Scraping sources & searching the web…</p>
+                )}
+                {conceptLog.map((e, i) =>
+                  e.kind === "warn" ? (
+                    <p key={i} className="px-3 py-2 font-mono text-xs text-yellow-600/80">⚠ {e.message}</p>
+                  ) : e.kind === "skip" ? (
+                    <div key={i} className="px-3 py-2 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
+                      <span className="font-mono text-xs text-muted-foreground truncate">{e.title}</span>
+                      <span className="font-mono text-[10px] text-muted-foreground/50 shrink-0 ml-auto">thin evidence</span>
                     </div>
                   ) : (
                     <div key={i} className="px-3 py-2.5 space-y-1">
