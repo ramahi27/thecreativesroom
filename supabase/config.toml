@@ -22,6 +22,3 @@ verify_jwt = false
 
 [functions.send-newsletter]
 verify_jwt = false
-
-[functions.scrape-link]
-verify_jwt = false
