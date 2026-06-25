@@ -8,6 +8,9 @@ project_id = "vaogvackqxfhureqbprw"
 [functions.audit-recent]
 verify_jwt = false
 
+[functions.scrape-link]
+verify_jwt = false
+
 [functions.scrape-rss]
 verify_jwt = false
 
