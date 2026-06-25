@@ -176,9 +176,14 @@ const Drafts = () => {
         body: JSON.stringify({ url }),
       });
       clearInterval(stepTimer);
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || data?.message || `Server error: ${JSON.stringify(data)}`);
-      if (!data?.success) throw new Error(data?.error || `Server error: ${JSON.stringify(data)}`);
+      const raw = await res.text();
+      let data: any = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { /* non-json */ }
+      if (!res.ok) {
+        const detail = data?.error || data?.message || raw?.slice(0, 200) || res.statusText || `HTTP ${res.status}`;
+        throw new Error(`${res.status}: ${detail}`);
+      }
+      if (!data?.success) throw new Error(data?.error || data?.message || "Scrape failed");
       toast.dismiss(tId);
       if (data.playlist) {
         toast.success(`Playlist imported — ${data.count} drafts created`, {
