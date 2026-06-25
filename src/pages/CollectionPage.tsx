@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { PageMeta } from "@/components/PageMeta";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { type Reference } from "@/lib/references";
-import { findCollection, collections, MIN_COLLECTION_REFS, isSceneRef } from "@/lib/collections";
+import { findCollection, collections, MIN_COLLECTION_REFS, isSceneRef, collectionExcludesScenes } from "@/lib/collections";
 import NotFound from "@/pages/NotFound";
 
 function SkeletonCard() {
