@@ -1043,9 +1043,9 @@ Deno.serve(async (req) => {
     // ===== Single URL =====
     const result = await scrapeAndInsert(rawUrl, supabase, userId, categories);
     if (!result.ok) {
-      // Return 200 with success:false so the client toast can show the real reason
-      // (supabase.functions.invoke hides response bodies on non-2xx status codes).
-      return json({ success: false, error: result.error });
+      const errMsg = (result as any).error || "Unknown scrape error (no detail returned)";
+      console.error("[scrape-link] scrapeAndInsert failed", { rawUrl, errMsg });
+      return json({ success: false, error: errMsg, url: rawUrl });
     }
     if ((result as any).split && Array.isArray((result as any).drafts)) {
       const drafts = (result as any).drafts;
@@ -1054,6 +1054,7 @@ Deno.serve(async (req) => {
     return json({ success: true, draft: result.draft, image_warning: !!(result as any).image_warning });
   } catch (e) {
     console.error("[scrape-link] unhandled error", e);
-    return json({ success: false, error: e instanceof Error ? e.message : "Unknown error" });
+    const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e) || "Unknown error";
+    return json({ success: false, error: msg }, 500);
   }
 });
