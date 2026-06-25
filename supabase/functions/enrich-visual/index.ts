@@ -424,8 +424,8 @@ Deno.serve(async (req) => {
           try {
             const result = await enrichOne(singleRef as RefRow, apiKey, firecrawlKey, ytKey, googleKey, googleCx);
             const nowIso = new Date().toISOString();
-            const update: Record<string, unknown> = { visual_enriched_at: nowIso };
             const changes: { field: string; to: string | null }[] = [];
+            const update: Record<string, unknown> = {};
             if (result?.visual_summary) {
               update.visual_summary = result.visual_summary;
               changes.push({ field: "visual_summary", to: result.visual_summary });
@@ -434,20 +434,23 @@ Deno.serve(async (req) => {
               update.editing_style = result.editing_style;
               changes.push({ field: "editing_style", to: result.editing_style });
             }
-            const { error: upErr } = await admin.from("references").update(update).eq("id", singleRef.id);
-            if (upErr) {
-              send({ type: "warn", message: `Could not update "${singleRef.title}": ${upErr.message}` });
+            if (changes.length === 0) {
+              send({ type: "skip", refId: singleRef.id, title: singleRef.title, strength: result?.evidence_strength ?? "none", message: `— ${singleRef.title}: evidence too thin, nothing written.` });
             } else {
-              send({
-                type: "fix",
-                refId: singleRef.id,
-                title: singleRef.title,
-                changes,
-                strength: result?.evidence_strength ?? "none",
-                message: changes.length > 0
-                  ? `✓ ${singleRef.title} (${result?.evidence_strength}): ${changes.map((c) => c.field).join(", ")}`
-                  : `— ${singleRef.title}: evidence too thin, nothing written.`,
-              });
+              update.visual_enriched_at = nowIso;
+              const { error: upErr } = await admin.from("references").update(update).eq("id", singleRef.id);
+              if (upErr) {
+                send({ type: "warn", message: `Could not update "${singleRef.title}": ${upErr.message}` });
+              } else {
+                send({
+                  type: "fix",
+                  refId: singleRef.id,
+                  title: singleRef.title,
+                  changes,
+                  strength: result?.evidence_strength ?? "none",
+                  message: `✓ ${singleRef.title} (${result?.evidence_strength}): ${changes.map((c) => c.field).join(", ")}`,
+                });
+              }
             }
           } catch (e) {
             send({ type: "warn", message: `Skipped "${singleRef.title}": ${e instanceof Error ? e.message : String(e)}` });
@@ -491,8 +494,8 @@ Deno.serve(async (req) => {
               try {
                 const result = await enrichOne(ref, apiKey, firecrawlKey, ytKey, googleKey, googleCx);
                 checked++;
-                const update: Record<string, unknown> = { visual_enriched_at: nowIso };
                 const changes: { field: string; to: string | null }[] = [];
+                const update: Record<string, unknown> = {};
                 if (result?.visual_summary) {
                   update.visual_summary = result.visual_summary;
                   changes.push({ field: "visual_summary", to: result.visual_summary });
@@ -501,13 +504,16 @@ Deno.serve(async (req) => {
                   update.editing_style = result.editing_style;
                   changes.push({ field: "editing_style", to: result.editing_style });
                 }
+                if (changes.length === 0) {
+                  // Evidence too thin — do NOT stamp visual_enriched_at so the ref is retried
+                  // when better evidence becomes available (Firecrawl/Google keys added, etc.)
+                  send({ type: "skip", refId: ref.id, title: ref.title, strength: result?.evidence_strength ?? "none", message: `— ${ref.title}: evidence too thin.` });
+                  return;
+                }
+                update.visual_enriched_at = nowIso;
                 const { error: upErr } = await admin.from("references").update(update).eq("id", ref.id);
                 if (upErr) {
                   send({ type: "warn", message: `Could not update "${ref.title}": ${upErr.message}` });
-                  return;
-                }
-                if (changes.length === 0) {
-                  send({ type: "skip", refId: ref.id, title: ref.title, strength: result?.evidence_strength ?? "none", message: `— ${ref.title}: evidence too thin.` });
                   return;
                 }
                 fixed++;

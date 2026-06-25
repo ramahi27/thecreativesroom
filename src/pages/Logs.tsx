@@ -172,6 +172,8 @@ const Logs = () => {
   const countDeadLinks = useMemo(() => rows.filter((r) => r.link_status === "dead").length, [rows]);
   const countMissingAI = useMemo(() => rows.filter((r) => !r.has_ai_metadata).length, [rows]);
   const countNotEnriched = useMemo(() => rows.filter((r) => !r.visual_enriched_at).length, [rows]);
+  // Refs stamped as enriched but still missing visual_summary — stale from failed prior runs
+  const countStaleEnrichment = useMemo(() => rows.filter((r) => !!r.visual_enriched_at && !r.visual_summary).length, [rows]);
   const countPendingProcess = useMemo(() => {
     const cutoff = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
     return rows.filter((r) => !r.has_ai_metadata || (!r.audited_at && (r.approved_at ?? r.created_at) > cutoff)).length;
@@ -589,6 +591,20 @@ const Logs = () => {
   }
 
 
+  // ── Reset enrichment flags for refs without visual_summary ───────────────────────────────────────────
+  async function handleResetEnrichment() {
+    if (!confirm(`Clear visual_enriched_at for ${countStaleEnrichment} ref(s) that have no visual_summary? Enrich visual will retry them.`)) return;
+    const { error } = await (supabase
+      .from("references")
+      .update({ visual_enriched_at: null } as any)
+      .is("visual_summary", null)
+      .eq("published", true) as any);
+    if (error) { toast.error(error.message); return; }
+    const n = countStaleEnrichment;
+    toast.success(`Reset ${n} ref${n === 1 ? "" : "s"} — run Enrich visual to retry`);
+    setRows((prev) => prev.map((r) => (!r.visual_summary ? { ...r, visual_enriched_at: null } : r)));
+  }
+
   // ── Reports ──────────────────────────────────────────────────────────────────────────────────────────
   async function resolveReport(id: string) {
     const { error } = await supabase.from("reference_reports").update({ resolved: true }).eq("id", id);
@@ -705,6 +721,17 @@ const Logs = () => {
           >
             Force re-enrich
           </button>
+          {countStaleEnrichment > 0 && (
+            <button
+              type="button"
+              onClick={handleResetEnrichment}
+              disabled={enriching}
+              className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-40"
+              title="Clear visual_enriched_at for refs that have no visual_summary, so Enrich visual will retry them"
+            >
+              Reset failed ({countStaleEnrichment})
+            </button>
+          )}
         </div>
         {(processing || processingId !== null || processLog.length > 0) && (
           <div className="container pb-3">
