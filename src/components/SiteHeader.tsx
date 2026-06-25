@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Settings, LayoutDashboard, ScrollText, Users, LogOut, Sun, Moon, Zap, Menu, X, Mail } from "lucide-react";
+import { Settings, LayoutDashboard, ScrollText, Users, LogOut, Sun, Moon, Zap, Menu, X, Mail, FileText } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 
 export function SiteHeader() {
@@ -74,11 +74,6 @@ export function SiteHeader() {
               <Link to="/add">+ New</Link>
             </Button>
           )}
-          {isAdmin && (
-            <Button asChild variant="ghost" size="sm" className="font-mono text-xs uppercase tracking-widest">
-              <Link to="/drafts">Drafts</Link>
-            </Button>
-          )}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -132,6 +127,10 @@ export function SiteHeader() {
                     <DropdownMenuItem onClick={() => navigate("/settings")} className="rounded-lg gap-2.5">
                       <LayoutDashboard className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
                       <span className="font-body text-sm">Admin settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/drafts")} className="rounded-lg gap-2.5">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
+                      <span className="font-body text-sm">Drafts</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate("/logs")} className="rounded-lg gap-2.5">
                       <ScrollText className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
@@ -219,6 +218,10 @@ export function SiteHeader() {
                     <DropdownMenuItem onClick={() => navigate("/settings")} className="rounded-lg gap-2.5">
                       <LayoutDashboard className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
                       <span className="font-body text-sm">Admin settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate("/drafts")} className="rounded-lg gap-2.5">
+                      <FileText className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
+                      <span className="font-body text-sm">Drafts</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate("/logs")} className="rounded-lg gap-2.5">
                       <ScrollText className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.8} />
