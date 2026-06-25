@@ -567,7 +567,7 @@ const AddReference = () => {
             return (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className={labelCls}>{isFilmTv ? "Title" : "Brand"}</Label>
+                  <Label className={labelCls}>{isFilmTv ? "Movie/Show Title" : "Brand"}</Label>
                   <Input value={brand} onChange={(e) => setBrand(e.target.value)} className={inputCls} />
                 </div>
                 <div className="space-y-2">
