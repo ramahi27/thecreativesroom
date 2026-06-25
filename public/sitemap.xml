@@ -21,6 +21,24 @@
     <priority>0.3</priority>
   </url>
   <url>
+    <loc>https://thecreativesroom.com/ref/b9d63f25-c349-424a-a660-f8f9eb657e4a-the-economist</loc>
+    <lastmod>2026-06-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/7b1b86cc-ab09-4c6d-850c-995e2a598238-the-economist</loc>
+    <lastmod>2026-06-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/4b747e21-7995-43b2-ae1a-aec324c67473-the-economist</loc>
+    <lastmod>2026-06-24</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
     <loc>https://thecreativesroom.com/ref/ddfb2d7d-10d5-423f-b740-1f45f63f5eee-the-art-of-the-perfect-shot</loc>
     <lastmod>2026-06-24</lastmod>
     <changefreq>weekly</changefreq>
@@ -6003,24 +6021,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/d8f0fbaf-47d2-4f48-8994-2f27bcb586de-think-before-you-adopt</loc>
-    <lastmod>2026-06-20</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/78da2a06-3432-40f9-b176-d9ba7b6d6261-thank-you</loc>
-    <lastmod>2026-06-22</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
-    <loc>https://thecreativesroom.com/ref/9cae4fc0-67d6-4f8e-bde7-fec3dfbe0cf1-dad-s-new-car</loc>
-    <lastmod>2026-06-18</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://thecreativesroom.com/u/laith-feab0c</loc>
     <lastmod>2026-05-06</lastmod>
     <changefreq>weekly</changefreq>
@@ -6113,6 +6113,12 @@
   <url>
     <loc>https://thecreativesroom.com/u/cornwallis400</loc>
     <lastmod>2026-06-23</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/u/copyguy</loc>
+    <lastmod>2026-06-25</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>

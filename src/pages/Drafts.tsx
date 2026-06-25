@@ -16,6 +16,29 @@ import { enrichReferenceMetadata } from "@/lib/enrichMetadata";
 
 const PAGE_SIZE = 24;
 
+/**
+ * Returns the 11-char video id for a single YouTube video URL, or null.
+ * Playlists return null on purpose — those need the server to expand into
+ * one draft per video.
+ */
+function parseYouTubeVideo(raw: string): string | null {
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.replace(/^www\./, "");
+    if (u.searchParams.get("list")) return null; // playlist → let the server handle it
+    let id: string | null = null;
+    if (host === "youtu.be") id = u.pathname.slice(1) || null;
+    else if (host.endsWith("youtube.com")) {
+      if (u.pathname === "/watch") id = u.searchParams.get("v");
+      else if (u.pathname.startsWith("/shorts/")) id = u.pathname.split("/")[2] || null;
+      else if (u.pathname.startsWith("/embed/")) id = u.pathname.split("/")[2] || null;
+    }
+    return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 const SOURCE_LABELS: Record<string, string> = {
   all: "All sources",
   deckofbrilliance: "Deck of Brilliance",
@@ -147,6 +170,68 @@ const Drafts = () => {
     );
   }
 
+  // Insert a YouTube video draft directly from the browser. The admin is
+  // already authenticated and inserts/updates references directly elsewhere on
+  // this page, so this needs no edge function — it works even if the
+  // scrape-link function deployment is stale. Returns the saved title.
+  async function importYouTubeDirect(videoId: string): Promise<string> {
+    const sourceUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    let title = "YouTube video";
+    let brand: string | null = null;
+    // Best-effort title/author from YouTube oEmbed. May be blocked by CORS in
+    // the browser — that's fine, we fall back to a placeholder the admin edits
+    // and enrichReferenceMetadata backfills below.
+    try {
+      const r = await fetch(
+        `https://www.youtube.com/oembed?url=${encodeURIComponent(sourceUrl)}&format=json`,
+        { signal: AbortSignal.timeout(6000) },
+      );
+      if (r.ok) {
+        const d = await r.json();
+        if (d?.title) title = String(d.title).slice(0, 250);
+        if (d?.author_name) brand = String(d.author_name);
+      }
+    } catch {
+      /* CORS / network — keep the fallback title */
+    }
+
+    const { data: inserted, error } = await supabase
+      .from("references")
+      .insert({
+        title,
+        type: "video",
+        source_url: sourceUrl,
+        thumbnail_url: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+        media_url: null,
+        media_items: [],
+        brand,
+        agency: null,
+        year: null,
+        categories: [],
+        tags: [],
+        created_by: user?.id ?? null,
+        published: false,
+        source: "ai_scrape",
+      })
+      .select("id, title")
+      .single();
+    if (error) throw new Error(error.message);
+    // Backfill brand/agency/year/tags from the title (best-effort, silent).
+    enrichReferenceMetadata(inserted.id);
+    return inserted.title;
+  }
+
+  async function refreshDrafts() {
+    const { data: refreshed, count } = await supabase
+      .from("references")
+      .select("*", { count: "exact" })
+      .eq("published", false)
+      .order("created_at", { ascending: false })
+      .range(0, PAGE_SIZE - 1);
+    setDrafts((refreshed as unknown as Reference[]) || []);
+    setTotal(count || 0);
+  }
+
   async function handleScrape(e: React.FormEvent) {
     e.preventDefault();
     const url = scrapeUrl.trim();
@@ -162,6 +247,20 @@ const Drafts = () => {
       }
     }, 1200);
     try {
+      // YouTube single videos import directly — no edge function involved — so
+      // this works regardless of scrape-link's deployment state.
+      const ytId = parseYouTubeVideo(url);
+      if (ytId) {
+        const savedTitle = await importYouTubeDirect(ytId);
+        clearInterval(stepTimer);
+        toast.dismiss(tId);
+        toast.success("Ready to review", { description: savedTitle });
+        setScrapeUrl("");
+        setPage(0);
+        await refreshDrafts();
+        return;
+      }
+
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -176,9 +275,14 @@ const Drafts = () => {
         body: JSON.stringify({ url }),
       });
       clearInterval(stepTimer);
-      const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || data?.message || `Server error (${res.status})`);
-      if (!data?.success) throw new Error(data?.error || `Unexpected response: ${JSON.stringify(data)}`);
+      const raw = await res.text();
+      let data: any = null;
+      try { data = raw ? JSON.parse(raw) : null; } catch { /* non-json */ }
+      if (!res.ok) {
+        const detail = data?.error || data?.message || raw?.slice(0, 200) || res.statusText || `HTTP ${res.status}`;
+        throw new Error(`${res.status}: ${detail}`);
+      }
+      if (!data?.success) throw new Error(data?.error || data?.message || "Scrape failed");
       toast.dismiss(tId);
       if (data.playlist) {
         toast.success(`Playlist imported — ${data.count} drafts created`, {
@@ -199,14 +303,7 @@ const Drafts = () => {
       }
       setScrapeUrl("");
       setPage(0);
-      const { data: refreshed, count } = await supabase
-        .from("references")
-        .select("*", { count: "exact" })
-        .eq("published", false)
-        .order("created_at", { ascending: false })
-        .range(0, PAGE_SIZE - 1);
-      setDrafts((refreshed as unknown as Reference[]) || []);
-      setTotal(count || 0);
+      await refreshDrafts();
     } catch (err: any) {
       clearInterval(stepTimer);
       toast.dismiss(tId);
