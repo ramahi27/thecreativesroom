@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Search, Sparkles, Check, X as XIcon, Link2, Link2Off, ImageOff,
   ArrowUpDown, ArrowUp, ArrowDown, Wand2, Eye, EyeOff, ChevronDown,
+  Pencil, Lightbulb,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -60,6 +61,9 @@ type LogRow = {
   editing_style?: string | null;
   visual_summary?: string | null;
   visual_enriched_at?: string | null;
+  concept_summary?: string | null;
+  concept_generated_at?: string | null;
+  tags?: string[] | null;
   has_ai_metadata?: boolean;
   link_status?: string | null;
   link_checked_at?: string | null;
@@ -148,6 +152,19 @@ const Logs = () => {
   const [enrichStats, setEnrichStats] = useState<{ checked: number; fixed: number; total: number } | null>(null);
   const [expandedVisualId, setExpandedVisualId] = useState<string | null>(null);
 
+  // Concept summary generation
+  const [conceptRunning, setConceptRunning] = useState(false);
+  const [conceptProgress, setConceptProgress] = useState<string>("");
+
+  // Inline editing
+  type EditDraft = {
+    brand: string; agency: string; year: string; tags: string;
+    visual_summary: string; editing_style: string; concept_summary: string;
+  };
+  const [editingRowId, setEditingRowId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
+
   // Link health
   const [linkChecking, setLinkChecking] = useState(false);
   const [linkResults, setLinkResults] = useState<{ checked: number; ok: number; dead: number; errored: number; message: string } | null>(null);
@@ -182,6 +199,7 @@ const Logs = () => {
     const cutoff = new Date(Date.now() - redoDays * 24 * 60 * 60 * 1000).toISOString();
     return rows.filter((r) => (r.approved_at ?? r.created_at) > cutoff).length;
   }, [rows, redoDays]);
+  const countMissingConcept = useMemo(() => rows.filter((r) => !r.concept_summary).length, [rows]);
 
   // ── Sort handler ──────────────────────────────────────────────────────────────────────────────────────
   function handleSort(col: SortCol) {
@@ -259,6 +277,8 @@ const Logs = () => {
         brand: string | null; agency: string | null; year: number | null;
         editing_style: string | null; visual_summary: string | null;
         visual_enriched_at: string | null;
+        concept_summary: string | null; concept_generated_at: string | null;
+        tags: string[] | null;
         link_status: string | null; link_checked_at: string | null;
         audited_at: string | null;
       }>();
@@ -267,13 +287,15 @@ const Logs = () => {
         const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
-          .select("id,brand,agency,year,editing_style,visual_summary,visual_enriched_at,link_status,link_checked_at,audited_at")
+          .select("id,brand,agency,year,editing_style,visual_summary,visual_enriched_at,concept_summary,concept_generated_at,tags,link_status,link_checked_at,audited_at")
           .in("id", slice);
         (extra || []).forEach((t: any) =>
           infoMap.set(t.id, {
             brand: t.brand ?? null, agency: t.agency ?? null, year: t.year ?? null,
             editing_style: t.editing_style ?? null, visual_summary: t.visual_summary ?? null,
             visual_enriched_at: t.visual_enriched_at ?? null,
+            concept_summary: t.concept_summary ?? null, concept_generated_at: t.concept_generated_at ?? null,
+            tags: t.tags ?? null,
             link_status: t.link_status ?? null, link_checked_at: t.link_checked_at ?? null,
             audited_at: t.audited_at ?? null,
           }),
@@ -290,6 +312,9 @@ const Logs = () => {
             editing_style: info?.editing_style ?? null,
             visual_summary: info?.visual_summary ?? null,
             visual_enriched_at: info?.visual_enriched_at ?? null,
+            concept_summary: info?.concept_summary ?? null,
+            concept_generated_at: info?.concept_generated_at ?? null,
+            tags: info?.tags ?? null,
             link_status: info?.link_status ?? null,
             link_checked_at: info?.link_checked_at ?? null,
             audited_at: info?.audited_at ?? null,
@@ -448,6 +473,11 @@ const Logs = () => {
     if (!r.editing_style && r.type === "video" && typeof meta.editing_style === "string" && meta.editing_style.trim()) {
       update.editing_style = meta.editing_style.trim(); changes.push({ field: "editing_style", from: null, to: "(filled)" });
     }
+    if (!r.concept_summary && typeof meta.concept_summary === "string" && meta.concept_summary.trim()) {
+      update.concept_summary = meta.concept_summary.trim();
+      update.concept_generated_at = new Date().toISOString();
+      changes.push({ field: "concept_summary", from: null, to: "(filled)" });
+    }
 
     const { error: upErr } = await supabase.from("references").update(update as any).eq("id", id);
     if (upErr) throw new Error(upErr.message);
@@ -462,6 +492,8 @@ const Logs = () => {
         year: (update.year as number) ?? row.year,
         visual_summary: (update.visual_summary as string) ?? row.visual_summary,
         editing_style: (update.editing_style as string) ?? row.editing_style,
+        concept_summary: (update.concept_summary as string) ?? row.concept_summary,
+        concept_generated_at: (update.concept_generated_at as string) ?? row.concept_generated_at,
         audited_at: update.audited_at as string,
         visual_enriched_at: update.visual_enriched_at as string,
       };
@@ -663,6 +695,134 @@ const Logs = () => {
     setRows((prev) => prev.map((r) => (!r.visual_summary ? { ...r, visual_enriched_at: null } : r)));
   }
 
+  // ── Concept summary bulk generation ─────────────────────────────────────────
+  async function handleConceptSummary(force = false) {
+    if (conceptRunning) return;
+    setConceptRunning(true);
+    setConceptProgress("Loading refs…");
+    try {
+      let query = (supabase as any)
+        .from("references")
+        .select("id,title,type,brand,agency,year,source_url,notes,concept_summary")
+        .eq("published", true)
+        .order("created_at", { ascending: false });
+      if (!force) query = query.is("concept_generated_at", null);
+      const { data: refs, error: fetchErr } = await query;
+      if (fetchErr) throw new Error(fetchErr.message);
+      const list: any[] = refs || [];
+      if (list.length === 0) {
+        setConceptProgress("Nothing to process — all refs already have a concept summary.");
+        toast.info("All entries already have concept summaries");
+        return;
+      }
+      setConceptProgress(`Generating concept summaries for ${list.length} refs…`);
+      let checked = 0;
+      let fixed = 0;
+      const CONCURRENCY = 4;
+      for (let i = 0; i < list.length; i += CONCURRENCY) {
+        const chunk = list.slice(i, i + CONCURRENCY);
+        await Promise.all(chunk.map(async (ref: any) => {
+          try {
+            const { data, error } = await supabase.functions.invoke("generate-metadata", {
+              body: {
+                title: ref.title, type: ref.type || null,
+                brand: ref.brand || null, agency: ref.agency || null,
+                year: ref.year || null, source_url: ref.source_url || null, notes: ref.notes || null,
+              },
+            });
+            checked++;
+            const meta = (data as any)?.metadata;
+            if (error || !meta) return;
+            const cs = typeof meta.concept_summary === "string" ? meta.concept_summary.trim() : null;
+            if (!cs) return;
+            const now = new Date().toISOString();
+            const { error: upErr } = await supabase
+              .from("references")
+              .update({ concept_summary: cs, concept_generated_at: now } as any)
+              .eq("id", ref.id);
+            if (upErr) return;
+            fixed++;
+            setConceptProgress(`✓ ${ref.title}`);
+            setRows((prev) => prev.map((r) =>
+              r.id === ref.id ? { ...r, concept_summary: cs, concept_generated_at: now } : r
+            ));
+          } catch { /* silently skip */ }
+        }));
+        setConceptProgress(`${checked}/${list.length} processed, ${fixed} generated…`);
+      }
+      setConceptProgress(`Done — ${fixed}/${checked} concept summaries generated.`);
+      if (fixed > 0) toast.success(`Generated ${fixed} concept summaries`);
+      else toast.info("No concept summaries could be generated");
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setConceptRunning(false);
+    }
+  }
+
+  // ── Inline edit handlers ──────────────────────────────────────────────────────
+  function handleStartEdit(row: LogRow) {
+    setEditingRowId(row.id);
+    setEditDraft({
+      brand: row.brand ?? "",
+      agency: row.agency ?? "",
+      year: row.year != null ? String(row.year) : "",
+      tags: Array.isArray(row.tags) ? row.tags.join(", ") : "",
+      visual_summary: row.visual_summary ?? "",
+      editing_style: row.editing_style ?? "",
+      concept_summary: row.concept_summary ?? "",
+    });
+  }
+
+  function handleCancelEdit() {
+    setEditingRowId(null);
+    setEditDraft(null);
+  }
+
+  async function handleSaveEdit(id: string) {
+    if (!editDraft || savingEdit) return;
+    setSavingEdit(true);
+    try {
+      const yearNum = editDraft.year.trim() ? parseInt(editDraft.year.trim(), 10) : null;
+      const tagsArr = editDraft.tags.split(",").map((t) => t.trim()).filter(Boolean);
+      const update: Record<string, unknown> = {
+        brand: editDraft.brand.trim() || null,
+        agency: editDraft.agency.trim() || null,
+        year: Number.isFinite(yearNum) ? yearNum : null,
+        tags: tagsArr.length > 0 ? tagsArr : null,
+        visual_summary: editDraft.visual_summary.trim() || null,
+        editing_style: editDraft.editing_style.trim() || null,
+        concept_summary: editDraft.concept_summary.trim() || null,
+      };
+      if (update.concept_summary && !rows.find((r) => r.id === id)?.concept_generated_at) {
+        update.concept_generated_at = new Date().toISOString();
+      }
+      const { error } = await supabase.from("references").update(update as any).eq("id", id);
+      if (error) throw new Error(error.message);
+      setRows((prev) => prev.map((row) => {
+        if (row.id !== id) return row;
+        const merged = {
+          ...row,
+          brand: update.brand as string | null,
+          agency: update.agency as string | null,
+          year: update.year as number | null,
+          tags: update.tags as string[] | null,
+          visual_summary: update.visual_summary as string | null,
+          editing_style: update.editing_style as string | null,
+          concept_summary: update.concept_summary as string | null,
+          concept_generated_at: (update.concept_generated_at as string | undefined) ?? row.concept_generated_at,
+        };
+        return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
+      }));
+      toast.success("Saved");
+      handleCancelEdit();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
   // ── Reports ──────────────────────────────────────────────────────────────────────────────────────────
   async function resolveReport(id: string) {
     const { error } = await supabase.from("reference_reports").update({ resolved: true }).eq("id", id);
@@ -770,6 +930,17 @@ const Logs = () => {
               {linkResults.message}
             </span>
           )}
+          <Button
+            type="button"
+            onClick={() => handleConceptSummary(false)}
+            disabled={conceptRunning || countMissingConcept === 0}
+            variant="outline"
+            className="font-mono text-xs uppercase tracking-widest h-9"
+            title="Generate creative idea & strategy summaries for refs that are missing them"
+          >
+            <Lightbulb className="h-3.5 w-3.5 mr-2" />
+            {conceptRunning ? conceptProgress || "Generating…" : `Concept (${countMissingConcept})`}
+          </Button>
           <button
             type="button"
             onClick={() => handleEnrichVisual(true)}
@@ -1176,26 +1347,149 @@ const Logs = () => {
                         <TableRow key={`${r.id}-visual`} className="bg-secondary/20 hover:bg-secondary/20">
                           <TableCell />
                           <TableCell colSpan={6} className="pb-4 pt-2">
-                            <div className="flex flex-col gap-3">
-                              <div>
-                                <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1 flex items-center gap-1.5">
-                                  <Eye className="h-2.5 w-2.5" strokeWidth={2} /> Visual Summary
+                            {editingRowId === r.id && editDraft ? (
+                              /* ── Edit mode ── */
+                              <div className="flex flex-col gap-3">
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground block mb-1">Brand</label>
+                                    <input
+                                      className="w-full bg-background border hairline px-2 py-1 font-mono text-xs text-foreground focus:outline-none focus:border-primary"
+                                      value={editDraft.brand}
+                                      onChange={(e) => setEditDraft((d) => d ? { ...d, brand: e.target.value } : d)}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground block mb-1">Agency</label>
+                                    <input
+                                      className="w-full bg-background border hairline px-2 py-1 font-mono text-xs text-foreground focus:outline-none focus:border-primary"
+                                      value={editDraft.agency}
+                                      onChange={(e) => setEditDraft((d) => d ? { ...d, agency: e.target.value } : d)}
+                                    />
+                                  </div>
+                                  <div>
+                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground block mb-1">Year</label>
+                                    <input
+                                      className="w-full bg-background border hairline px-2 py-1 font-mono text-xs text-foreground focus:outline-none focus:border-primary"
+                                      value={editDraft.year}
+                                      onChange={(e) => setEditDraft((d) => d ? { ...d, year: e.target.value } : d)}
+                                      placeholder="e.g. 2023"
+                                    />
+                                  </div>
                                 </div>
-                                {r.visual_summary
-                                  ? <p className="font-body text-sm leading-relaxed text-foreground/90">{r.visual_summary}</p>
-                                  : <p className="font-mono text-xs text-muted-foreground/50 italic">Not yet enriched</p>}
+                                <div>
+                                  <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground block mb-1">Tags (comma-separated)</label>
+                                  <input
+                                    className="w-full bg-background border hairline px-2 py-1 font-mono text-xs text-foreground focus:outline-none focus:border-primary"
+                                    value={editDraft.tags}
+                                    onChange={(e) => setEditDraft((d) => d ? { ...d, tags: e.target.value } : d)}
+                                    placeholder="tag1, tag2, tag3"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground block mb-1 flex items-center gap-1"><Eye className="h-2.5 w-2.5" strokeWidth={2} /> Visual Summary</label>
+                                  <textarea
+                                    rows={3}
+                                    className="w-full bg-background border hairline px-2 py-1 font-mono text-xs text-foreground focus:outline-none focus:border-primary resize-y"
+                                    value={editDraft.visual_summary}
+                                    onChange={(e) => setEditDraft((d) => d ? { ...d, visual_summary: e.target.value } : d)}
+                                  />
+                                </div>
+                                {r.type === "video" && (
+                                  <div>
+                                    <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground block mb-1 flex items-center gap-1"><ChevronDown className="h-2.5 w-2.5" strokeWidth={2} /> Editing Style</label>
+                                    <textarea
+                                      rows={2}
+                                      className="w-full bg-background border hairline px-2 py-1 font-mono text-xs text-foreground focus:outline-none focus:border-primary resize-y"
+                                      value={editDraft.editing_style}
+                                      onChange={(e) => setEditDraft((d) => d ? { ...d, editing_style: e.target.value } : d)}
+                                    />
+                                  </div>
+                                )}
+                                <div>
+                                  <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground block mb-1 flex items-center gap-1"><Lightbulb className="h-2.5 w-2.5" strokeWidth={2} /> Concept Summary</label>
+                                  <textarea
+                                    rows={3}
+                                    className="w-full bg-background border hairline px-2 py-1 font-mono text-xs text-foreground focus:outline-none focus:border-primary resize-y"
+                                    value={editDraft.concept_summary}
+                                    onChange={(e) => setEditDraft((d) => d ? { ...d, concept_summary: e.target.value } : d)}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2 pt-1">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => handleSaveEdit(r.id)}
+                                    disabled={savingEdit}
+                                    className="font-mono text-xs uppercase tracking-widest h-7 px-3"
+                                  >
+                                    {savingEdit ? "Saving…" : "Save"}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={handleCancelEdit}
+                                    disabled={savingEdit}
+                                    className="font-mono text-xs uppercase tracking-widest h-7 px-3"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
                               </div>
-                              {r.type === "video" && (
+                            ) : (
+                              /* ── Read mode ── */
+                              <div className="flex flex-col gap-3">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground">
+                                    {[r.brand, r.year, r.agency].filter(Boolean).join(" · ")}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleStartEdit(r)}
+                                    className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground/60 hover:text-primary flex items-center gap-1 transition-colors"
+                                  >
+                                    <Pencil className="h-2.5 w-2.5" strokeWidth={2} /> Edit
+                                  </button>
+                                </div>
+                                {Array.isArray(r.tags) && r.tags.length > 0 && (
+                                  <div>
+                                    <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1">Tags ({r.tags.length})</div>
+                                    <div className="flex flex-wrap gap-1">
+                                      {r.tags.map((tag) => (
+                                        <span key={tag} className="font-mono text-[10px] px-1.5 py-0.5 bg-secondary border hairline text-muted-foreground">{tag}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
                                 <div>
                                   <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1 flex items-center gap-1.5">
-                                    <ChevronDown className="h-2.5 w-2.5" strokeWidth={2} /> Editing Style
+                                    <Eye className="h-2.5 w-2.5" strokeWidth={2} /> Visual Summary
                                   </div>
-                                  {r.editing_style
-                                    ? <p className="font-body text-sm leading-relaxed text-foreground/90">{r.editing_style}</p>
+                                  {r.visual_summary
+                                    ? <p className="font-body text-sm leading-relaxed text-foreground/90">{r.visual_summary}</p>
                                     : <p className="font-mono text-xs text-muted-foreground/50 italic">Not yet enriched</p>}
                                 </div>
-                              )}
-                            </div>
+                                {r.type === "video" && (
+                                  <div>
+                                    <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1 flex items-center gap-1.5">
+                                      <ChevronDown className="h-2.5 w-2.5" strokeWidth={2} /> Editing Style
+                                    </div>
+                                    {r.editing_style
+                                      ? <p className="font-body text-sm leading-relaxed text-foreground/90">{r.editing_style}</p>
+                                      : <p className="font-mono text-xs text-muted-foreground/50 italic">Not yet enriched</p>}
+                                  </div>
+                                )}
+                                <div>
+                                  <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1 flex items-center gap-1.5">
+                                    <Lightbulb className="h-2.5 w-2.5" strokeWidth={2} /> Concept Summary
+                                  </div>
+                                  {r.concept_summary
+                                    ? <p className="font-body text-sm leading-relaxed text-foreground/90">{r.concept_summary}</p>
+                                    : <p className="font-mono text-xs text-muted-foreground/50 italic">No concept summary yet</p>}
+                                </div>
+                              </div>
+                            )}
                           </TableCell>
                         </TableRow>
                       )}
