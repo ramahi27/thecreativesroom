@@ -520,69 +520,102 @@ const Logs = () => {
     }
   }
 
-  // ── Enrich visual (web-grounded) ─────────────────────────────────────────────────────────────────────────
+  // ── Enrich visual — client-side via generate-metadata (bypasses stale enrich-visual edge fn) ──────────
   async function handleEnrichVisual(force = false) {
     if (enriching) return;
-    if (force && !confirm("Re-enrich ALL entries (overwrite existing visual_summary / editing_style)?")) return;
+    if (force && !confirm("Re-enrich ALL entries (overwrite existing visual_summary)?")) return;
     setEnriching(true);
-    setEnrichProgress("Starting…");
+    setEnrichProgress("Loading refs…");
     setEnrichLog([]);
     setEnrichStats(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      let offset = 0;
-      // Loop through batches until done
-      while (true) {
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-visual`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ offset, limit: 50, force }),
-        });
-        if (!res.ok || !res.body) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(txt || `Enrich failed (HTTP ${res.status})`);
-        }
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        let batchDone: any = null;
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split("\n");
-          buf = lines.pop() ?? "";
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            let msg: any;
-            try { msg = JSON.parse(line); } catch { continue; }
-            if (msg.type === "progress") {
-              setEnrichProgress(msg.message);
-            } else if (msg.type === "fix") {
-              setEnrichProgress(msg.message);
-              const vs = msg.changes?.find((c: any) => c.field === "visual_summary")?.to ?? null;
-              setEnrichLog(prev => [...prev, { kind: "fix", title: msg.title ?? "?", strength: msg.strength ?? "none", visualSummary: vs } as EnrichEntry].slice(-100));
-            } else if (msg.type === "skip") {
-              setEnrichProgress(msg.message);
-              setEnrichLog(prev => [...prev, { kind: "skip", title: msg.title ?? msg.message ?? "?" } as EnrichEntry].slice(-100));
-            } else if (msg.type === "warn") {
-              setEnrichProgress(msg.message);
-              setEnrichLog(prev => [...prev, { kind: "warn", message: msg.message } as EnrichEntry].slice(-100));
-            } else if (msg.type === "error") {
-              throw new Error(msg.message);
-            } else if (msg.type === "done") {
-              batchDone = msg;
-              setEnrichProgress(msg.message);
-              setEnrichStats({ checked: msg.checked ?? 0, fixed: msg.fixed ?? 0, total: msg.total ?? 0 });
-            }
-          }
-        }
-        if (!batchDone || !batchDone.hasMore) break;
-        offset = batchDone.nextOffset ?? offset;
+      // Fetch refs needing enrichment directly from DB
+      let query = (supabase as any)
+        .from("references")
+        .select("id,title,type,brand,agency,year,source_url,notes,visual_summary,editing_style")
+        .eq("published", true)
+        .order("created_at", { ascending: false });
+      if (!force) query = query.is("visual_summary", null);
+      const { data: refs, error: fetchErr } = await query;
+      if (fetchErr) throw new Error(fetchErr.message);
+      const list: any[] = refs || [];
+      if (list.length === 0) {
+        setEnrichProgress("Nothing to enrich — all refs already have visual summaries.");
+        setEnrichStats({ checked: 0, fixed: 0, total: 0 });
+        toast.info("All entries already have visual summaries");
+        return;
       }
-      toast.success("Visual enrichment complete");
-      const data = await fetchAllLogs().catch(() => null);
-      if (data) setRows(data as LogRow[]);
+      setEnrichProgress(`Enriching ${list.length} refs…`);
+      let checked = 0;
+      let fixed = 0;
+      const CONCURRENCY = 4;
+      for (let i = 0; i < list.length; i += CONCURRENCY) {
+        // continue through all chunks
+        const chunk = list.slice(i, i + CONCURRENCY);
+        await Promise.all(chunk.map(async (ref: any) => {
+          try {
+            const { data, error } = await supabase.functions.invoke("generate-metadata", {
+              body: {
+                title: ref.title,
+                type: ref.type || null,
+                brand: ref.brand || null,
+                agency: ref.agency || null,
+                year: ref.year || null,
+                source_url: ref.source_url || null,
+                notes: ref.notes || null,
+              },
+            });
+            checked++;
+            const meta = (data as any)?.metadata;
+            if (error || !meta) {
+              setEnrichLog(prev => [...prev, { kind: "warn", message: `${ref.title}: ${error?.message ?? "no metadata returned"}` } as EnrichEntry].slice(-100));
+              return;
+            }
+            // Build update — only write visual_summary if not already set (or force)
+            const update: Record<string, unknown> = { visual_enriched_at: new Date().toISOString() };
+            const changes: { field: string; to: string }[] = [];
+            const vsNew = typeof meta.visual_summary === "string" ? meta.visual_summary.trim() : null;
+            const esNew = typeof meta.editing_style === "string" ? meta.editing_style.trim() : null;
+            if (vsNew && (force || !ref.visual_summary)) {
+              update.visual_summary = vsNew;
+              changes.push({ field: "visual_summary", to: vsNew });
+            }
+            if (esNew && ref.type === "video" && (force || !ref.editing_style)) {
+              update.editing_style = esNew;
+              changes.push({ field: "editing_style", to: esNew });
+            }
+            const { error: upErr } = await supabase.from("references").update(update as any).eq("id", ref.id);
+            if (upErr) {
+              setEnrichLog(prev => [...prev, { kind: "warn", message: `${ref.title}: ${upErr.message}` } as EnrichEntry].slice(-100));
+              return;
+            }
+            if (changes.length === 0) {
+              setEnrichLog(prev => [...prev, { kind: "skip", title: ref.title } as EnrichEntry].slice(-100));
+            } else {
+              fixed++;
+              setEnrichProgress(`✓ ${ref.title}`);
+              setEnrichLog(prev => [...prev, {
+                kind: "fix",
+                title: ref.title,
+                strength: "strong",
+                visualSummary: vsNew,
+              } as EnrichEntry].slice(-100));
+              // Update local row state
+              setRows(prev => prev.map(r => r.id === ref.id
+                ? { ...r, visual_summary: vsNew ?? r.visual_summary, editing_style: esNew ?? r.editing_style, visual_enriched_at: new Date().toISOString(), has_ai_metadata: true }
+                : r
+              ));
+            }
+          } catch (e: any) {
+            setEnrichLog(prev => [...prev, { kind: "warn", message: `${ref.title}: ${e.message}` } as EnrichEntry].slice(-100));
+          }
+        }));
+        setEnrichStats({ checked, fixed, total: list.length });
+        setEnrichProgress(`${checked}/${list.length} processed, ${fixed} enriched…`);
+      }
+      setEnrichStats({ checked, fixed, total: list.length });
+      setEnrichProgress(`Done — ${fixed}/${checked} enriched.`);
+      toast.success(`Enriched ${fixed} of ${checked} refs`);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -678,10 +711,10 @@ const Logs = () => {
             disabled={enriching}
             variant="outline"
             className="font-mono text-xs uppercase tracking-widest h-9"
-            title="Web-grounded enrichment of visual_summary / editing_style using Firecrawl + AI"
+            title="Fill visual_summary and editing_style using AI for refs that are missing them"
           >
             <Sparkles className="h-3.5 w-3.5 mr-2" />
-            {enriching ? enrichProgress || "Enriching…" : "Enrich visual (web)"}
+            {enriching ? enrichProgress || "Enriching…" : `Enrich visual (${countNotEnriched})`}
           </Button>
           <Button
             type="button"
@@ -717,10 +750,10 @@ const Logs = () => {
             onClick={() => handleEnrichVisual(true)}
             disabled={enriching}
             className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-40"
-            title="Re-enrich ALL entries, overwriting existing values"
+            title="Re-enrich ALL entries (even those that already have visual summaries)"
           >
             Force re-enrich
-          </button>
+</button>
           {countStaleEnrichment > 0 && (
             <button
               type="button"
