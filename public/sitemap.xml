@@ -291,12 +291,6 @@
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/ref/73845954-71af-4b08-823d-6e3467fda443-time-of-my-life-final-dance</loc>
-    <lastmod>2026-06-25</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>
-  <url>
     <loc>https://thecreativesroom.com/ref/6935dc31-4886-4c67-b80d-7bd62f6f8640-blues-brothers-minnie-the-moocher-cab-calloway</loc>
     <lastmod>2026-06-25</lastmod>
     <changefreq>weekly</changefreq>
@@ -6016,6 +6010,12 @@
   </url>
   <url>
     <loc>https://thecreativesroom.com/ref/f3885370-d7fe-45bc-85bc-3c64c916b92e-international-women-s-day</loc>
+    <lastmod>2026-06-22</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/ref/b2142302-f7ae-44f2-b719-6fd1e8fbeb90-they-ve-had-enough</loc>
     <lastmod>2026-06-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
