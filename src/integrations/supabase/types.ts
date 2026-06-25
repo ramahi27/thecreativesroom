@@ -448,6 +448,7 @@ export type Database = {
           brand: string | null
           categories: string[]
           concept_enriched_at: string | null
+          concept_generated_at: string | null
           concept_summary: string | null
           created_at: string
           created_by: string | null
@@ -479,6 +480,7 @@ export type Database = {
           brand?: string | null
           categories?: string[]
           concept_enriched_at?: string | null
+          concept_generated_at?: string | null
           concept_summary?: string | null
           created_at?: string
           created_by?: string | null
@@ -510,6 +512,7 @@ export type Database = {
           brand?: string | null
           categories?: string[]
           concept_enriched_at?: string | null
+          concept_generated_at?: string | null
           concept_summary?: string | null
           created_at?: string
           created_by?: string | null
