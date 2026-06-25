@@ -451,7 +451,24 @@ const Index = () => {
   useEffect(() => {
     const filterActive =
       mediaFilter !== "all" || categoryFilter !== "all" || search.trim().length > 0 || sortBy !== "default";
-    if (!filterActive || loading || loadingMore || !hasMore) return;
+    if (!filterActive || loading || loadingMore) return;
+
+    // If we started at a random mid-archive offset and hit the end before loading from 0,
+    // wrap around: reload from the beginning so all refs are covered.
+    if (!hasMore && initialOffsetRef.current !== 0) {
+      initialOffsetRef.current = 0;
+      nextOffsetRef.current = 0;
+      setLoading(true);
+      fetchPage(0).then(({ list }) => {
+        nextOffsetRef.current = PAGE_SIZE;
+        setRefs(list);
+        setHasMore(nextOffsetRef.current < totalCountRef.current);
+        setLoading(false);
+      });
+      return;
+    }
+
+    if (!hasMore) return;
     loadMore();
     // loadMore updates refs/hasMore which will re-trigger this effect until fully loaded
     // eslint-disable-next-line react-hooks/exhaustive-deps
