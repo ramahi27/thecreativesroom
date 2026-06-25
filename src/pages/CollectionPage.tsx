@@ -48,7 +48,7 @@ const CollectionPage = () => {
         .order("created_at", { ascending: false })
         // Fetch extra headroom because film/TV scenes are filtered out below
         // for ad/commercial collections.
-        .limit(80);
+        .limit(35);
 
       if (filter.tags && filter.tags.length > 0) {
         query = query.overlaps("tags", filter.tags);
@@ -74,11 +74,11 @@ const CollectionPage = () => {
 
       const { data } = await query;
       let list = (data as unknown as Reference[]) || [];
-      // Strip film/TV scenes from ad/commercial collections, then cap at 60.
+      // Strip film/TV scenes from ad/commercial collections, then cap at 25.
       if (collectionExcludesScenes(collection)) {
         list = list.filter((r) => !isSceneRef(r));
       }
-      setRefs(list.slice(0, 60));
+      setRefs(list.slice(0, 25));
       setLoading(false);
     })();
   }, [collection]);
