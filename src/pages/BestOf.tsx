@@ -9,13 +9,6 @@ import { PageMeta } from "@/components/PageMeta";
 import { deriveThumbnail } from "@/lib/references";
 import { collections, refMatchesFilter, MIN_COLLECTION_REFS, isSceneRef, collectionExcludesScenes } from "@/lib/collections";
 
-// ──────────────────────────────────────────────────
-// Hidden-collection state is stored in app_settings
-// under key "hidden_collections" as a jsonb array of
-// slug strings. The table already exists with proper
-// admin-only write RLS and anon read RLS.
-// ──────────────────────────────────────────────────
-
 async function loadHiddenSlugs(): Promise<Set<string>> {
   const { data } = await supabase
     .from("app_settings")
@@ -47,8 +40,6 @@ type MinimalRef = {
   media_items: Array<{ url?: string; kind?: string }> | null;
 };
 
-// Pull every published reference (lean columns) so we can both count matches
-// per collection and pick a representative cover image — all client-side.
 async function fetchAllRefs(): Promise<MinimalRef[]> {
   const all: MinimalRef[] = [];
   const PAGE = 1000;
@@ -65,9 +56,7 @@ async function fetchAllRefs(): Promise<MinimalRef[]> {
   return all;
 }
 
-// YouTube's hqdefault/sddefault thumbnails are 4:3 and letterbox 16:9 videos
-// with black bars. maxresdefault and mqdefault are true 16:9 (no bars). Prefer
-// maxres for sharpness; the card downgrades to mqdefault if maxres is missing.
+// Upgrade YouTube 4:3 letterboxed thumbs to true 16:9.
 function upgradeYouTubeThumb(url: string): string {
   if (/i\.ytimg\.com\/vi(?:_webp)?\//.test(url)) {
     return url.replace(/\/(?:maxres|hq|sd|mq)?default\.jpg.*$/, "/maxresdefault.jpg");
@@ -75,7 +64,6 @@ function upgradeYouTubeThumb(url: string): string {
   return url;
 }
 
-// Best available cover image for a reference.
 function coverFor(r: MinimalRef): string | null {
   const items = Array.isArray(r.media_items) ? r.media_items : [];
   const firstImg = items.find((it) => it?.kind === "image" && it.url)?.url ?? null;
@@ -87,69 +75,11 @@ function coverFor(r: MinimalRef): string | null {
 
 const isYouTubeThumb = (url: string) => url.includes("i.ytimg.com");
 
-// Inspect an image for black letterbox/pillarbox bars. Returns "bars" if the
-// top+bottom (or left+right) edges are near-black while the centre is much
-// brighter, "clean" if not, and "unknown" if the pixels can't be read (the
-// host doesn't allow cross-origin canvas access).
-function detectBars(url: string): Promise<"bars" | "clean" | "unknown"> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      try {
-        if (!img.naturalWidth || !img.naturalHeight) return resolve("unknown");
-        const w = 32;
-        const h = Math.max(8, Math.round((32 * img.naturalHeight) / img.naturalWidth));
-        const cv = document.createElement("canvas");
-        cv.width = w;
-        cv.height = h;
-        const ctx = cv.getContext("2d", { willReadFrequently: true });
-        if (!ctx) return resolve("unknown");
-        ctx.drawImage(img, 0, 0, w, h);
-        const data = ctx.getImageData(0, 0, w, h).data; // throws if tainted
-        const lum = (x: number, y: number) => {
-          const i = (y * w + x) * 4;
-          return 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-        };
-        const rowLum = (y: number) => { let s = 0; for (let x = 0; x < w; x++) s += lum(x, y); return s / w; };
-        const colLum = (x: number) => { let s = 0; for (let y = 0; y < h; y++) s += lum(x, y); return s / h; };
-        const DARK = 16, BRIGHT = 40;
-        const top = Math.min(rowLum(0), rowLum(1));
-        const bottom = Math.min(rowLum(h - 1), rowLum(h - 2));
-        const midRow = rowLum(h >> 1);
-        const left = Math.min(colLum(0), colLum(1));
-        const right = Math.min(colLum(w - 1), colLum(w - 2));
-        const midCol = colLum(w >> 1);
-        const letterbox = top < DARK && bottom < DARK && midRow > BRIGHT;
-        const pillarbox = left < DARK && right < DARK && midCol > BRIGHT;
-        resolve(letterbox || pillarbox ? "bars" : "clean");
-      } catch {
-        resolve("unknown");
-      }
-    };
-    img.onerror = () => resolve("unknown");
-    img.src = url;
-  });
-}
-
-// Identity of a cover image for de-duplication. maxres/mq variants of the same
-// YouTube video collapse to one key so they count as the same image.
+// Collapse YouTube maxres/mq variants so the same video isn't used twice.
 function coverKey(url: string): string {
   const m = url.match(/i\.ytimg\.com\/vi(?:_webp)?\/([^/]+)\//);
   if (m) return "yt:" + m[1];
   return url.split("?")[0];
-}
-
-// Run async work over items with a concurrency cap.
-async function mapLimit<T>(items: T[], limit: number, fn: (t: T) => Promise<void>) {
-  let i = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (i < items.length) {
-      const idx = i++;
-      await fn(items[idx]);
-    }
-  });
-  await Promise.all(workers);
 }
 
 // ──────────────────────────────────────────────────
@@ -181,7 +111,7 @@ function CollectionCard({ c, index, cover, isAdmin, isHidden, refCount, onHide, 
       className={`reveal-card group relative flex flex-col rounded-2xl overflow-hidden border hairline bg-card ${dimmed ? "opacity-50" : ""}`}
       style={{ animation: "cardIn 0.4s ease both", animationDelay: `${Math.min(index * 35, 450)}ms` }}
     >
-      {/* Cover — native 16:9 so the subject (which YouTube centers) is never cropped out */}
+      {/* Cover — native 16:9 so the subject is never cropped */}
       <div className="relative aspect-video overflow-hidden bg-muted">
         {showImg ? (
           <img
@@ -289,13 +219,16 @@ const BestOf = () => {
         fetchAllRefs(),
         loadHiddenSlugs(),
       ]);
+      if (cancelled) return;
+
       const nextCounts: Record<string, number> = {};
       const candBySlug: Record<string, string[]> = {};
+
       for (const c of collections) {
         const excl = collectionExcludesScenes(c);
         let count = 0;
-        // Rank covers: full-bleed images first (posters/illustrations, never
-        // letterboxed), then guaranteed-16:9 YouTube, then anything else.
+        // Prefer full-bleed image refs (no letterboxing), then YouTube (16:9
+        // after maxres upgrade), then any other thumbnail.
         const imageC: string[] = [];
         const ytC: string[] = [];
         const otherC: string[] = [];
@@ -312,24 +245,8 @@ const BestOf = () => {
         nextCounts[c.slug] = count;
         candBySlug[c.slug] = Array.from(new Set([...imageC, ...ytC, ...otherC])).slice(0, 8);
       }
-      if (cancelled) return;
-      setCounts(nextCounts);
-      setHidden(hiddenSlugs);
-      setReady(true);
 
-      // ── Resolve a UNIQUE, bar-free cover per collection ──
-      // 1. Bar-check every distinct non-YouTube candidate once (parallel).
-      const verdicts = new Map<string, "bars" | "clean" | "unknown">();
-      const toCheck = Array.from(
-        new Set(Object.values(candBySlug).flat().filter((u) => !isYouTubeThumb(u)))
-      );
-      await mapLimit(toCheck, 8, async (url) => {
-        verdicts.set(url, await detectBars(url));
-      });
-      if (cancelled) return;
-
-      // 2. Greedily assign covers so no image is used twice. Collections that
-      //    will actually be shown to the public get first pick.
+      // Greedily assign covers — visible public collections get first pick.
       const priority = (slug: string) =>
         !hiddenSlugs.has(slug) && (nextCounts[slug] ?? 0) >= MIN_COLLECTION_REFS ? 0 : 1;
       const ordered = [...collections].sort((a, b) => priority(a.slug) - priority(b.slug));
@@ -340,13 +257,18 @@ const BestOf = () => {
         for (const cand of candBySlug[c.slug] || []) {
           const key = coverKey(cand);
           if (usedKeys.has(key)) continue;
-          if (!isYouTubeThumb(cand) && verdicts.get(cand) === "bars") continue;
           usedKeys.add(key);
           nextCovers[c.slug] = cand;
           break;
         }
       }
-      if (!cancelled) setCovers(nextCovers);
+
+      if (!cancelled) {
+        setCounts(nextCounts);
+        setHidden(hiddenSlugs);
+        setCovers(nextCovers);
+        setReady(true);
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -369,16 +291,11 @@ const BestOf = () => {
     toast.success("Page restored.");
   };
 
-  // Admins see every collection (so they can manage them).
-  // Visitors only see collections with enough refs that aren't hidden.
   const isVisible = (slug: string) =>
     isAdmin || (!hidden.has(slug) && (counts[slug] ?? Infinity) >= MIN_COLLECTION_REFS);
 
-  // Before counts load, show all (avoids collapsing the list on first paint);
-  // once ready, filter for visitors.
   const visibleList = ready ? collections.filter((c) => isVisible(c.slug)) : collections;
 
-  // Apply the on-page search + section filter.
   const q = query.trim().toLowerCase();
   const list = visibleList.filter((c) => {
     if (sectionFilter !== "all" && c.section !== sectionFilter) return false;
@@ -426,7 +343,6 @@ const BestOf = () => {
       <SiteHeader />
 
       <section className="relative overflow-hidden border-b hairline">
-        {/* Subtle backlight */}
         <div
           className="absolute inset-0 -z-10 pointer-events-none"
           style={{ background: "radial-gradient(ellipse 60% 50% at 50% 0%, hsl(18 95% 58% / 0.08), transparent)" }}
