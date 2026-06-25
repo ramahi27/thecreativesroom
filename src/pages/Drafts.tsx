@@ -171,15 +171,14 @@ const Drafts = () => {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ url }),
       });
       clearInterval(stepTimer);
       const data = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(data?.error || data?.message || "Failed to scrape link");
-      if (!data?.success) throw new Error(data?.error || "Failed to scrape");
+      if (!res.ok) throw new Error(data?.error || data?.message || `Server error: ${JSON.stringify(data)}`);
+      if (!data?.success) throw new Error(data?.error || `Server error: ${JSON.stringify(data)}`);
       toast.dismiss(tId);
       if (data.playlist) {
         toast.success(`Playlist imported — ${data.count} drafts created`, {
