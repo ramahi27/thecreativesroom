@@ -389,66 +389,132 @@ const Logs = () => {
     return fixed;
   }
 
-  // ── Process new (bulk) ────────────────────────────────────────────────────────
+  // ── Client-side processing of one ref via generate-metadata (bypasses stale process-new edge fn) ──────
+  // Fills missing brand/agency/year, generates tags + synonyms, fills visual_summary /
+  // editing_style. Does NOT correct existing non-empty values (generate-metadata only fills blanks).
+  async function processRefClientSide(id: string): Promise<{ changes: AuditChange[]; reason: string | null } | null> {
+    const { data: ref } = await supabase
+      .from("references")
+      .select("id,title,type,brand,agency,year,source_url,notes,tags,tag_synonyms,visual_summary,editing_style")
+      .eq("id", id)
+      .maybeSingle();
+    if (!ref) return null;
+    const r = ref as any;
+
+    const { data, error } = await supabase.functions.invoke("generate-metadata", {
+      body: {
+        title: r.title,
+        type: r.type || null,
+        brand: r.brand || null,
+        agency: r.agency || null,
+        year: r.year || null,
+        source_url: r.source_url || null,
+        notes: r.notes || null,
+      },
+    });
+    if (error) throw new Error(error.message);
+    const meta = (data as any)?.metadata;
+    if (!meta) throw new Error("No metadata returned");
+
+    const update: Record<string, unknown> = { audited_at: new Date().toISOString(), visual_enriched_at: new Date().toISOString() };
+    const changes: AuditChange[] = [];
+
+    // Tags — merge + dedupe
+    if (Array.isArray(meta.tags) && meta.tags.length > 0) {
+      const existing: string[] = Array.isArray(r.tags) ? r.tags : [];
+      const lower = new Set(existing.map((t) => t.toLowerCase()));
+      const merged = [...existing, ...meta.tags.map((t: string) => String(t).trim()).filter((t: string) => t && !lower.has(t.toLowerCase()))];
+      if (merged.length > existing.length) { update.tags = merged; changes.push({ field: "tags", from: `${existing.length} tags`, to: `${merged.length} tags` }); }
+    }
+    if (Array.isArray(meta.tag_synonyms)) {
+      const existing: string[] = Array.isArray(r.tag_synonyms) ? r.tag_synonyms : [];
+      const lower = new Set(existing.map((t) => t.toLowerCase()));
+      const merged = [...existing, ...meta.tag_synonyms.map((t: string) => String(t).trim()).filter((t: string) => t && !lower.has(t.toLowerCase()))];
+      if (merged.length > existing.length) update.tag_synonyms = merged;
+    }
+    // Fill empty fields only
+    if (!r.brand && typeof meta.brand === "string" && meta.brand.trim()) {
+      update.brand = meta.brand.trim(); changes.push({ field: "brand", from: null, to: meta.brand.trim() });
+    }
+    if (!r.agency && typeof meta.agency === "string" && meta.agency.trim()) {
+      update.agency = meta.agency.trim(); changes.push({ field: "agency", from: null, to: meta.agency.trim() });
+    }
+    if (!r.year && Number.isInteger(meta.year)) {
+      update.year = meta.year; changes.push({ field: "year", from: null, to: String(meta.year) });
+    }
+    if (!r.visual_summary && typeof meta.visual_summary === "string" && meta.visual_summary.trim()) {
+      update.visual_summary = meta.visual_summary.trim(); changes.push({ field: "visual_summary", from: null, to: "(filled)" });
+    }
+    if (!r.editing_style && r.type === "video" && typeof meta.editing_style === "string" && meta.editing_style.trim()) {
+      update.editing_style = meta.editing_style.trim(); changes.push({ field: "editing_style", from: null, to: "(filled)" });
+    }
+
+    const { error: upErr } = await supabase.from("references").update(update as any).eq("id", id);
+    if (upErr) throw new Error(upErr.message);
+
+    // Reflect into local row state
+    setRows((prev) => prev.map((row) => {
+      if (row.id !== id) return row;
+      const merged = {
+        ...row,
+        brand: (update.brand as string) ?? row.brand,
+        agency: (update.agency as string) ?? row.agency,
+        year: (update.year as number) ?? row.year,
+        visual_summary: (update.visual_summary as string) ?? row.visual_summary,
+        editing_style: (update.editing_style as string) ?? row.editing_style,
+        audited_at: update.audited_at as string,
+        visual_enriched_at: update.visual_enriched_at as string,
+      };
+      return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
+    }));
+
+    return { changes, reason: changes.length === 0 ? "Already complete — nothing to fill." : null };
+  }
+
+  // ── Process new (bulk) — client-side ──────────────────────────────────────────
   async function handleProcessNew(opts?: { redo?: boolean; days?: 1 | 3 | 7 }) {
     if (processing) return;
     const redo = opts?.redo === true;
     const days = opts?.days ?? 3;
     setProcessing(true);
-    setProcessProgress("Starting…");
+    setProcessProgress("Selecting refs…");
     setProcessLog([]);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      let offset = 0;
-      while (true) {
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-new`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ offset, days, redo }),
-        });
-        if (!res.ok || !res.body) {
-          const txt = await res.text().catch(() => "");
-          throw new Error(txt || `Process failed (HTTP ${res.status})`);
-        }
-        let batchDone: any = null;
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        let fixed = 0;
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split("\n");
-          buf = lines.pop() ?? "";
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            let msg: any;
-            try { msg = JSON.parse(line); } catch { continue; }
-            if (msg.type === "progress") { setProcessProgress(msg.message); }
-            else if (msg.type === "fix") {
+      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+      // Decide which refs to process from the loaded rows
+      const candidates = rows.filter((r) => {
+        if (redo) return (r.approved_at ?? r.created_at) > cutoff;
+        return !r.has_ai_metadata || (!r.audited_at && (r.approved_at ?? r.created_at) > cutoff);
+      });
+      if (candidates.length === 0) {
+        setProcessProgress("Nothing to process.");
+        toast.info("Nothing to process");
+        return;
+      }
+      setProcessProgress(`Processing ${candidates.length} refs…`);
+      let checked = 0;
+      let fixed = 0;
+      const CONCURRENCY = 4;
+      for (let i = 0; i < candidates.length; i += CONCURRENCY) {
+        const chunk = candidates.slice(i, i + CONCURRENCY);
+        await Promise.all(chunk.map(async (ref) => {
+          try {
+            const result = await processRefClientSide(ref.id);
+            checked++;
+            if (result && result.changes.length > 0) {
               fixed++;
-              setProcessProgress(`Updated "${msg.title}"`);
-              setProcessLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
+              setProcessProgress(`Updated "${ref.title}"`);
+              setProcessLog((prev) => [{ kind: "fix", title: ref.title, changes: result.changes, reason: result.reason } as AuditEntry, ...prev].slice(0, 50));
             }
-            else if (msg.type === "warn") { setProcessLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50)); }
-            else if (msg.type === "error") { throw new Error(msg.message); }
-            else if (msg.type === "done") { batchDone = msg; setProcessProgress(msg.message); }
+          } catch (e: any) {
+            setProcessLog((prev) => [{ kind: "warn", message: `${ref.title}: ${e.message}` } as AuditEntry, ...prev].slice(0, 50));
           }
-        }
-        if (!batchDone || !batchDone.hasMore) break;
-        offset = batchDone.nextOffset ?? offset;
-      }
-      const data = await fetchAllLogs().catch(() => null);
-      if (data) {
-        const byId = new Map((data as LogRow[]).map((r) => [r.id, r]));
-        setRows((prev) => prev.map((r) => {
-          const fresh = byId.get(r.id);
-          if (!fresh) return r;
-          const merged = { ...r, title: fresh.title, brand: fresh.brand, agency: fresh.agency, year: fresh.year, audited_at: (fresh as any).audited_at ?? r.audited_at };
-          return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
         }));
+        setProcessProgress(`${checked}/${candidates.length} processed, ${fixed} updated…`);
       }
+      setProcessProgress(`Done — ${fixed}/${checked} updated.`);
+      if (fixed > 0) toast.success(`Processed ${checked} refs, ${fixed} updated`);
+      else toast.info(`Processed ${checked} refs — nothing needed filling`);
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -456,62 +522,21 @@ const Logs = () => {
     }
   }
 
-  // ── Process single reference (per-row wand) ───────────────────────────────────
+  // ── Process single reference (per-row wand) — client-side ─────────────────────
   async function handleProcessOne(id: string, title: string) {
     if (processingId) return;
     setProcessingId(id);
     setProcessLog([]);
     setProcessProgress(`Processing "${title}"…`);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-new`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session?.access_token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
-      });
-      if (!res.ok || !res.body) {
-        const txt = await res.text().catch(() => "");
-        throw new Error(txt || `Process failed (HTTP ${res.status})`);
-      }
-      let fixed = 0;
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          let msg: any;
-          try { msg = JSON.parse(line); } catch { continue; }
-          if (msg.type === "progress") { setProcessProgress(msg.message); }
-          else if (msg.type === "fix") {
-            fixed++;
-            setProcessLog((prev) => [{ kind: "fix", title: msg.title, changes: msg.changes ?? [], reason: msg.reason ?? null } as AuditEntry, ...prev].slice(0, 50));
-          }
-          else if (msg.type === "warn") { setProcessLog((prev) => [{ kind: "warn", message: msg.message } as AuditEntry, ...prev].slice(0, 50)); }
-          else if (msg.type === "error") { throw new Error(msg.message); }
-          else if (msg.type === "done") {
-            setProcessProgress(msg.message);
-            if (fixed > 0) toast.success(`"${title}": updated`); else toast.info(`"${title}": no changes needed`);
-          }
-        }
-      }
-      if (fixed > 0) {
-        const { data: fresh } = await supabase
-          .from("references")
-          .select("id,title,brand,agency,year,visual_summary,editing_style,audited_at")
-          .eq("id", id).maybeSingle();
-        if (fresh) {
-          setRows((prev) => prev.map((r) => {
-            if (r.id !== id) return r;
-            const merged = { ...r, ...(fresh as any) };
-            return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
-          }));
-        }
+      const result = await processRefClientSide(id);
+      if (result && result.changes.length > 0) {
+        setProcessLog((prev) => [{ kind: "fix", title, changes: result.changes, reason: result.reason } as AuditEntry, ...prev].slice(0, 50));
+        setProcessProgress(`Updated "${title}"`);
+        toast.success(`"${title}": updated`);
+      } else {
+        setProcessProgress(`No changes needed for "${title}"`);
+        toast.info(`"${title}": no changes needed`);
       }
     } catch (err: any) {
       toast.error(err.message);
