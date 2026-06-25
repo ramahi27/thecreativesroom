@@ -755,8 +755,8 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   if (isAdmin) {
                     return (
                       <dl className="space-y-3 border-t hairline pt-6">
-                        <AdminRow label={isFilmTv ? "Title" : "Brand"} value={r.brand || ""} placeholder="Add brand…" onSave={(v) => saveField("brand", v)} />
-                        {!isMagazine && <AdminRow label={isFilmTv ? "Director" : "Agency"} value={r.agency || ""} placeholder="Add agency…" onSave={(v) => saveField("agency", v)} />}
+                        <AdminRow label={isFilmTv ? "Movie/Show Title" : "Brand"} value={r.brand || ""} placeholder={isFilmTv ? "Add title…" : "Add brand…"} onSave={(v) => saveField("brand", v)} />
+                        {!isMagazine && <AdminRow label={isFilmTv ? "Director" : "Agency"} value={r.agency || ""} placeholder={isFilmTv ? "Add director…" : "Add agency…"} onSave={(v) => saveField("agency", v)} />}
                         <AdminRow label="Year" value={r.year ? String(r.year) : ""} placeholder="Add year…" onSave={(v) => saveField("year", v)} inputType="number" />
                       </dl>
                     );
