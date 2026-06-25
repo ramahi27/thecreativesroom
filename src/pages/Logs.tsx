@@ -560,7 +560,7 @@ const Logs = () => {
         .select("id,title,type,brand,agency,year,source_url,notes,visual_summary,editing_style")
         .eq("published", true)
         .order("created_at", { ascending: false });
-      if (!force) query = query.is("visual_summary", null);
+      if (!force) query = query.is("visual_enriched_at", null);
       const { data: refs, error: fetchErr } = await query;
       if (fetchErr) throw new Error(fetchErr.message);
       const list: any[] = refs || [];
