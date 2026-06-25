@@ -155,6 +155,10 @@ const Logs = () => {
   // Concept summary generation
   const [conceptRunning, setConceptRunning] = useState(false);
   const [conceptProgress, setConceptProgress] = useState<string>("");
+  // Whether the concept_summary column exists in the DB (migration applied).
+  // Detected at load time; gates all concept reads/writes so the rest of the
+  // page keeps working before the migration is run.
+  const [conceptSupported, setConceptSupported] = useState(false);
 
   // Inline editing
   type EditDraft = {
@@ -287,19 +291,35 @@ const Logs = () => {
         const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
-          .select("id,brand,agency,year,editing_style,visual_summary,visual_enriched_at,concept_summary,concept_generated_at,tags,link_status,link_checked_at,audited_at")
+          .select("id,brand,agency,year,editing_style,visual_summary,visual_enriched_at,tags,link_status,link_checked_at,audited_at")
           .in("id", slice);
         (extra || []).forEach((t: any) =>
           infoMap.set(t.id, {
             brand: t.brand ?? null, agency: t.agency ?? null, year: t.year ?? null,
             editing_style: t.editing_style ?? null, visual_summary: t.visual_summary ?? null,
             visual_enriched_at: t.visual_enriched_at ?? null,
-            concept_summary: t.concept_summary ?? null, concept_generated_at: t.concept_generated_at ?? null,
+            concept_summary: null, concept_generated_at: null,
             tags: t.tags ?? null,
             link_status: t.link_status ?? null, link_checked_at: t.link_checked_at ?? null,
             audited_at: t.audited_at ?? null,
           }),
         );
+        // Concept columns are fetched separately so a missing column (migration
+        // not yet applied) can't fail the whole metadata query above.
+        const { data: conceptExtra, error: conceptErr } = await supabase
+          .from("references")
+          .select("id,concept_summary,concept_generated_at")
+          .in("id", slice);
+        if (!conceptErr && conceptExtra) {
+          if (i === 0) setConceptSupported(true);
+          (conceptExtra as any[]).forEach((t: any) => {
+            const info = infoMap.get(t.id);
+            if (info) {
+              info.concept_summary = t.concept_summary ?? null;
+              info.concept_generated_at = t.concept_generated_at ?? null;
+            }
+          });
+        }
       }
       setRows(
         baseRows.map((r) => {
@@ -473,7 +493,7 @@ const Logs = () => {
     if (!r.editing_style && r.type === "video" && typeof meta.editing_style === "string" && meta.editing_style.trim()) {
       update.editing_style = meta.editing_style.trim(); changes.push({ field: "editing_style", from: null, to: "(filled)" });
     }
-    if (!r.concept_summary && typeof meta.concept_summary === "string" && meta.concept_summary.trim()) {
+    if (conceptSupported && !r.concept_summary && typeof meta.concept_summary === "string" && meta.concept_summary.trim()) {
       update.concept_summary = meta.concept_summary.trim();
       update.concept_generated_at = new Date().toISOString();
       changes.push({ field: "concept_summary", from: null, to: "(filled)" });
@@ -698,6 +718,10 @@ const Logs = () => {
   // ── Concept summary bulk generation ─────────────────────────────────────────
   async function handleConceptSummary(force = false) {
     if (conceptRunning) return;
+    if (!conceptSupported) {
+      toast.error("Concept summary not available yet — run the database migration to add the concept_summary column.");
+      return;
+    }
     setConceptRunning(true);
     setConceptProgress("Loading refs…");
     try {
@@ -792,9 +816,13 @@ const Logs = () => {
         tags: tagsArr.length > 0 ? tagsArr : null,
         visual_summary: editDraft.visual_summary.trim() || null,
         editing_style: editDraft.editing_style.trim() || null,
-        concept_summary: editDraft.concept_summary.trim() || null,
       };
-      if (update.concept_summary && !rows.find((r) => r.id === id)?.concept_generated_at) {
+      // Only write concept fields when the column exists (migration applied),
+      // otherwise the whole update would fail.
+      if (conceptSupported) {
+        update.concept_summary = editDraft.concept_summary.trim() || null;
+      }
+      if (conceptSupported && update.concept_summary && !rows.find((r) => r.id === id)?.concept_generated_at) {
         update.concept_generated_at = new Date().toISOString();
       }
       const { error } = await supabase.from("references").update(update as any).eq("id", id);
@@ -809,7 +837,7 @@ const Logs = () => {
           tags: update.tags as string[] | null,
           visual_summary: update.visual_summary as string | null,
           editing_style: update.editing_style as string | null,
-          concept_summary: update.concept_summary as string | null,
+          concept_summary: conceptSupported ? (update.concept_summary as string | null) : row.concept_summary,
           concept_generated_at: (update.concept_generated_at as string | undefined) ?? row.concept_generated_at,
         };
         return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) };
