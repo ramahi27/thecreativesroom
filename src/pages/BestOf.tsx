@@ -89,20 +89,18 @@ interface CardProps {
   index: number;
   cover?: string;
   isAdmin: boolean;
-  isHidden: boolean;
   refCount: number | undefined;
   onHide: (slug: string) => void;
-  onRestore: (slug: string) => void;
 }
 
-function CollectionCard({ c, index, cover, isAdmin, isHidden, refCount, onHide, onRestore }: CardProps) {
+function CollectionCard({ c, index, cover, isAdmin, refCount, onHide }: CardProps) {
   const [src, setSrc] = useState<string | undefined>(cover);
   const [imgErr, setImgErr] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   useEffect(() => { setSrc(cover); setImgErr(false); setImgLoaded(false); }, [cover]);
 
   const tooFew = refCount !== undefined && refCount < MIN_COLLECTION_REFS;
-  const dimmed = (isHidden || tooFew) && isAdmin;
+  const dimmed = tooFew && isAdmin;
   const showImg = src && !imgErr;
 
   return (
@@ -153,26 +151,16 @@ function CollectionCard({ c, index, cover, isAdmin, isHidden, refCount, onHide, 
           {String(index + 1).padStart(2, "0")}
         </span>
 
-        {/* Admin controls */}
+        {/* Admin delete */}
         {isAdmin && (
           <div className="absolute top-2.5 right-2.5 z-10">
-            {isHidden ? (
-              <button
-                type="button"
-                onClick={(e) => { e.preventDefault(); onRestore(c.slug); }}
-                className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/60 border border-white/25 text-white/85 hover:border-white/50 transition-colors backdrop-blur-sm"
-              >
-                Restore
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={(e) => { e.preventDefault(); onHide(c.slug); }}
-                className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/60 border border-destructive/50 text-destructive hover:bg-destructive/20 transition-colors backdrop-blur-sm"
-              >
-                Delete
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); onHide(c.slug); }}
+              className="font-mono text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-full bg-black/60 border border-destructive/50 text-destructive hover:bg-destructive/20 transition-colors backdrop-blur-sm"
+            >
+              Delete
+            </button>
           </div>
         )}
       </div>
@@ -181,12 +169,9 @@ function CollectionCard({ c, index, cover, isAdmin, isHidden, refCount, onHide, 
       <div className="p-4 flex flex-col gap-1.5 flex-1">
         <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] uppercase tracking-widest text-primary">
-            {refCount !== undefined ? `${refCount} refs` : "—"}
+            {refCount !== undefined ? `${Math.min(refCount, 24)} refs` : "—"}
           </span>
-          {isAdmin && isHidden && (
-            <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">· hidden</span>
-          )}
-          {isAdmin && !isHidden && tooFew && (
+          {isAdmin && tooFew && (
             <span className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground/50">· auto-hidden</span>
           )}
         </div>
@@ -274,25 +259,22 @@ const BestOf = () => {
   }, []);
 
   const hide = async (slug: string) => {
-    if (!window.confirm(`Hide "${collections.find((c) => c.slug === slug)?.title}"? It will return 404 for visitors.`)) return;
+    const title = collections.find((c) => c.slug === slug)?.title ?? slug;
+    if (!window.confirm(`Delete "${title}"? This cannot be undone.`)) return;
     const next = new Set(hidden).add(slug);
     const ok = await saveHiddenSlugs(next);
     if (!ok) { toast.error("Could not save. Check your permissions."); return; }
     setHidden(next);
-    toast.success("Page hidden from visitors.");
+    toast.success("Collection deleted.");
   };
 
-  const restore = async (slug: string) => {
-    const next = new Set(hidden);
-    next.delete(slug);
-    const ok = await saveHiddenSlugs(next);
-    if (!ok) { toast.error("Could not save. Check your permissions."); return; }
-    setHidden(next);
-    toast.success("Page restored.");
+  // Deleted (hidden) collections are removed for everyone — admins still see
+  // under-threshold collections so they know why they're auto-hidden.
+  const isVisible = (slug: string) => {
+    if (hidden.has(slug)) return false;
+    if (isAdmin) return true;
+    return (counts[slug] ?? Infinity) >= MIN_COLLECTION_REFS;
   };
-
-  const isVisible = (slug: string) =>
-    isAdmin || (!hidden.has(slug) && (counts[slug] ?? Infinity) >= MIN_COLLECTION_REFS);
 
   const visibleList = ready ? collections.filter((c) => isVisible(c.slug)) : collections;
 
@@ -324,10 +306,8 @@ const BestOf = () => {
           index={i}
           cover={covers[c.slug]}
           isAdmin={isAdmin}
-          isHidden={hidden.has(c.slug)}
           refCount={ready ? counts[c.slug] : undefined}
           onHide={hide}
-          onRestore={restore}
         />
       ))}
     </div>

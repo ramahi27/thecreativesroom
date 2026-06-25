@@ -74,11 +74,16 @@ const CollectionPage = () => {
 
       const { data } = await query;
       let list = (data as unknown as Reference[]) || [];
-      // Strip film/TV scenes from ad/commercial collections, then cap at 25.
+      // Strip film/TV scenes from ad/commercial collections.
       if (collectionExcludesScenes(collection)) {
         list = list.filter((r) => !isSceneRef(r));
       }
-      setRefs(list.slice(0, 25));
+      // Cap at 24 (divisible by 4/3/2 — always full rows on every grid breakpoint).
+      // If the natural count leaves 1 or 2 items on the last row, trim them off.
+      let capped = list.slice(0, 24);
+      const rem = capped.length % 4;
+      if (rem === 1 || rem === 2) capped = capped.slice(0, capped.length - rem);
+      setRefs(capped);
       setLoading(false);
     })();
   }, [collection]);
