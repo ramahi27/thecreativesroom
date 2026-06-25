@@ -90,6 +90,51 @@ async function scrapeYouTube(url: string, id: string): Promise<Scraped> {
   };
 }
 
+async function insertYouTubeDraft(rawUrl: string, id: string, supabase: any, userId: string) {
+  let scraped: Scraped;
+  try {
+    scraped = await scrapeYouTube(rawUrl, id);
+  } catch (e) {
+    console.error("[scrape-link] youtube scrape failed", rawUrl, e);
+    scraped = {
+      title: "YouTube video",
+      source_url: `https://www.youtube.com/watch?v=${id}`,
+      thumbnail_url: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+      type: "video",
+    };
+  }
+
+  const insertRow = {
+    title: (scraped.title || "YouTube video").slice(0, 250),
+    type: "video",
+    source_url: scraped.source_url || `https://www.youtube.com/watch?v=${id}`,
+    thumbnail_url: scraped.thumbnail_url || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+    media_url: null,
+    media_items: [],
+    brand: null,
+    agency: null,
+    year: null,
+    categories: [],
+    tags: [],
+    created_by: userId,
+    published: false,
+    source: "ai_scrape",
+  };
+
+  const { data: inserted, error: insErr } = await supabase
+    .from("references")
+    .insert(insertRow)
+    .select("id, title, thumbnail_url, brand, categories, tags, type")
+    .single();
+
+  if (insErr) {
+    console.error("[scrape-link] youtube insert failed", insErr, { rawUrl, id });
+    return { ok: false, error: `youtube insert failed: ${insErr.message}` };
+  }
+
+  return { ok: true, draft: inserted };
+}
+
 async function scrapeVimeo(url: string): Promise<Scraped> {
   let title = "Vimeo video";
   let thumb: string | null = null;
@@ -997,6 +1042,19 @@ Deno.serve(async (req) => {
     if (!["http:", "https:"].includes(url.protocol)) return json({ error: "Invalid URL" }, 400);
     if (isBlockedHost(url.hostname)) return json({ error: "Host not allowed" }, 400);
 
+    // YouTube is the most common import path and should never fail because AI,
+    // generic page scraping, or image grouping had a transient issue. Save a
+    // clean video draft directly from YouTube's stable oEmbed data.
+    const singleYouTubeId = ytId(url);
+    if (singleYouTubeId && !ytPlaylistId(url)) {
+      const ytResult = await insertYouTubeDraft(rawUrl, singleYouTubeId, supabase, userId);
+      if (!ytResult.ok) {
+        const errMsg = (ytResult as any).error || "YouTube import failed";
+        return json({ success: false, error: errMsg, url: rawUrl }, 500);
+      }
+      return json({ success: true, draft: ytResult.draft });
+    }
+
     // Load category lists
     const { data: settings } = await supabase
       .from("app_settings")
@@ -1045,7 +1103,7 @@ Deno.serve(async (req) => {
     if (!result.ok) {
       const errMsg = (result as any).error || "Unknown scrape error (no detail returned)";
       console.error("[scrape-link] scrapeAndInsert failed", { rawUrl, errMsg });
-      return json({ success: false, error: errMsg, url: rawUrl });
+      return json({ success: false, error: errMsg, url: rawUrl }, 500);
     }
     if ((result as any).split && Array.isArray((result as any).drafts)) {
       const drafts = (result as any).drafts;
