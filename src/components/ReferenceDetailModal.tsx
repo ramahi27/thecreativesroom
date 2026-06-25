@@ -837,7 +837,7 @@ export function ReferenceDetailModal({ id, onClose }: Props) {
                   )
                 )}
 
-                {isAdmin && (
+                {false && isAdmin && (
                   <div className="border-t hairline pt-6">
                     <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground mb-3">Tags (admin)</p>
                     <div className="flex flex-wrap gap-2">
