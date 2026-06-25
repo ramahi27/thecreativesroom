@@ -74,8 +74,10 @@ const CollectionPage = () => {
 
       const { data } = await query;
       let list = (data as unknown as Reference[]) || [];
-      // Strip film/TV scenes — they don't belong in advertising collections.
-      list = list.filter((r) => !isSceneRef(r));
+      // Strip film/TV scenes from advertising collections (ads, campaigns, commercials, etc.).
+      if (collectionExcludesScenes(collection)) {
+        list = list.filter((r) => !isSceneRef(r));
+      }
       // Cap at 24 (divisible by 4/3/2 — always full rows on every grid breakpoint).
       // If the natural count leaves 1 or 2 items on the last row, trim them off.
       let capped = list.slice(0, 24);
