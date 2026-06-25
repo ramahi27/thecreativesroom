@@ -1420,13 +1420,18 @@ export function refMatchesFilter(r: RefLike, filter: CollectionFilter): boolean 
 // Category used for movie / TV scene references (not advertising work).
 export const SCENES_CATEGORY = "Film and TV scenes";
 
+// Title/slug keywords that signal an advertising collection — scenes don't belong.
+const AD_COLLECTION_RE =
+  /\b(ads?|campaigns?|commercials?|advertis\w+|brands?|spots?|print|outdoor|viral|guerrilla|agency|agencies|cannes|super.?bowl|award)\b/i;
+
 export function isSceneRef(r: { categories?: string[] | null }): boolean {
   return (r.categories || []).includes(SCENES_CATEGORY);
 }
 
-// Most collections are about commercials / ads, so film & TV scenes don't
-// belong on them. A collection keeps scenes only if it explicitly targets the
-// scenes category in its filter.
+// Returns true when film & TV scenes should be excluded from a collection.
+// Rule: if the collection title/slug mentions advertising, brands, campaigns,
+// awards, etc. → exclude scenes. Covers every current collection.
 export function collectionExcludesScenes(c: Collection): boolean {
-  return !(c.filter.categories || []).includes(SCENES_CATEGORY);
+  const text = `${c.title} ${c.slug}`;
+  return AD_COLLECTION_RE.test(text);
 }

@@ -6,7 +6,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { PageMeta } from "@/components/PageMeta";
 import { ReferenceCard } from "@/components/ReferenceCard";
 import { type Reference } from "@/lib/references";
-import { findCollection, collections, MIN_COLLECTION_REFS, isSceneRef, collectionExcludesScenes } from "@/lib/collections";
+import { findCollection, collections, MIN_COLLECTION_REFS, isSceneRef } from "@/lib/collections";
 import NotFound from "@/pages/NotFound";
 
 function SkeletonCard() {
@@ -74,10 +74,8 @@ const CollectionPage = () => {
 
       const { data } = await query;
       let list = (data as unknown as Reference[]) || [];
-      // Strip film/TV scenes from ad/commercial collections.
-      if (collectionExcludesScenes(collection)) {
-        list = list.filter((r) => !isSceneRef(r));
-      }
+      // Strip film/TV scenes — they don't belong in advertising collections.
+      list = list.filter((r) => !isSceneRef(r));
       // Cap at 24 (divisible by 4/3/2 — always full rows on every grid breakpoint).
       // If the natural count leaves 1 or 2 items on the last row, trim them off.
       let capped = list.slice(0, 24);

@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { PageMeta } from "@/components/PageMeta";
 import { deriveThumbnail } from "@/lib/references";
-import { collections, refMatchesFilter, MIN_COLLECTION_REFS, isSceneRef, collectionExcludesScenes } from "@/lib/collections";
+import { collections, refMatchesFilter, MIN_COLLECTION_REFS, isSceneRef } from "@/lib/collections";
 
 async function loadHiddenSlugs(): Promise<Set<string>> {
   const { data } = await supabase
@@ -210,7 +210,6 @@ const BestOf = () => {
       const candBySlug: Record<string, string[]> = {};
 
       for (const c of collections) {
-        const excl = collectionExcludesScenes(c);
         let count = 0;
         // Prefer full-bleed image refs (no letterboxing), then YouTube (16:9
         // after maxres upgrade), then any other thumbnail.
@@ -219,7 +218,7 @@ const BestOf = () => {
         const otherC: string[] = [];
         for (const r of refs) {
           if (!refMatchesFilter(r, c.filter)) continue;
-          if (excl && isSceneRef(r)) continue;
+          if (isSceneRef(r)) continue; // never use a scene as a collection cover
           count++;
           const cv = coverFor(r);
           if (!cv) continue;
