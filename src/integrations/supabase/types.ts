@@ -447,6 +447,9 @@ export type Database = {
           audited_at: string | null
           brand: string | null
           categories: string[]
+          concept_enriched_at: string | null
+          concept_generated_at: string | null
+          concept_summary: string | null
           created_at: string
           created_by: string | null
           editing_style: string | null
@@ -476,6 +479,9 @@ export type Database = {
           audited_at?: string | null
           brand?: string | null
           categories?: string[]
+          concept_enriched_at?: string | null
+          concept_generated_at?: string | null
+          concept_summary?: string | null
           created_at?: string
           created_by?: string | null
           editing_style?: string | null
@@ -505,6 +511,9 @@ export type Database = {
           audited_at?: string | null
           brand?: string | null
           categories?: string[]
+          concept_enriched_at?: string | null
+          concept_generated_at?: string | null
+          concept_summary?: string | null
           created_at?: string
           created_by?: string | null
           editing_style?: string | null

@@ -1,0 +1,1 @@
+ALTER TABLE public.references ADD COLUMN IF NOT EXISTS concept_summary TEXT; ALTER TABLE public.references ADD COLUMN IF NOT EXISTS concept_enriched_at TIMESTAMPTZ;
