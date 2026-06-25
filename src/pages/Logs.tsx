@@ -60,6 +60,7 @@ type LogRow = {
   editing_style?: string | null;
   visual_summary?: string | null;
   visual_enriched_at?: string | null;
+  tags?: string[] | null;
   has_ai_metadata?: boolean;
   link_status?: string | null;
   link_checked_at?: string | null;
@@ -260,14 +261,14 @@ const Logs = () => {
         editing_style: string | null; visual_summary: string | null;
         visual_enriched_at: string | null;
         link_status: string | null; link_checked_at: string | null;
-        audited_at: string | null;
+        audited_at: string | null; tags: string[] | null;
       }>();
       const CHUNK = 150;
       for (let i = 0; i < ids.length; i += CHUNK) {
         const slice = ids.slice(i, i + CHUNK);
         const { data: extra } = await supabase
           .from("references")
-          .select("id,brand,agency,year,editing_style,visual_summary,visual_enriched_at,link_status,link_checked_at,audited_at")
+          .select("id,brand,agency,year,editing_style,visual_summary,visual_enriched_at,link_status,link_checked_at,audited_at,tags")
           .in("id", slice);
         (extra || []).forEach((t: any) =>
           infoMap.set(t.id, {
@@ -275,7 +276,7 @@ const Logs = () => {
             editing_style: t.editing_style ?? null, visual_summary: t.visual_summary ?? null,
             visual_enriched_at: t.visual_enriched_at ?? null,
             link_status: t.link_status ?? null, link_checked_at: t.link_checked_at ?? null,
-            audited_at: t.audited_at ?? null,
+            audited_at: t.audited_at ?? null, tags: Array.isArray(t.tags) ? t.tags : null,
           }),
         );
       }
@@ -293,6 +294,7 @@ const Logs = () => {
             link_status: info?.link_status ?? null,
             link_checked_at: info?.link_checked_at ?? null,
             audited_at: info?.audited_at ?? null,
+            tags: info?.tags ?? null,
           };
           return { ...merged, has_ai_metadata: hasCompleteMetadata(merged) } as LogRow;
         }),
@@ -462,6 +464,7 @@ const Logs = () => {
         year: (update.year as number) ?? row.year,
         visual_summary: (update.visual_summary as string) ?? row.visual_summary,
         editing_style: (update.editing_style as string) ?? row.editing_style,
+        tags: (update.tags as string[]) ?? row.tags,
         audited_at: update.audited_at as string,
         visual_enriched_at: update.visual_enriched_at as string,
       };
@@ -1177,6 +1180,33 @@ const Logs = () => {
                           <TableCell />
                           <TableCell colSpan={6} className="pb-4 pt-2">
                             <div className="flex flex-col gap-3">
+                              {/* Campaign metadata filled by Process new */}
+                              <div>
+                                <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                                  <Wand2 className="h-2.5 w-2.5" strokeWidth={2} /> Metadata
+                                  {r.audited_at && <span className="text-muted-foreground/40 normal-case tracking-normal">· processed {formatDate(r.audited_at)}</span>}
+                                </div>
+                                <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-xs">
+                                  <span><span className="text-muted-foreground/50">brand </span>{r.brand || <span className="text-muted-foreground/40 italic">—</span>}</span>
+                                  <span><span className="text-muted-foreground/50">agency </span>{r.agency || <span className="text-muted-foreground/40 italic">—</span>}</span>
+                                  <span><span className="text-muted-foreground/50">year </span>{r.year || <span className="text-muted-foreground/40 italic">—</span>}</span>
+                                </div>
+                              </div>
+                              {/* Tags */}
+                              <div>
+                                <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1.5">
+                                  Tags {Array.isArray(r.tags) && r.tags.length > 0 && <span className="text-muted-foreground/40">({r.tags.length})</span>}
+                                </div>
+                                {Array.isArray(r.tags) && r.tags.length > 0
+                                  ? (
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {r.tags.map((t, ti) => (
+                                        <span key={ti} className="font-mono text-[10px] px-1.5 py-0.5 border hairline bg-background/40 text-foreground/80">{t}</span>
+                                      ))}
+                                    </div>
+                                  )
+                                  : <p className="font-mono text-xs text-muted-foreground/50 italic">No tags yet — run Process new</p>}
+                              </div>
                               <div>
                                 <div className="font-mono text-[9px] uppercase tracking-[0.2em] text-muted-foreground mb-1 flex items-center gap-1.5">
                                   <Eye className="h-2.5 w-2.5" strokeWidth={2} /> Visual Summary
