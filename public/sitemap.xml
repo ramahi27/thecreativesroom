@@ -46,7 +46,7 @@
   </url>
   <url>
     <loc>https://thecreativesroom.com/ref/7b1b86cc-ab09-4c6d-850c-995e2a598238-the-economist</loc>
-    <lastmod>2026-06-25</lastmod>
+    <lastmod>2026-06-26</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
@@ -6081,12 +6081,6 @@
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://thecreativesroom.com/u/jorgepuente</loc>
-    <lastmod>2026-06-21</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
-  </url>
-  <url>
     <loc>https://thecreativesroom.com/u/fable905</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>weekly</changefreq>
@@ -6094,31 +6088,37 @@
   </url>
   <url>
     <loc>https://thecreativesroom.com/u/diegoagogo</loc>
-    <lastmod>2026-06-22</lastmod>
+    <lastmod>2026-06-27</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://thecreativesroom.com/u/jorgepuente</loc>
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thecreativesroom.com/u/firstwater</loc>
-    <lastmod>2026-06-22</lastmod>
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thecreativesroom.com/u/drewsafur</loc>
-    <lastmod>2026-06-22</lastmod>
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thecreativesroom.com/u/cornwallis400</loc>
-    <lastmod>2026-06-23</lastmod>
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
     <loc>https://thecreativesroom.com/u/copyguy</loc>
-    <lastmod>2026-06-25</lastmod>
+    <lastmod>2026-06-27</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
