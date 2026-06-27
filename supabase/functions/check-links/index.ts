@@ -96,17 +96,16 @@ async function checkLink(url: string): Promise<LinkStatus> {
   }
 }
 
+const cors = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "authorization, content-type",
-      },
-    });
+    return new Response(null, { headers: cors });
   }
-
-  const cors = { "Access-Control-Allow-Origin": "*" };
 
   // Require admin auth
   const authHeader = req.headers.get("Authorization");
