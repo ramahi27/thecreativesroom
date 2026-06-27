@@ -261,7 +261,8 @@ const Drafts = () => {
       } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("Please sign in again before importing.");
 
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scrape-link`, {
+      const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || "https://vaogvackqxfhureqbprw.supabase.co";
+      const res = await fetch(`${SUPA_URL}/functions/v1/scrape-link`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,

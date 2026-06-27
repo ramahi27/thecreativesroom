@@ -741,7 +741,8 @@ const Logs = () => {
       const MAX_ITERS = 80;
 
       for (let iter = 0; iter < MAX_ITERS; iter++) {
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/enrich-concept`, {
+        const SUPA_URL = import.meta.env.VITE_SUPABASE_URL || "https://vaogvackqxfhureqbprw.supabase.co";
+        const res = await fetch(`${SUPA_URL}/functions/v1/enrich-concept`, {
           method: "POST",
           headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
           body: JSON.stringify({ offset, limit: 50, force }),
