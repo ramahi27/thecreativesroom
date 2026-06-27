@@ -352,18 +352,13 @@ const Logs = () => {
   async function handleCheckLinks() {
     setLinkChecking(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/check-links`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${session?.access_token}` },
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Link check failed");
-      setLinkResults(json);
-      toast.success(json.message);
+      const { data, error } = await supabase.functions.invoke("check-links", { method: "POST" });
+      if (error) throw error;
+      setLinkResults(data);
+      toast.success(data?.message ?? "Link check complete");
       await loadDeadLinks();
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error(err?.message || "Link check failed");
     } finally {
       setLinkChecking(false);
     }
