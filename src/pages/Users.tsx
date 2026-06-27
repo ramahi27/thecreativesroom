@@ -23,6 +23,7 @@ type Row = {
   references_added: number;
   references_approved: number;
   time_spent_seconds: number;
+  briefs_searched: number;
 };
 
 type FeedbackRow = {
@@ -108,7 +109,17 @@ const Users = () => {
       // admin flag and time-on-site — no RLS-locked table reads needed.
       // It returns `email`; if an enhanced version also returns username/plan,
       // we use those, otherwise we degrade gracefully (email as name, free plan).
-      const { data, error } = await (supabase as any).rpc("get_user_overview");
+      const [{ data, error }, { data: briefData }] = await Promise.all([
+        (supabase as any).rpc("get_user_overview"),
+        supabase.from("brief_usages").select("user_id, count").not("user_id", "is", null),
+      ]);
+
+      // Aggregate brief searches per user
+      const briefTotals = new Map<string, number>();
+      for (const b of ((briefData as any[]) || [])) {
+        if (b.user_id) briefTotals.set(b.user_id, (briefTotals.get(b.user_id) || 0) + (b.count || 0));
+      }
+
       if (error) {
         fetchErr = error.message;
       } else if (Array.isArray(data)) {
@@ -123,6 +134,7 @@ const Users = () => {
             references_added: u.references_added || 0,
             references_approved: u.references_approved || 0,
             time_spent_seconds: Number(u.time_spent_seconds || 0),
+            briefs_searched: briefTotals.get(u.user_id) || 0,
           }))
           .sort((a: Row, b: Row) => +new Date(b.created_at) - +new Date(a.created_at));
       }
@@ -243,6 +255,7 @@ const Users = () => {
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Username</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Email</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Plan</TableHead>
+                  <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Briefs</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Added</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest text-right">Approved</TableHead>
                   <TableHead className="font-mono text-[11px] uppercase tracking-widest">Joined</TableHead>
@@ -262,6 +275,13 @@ const Users = () => {
                         <span className="font-mono text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-primary/15 text-primary">Pro</span>
                       ) : (
                         <span className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">Free</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-right">
+                      {r.briefs_searched > 0 ? (
+                        <span className={r.briefs_searched >= 10 ? "text-primary" : ""}>{r.briefs_searched}</span>
+                      ) : (
+                        <span className="text-muted-foreground/40">—</span>
                       )}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-right">{r.references_added}</TableCell>
